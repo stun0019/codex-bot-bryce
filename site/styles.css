@@ -1822,3 +1822,18 @@ body[data-page="admin"] .terminal-shell {
   .market-card-price { font-size: 15px; }
   .market-card-volume { font-size: 10px; }
 }
+/* Local backend observation list; hidden on static GitHub Pages. */
+.observer-board { margin-top: 24px; padding: 18px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); }
+.observer-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.observer-head h2 { margin: 0; font-size: 19px; }
+#observerStatus { color: var(--muted); font-size: 11px; text-align: right; }
+.observer-description { margin: 7px 0 15px; color: var(--muted); font-size: 12px; }
+.observer-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 10px; }
+.observer-card { padding: 13px; border: 1px solid var(--line); border-radius: 7px; background: var(--tile); }
+.observer-card-top { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+.observer-card strong { font: 800 14px Consolas, monospace; }
+.observer-card-side { font: 800 11px Consolas, monospace; }
+.observer-card-side[data-side="LONG"] { color: var(--green); }
+.observer-card-side[data-side="SHORT"] { color: var(--pink); }
+.observer-card p { margin: 9px 0 0; color: #a9bbcc; font-size: 12px; line-height: 1.5; }
+.observer-empty { margin: 0; color: var(--muted); font-size: 12px; }

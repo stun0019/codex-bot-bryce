@@ -10,7 +10,7 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Codex Bot">
-  <link rel="stylesheet" href="styles.css?v=bryce-3">
+  <link rel="stylesheet" href="styles.css?v=bryce-4">
 </head>
 <body>
   <div id="appShell">
@@ -85,6 +85,11 @@
             </div>
           </div>
           <div id="signalGrid" class="terminal-grid" aria-live="polite"></div>
+          <section id="observerBoard" class="observer-board" hidden aria-label="策略觀察名單">
+            <div class="observer-head"><h2>策略觀察名單</h2><span id="observerStatus">等待掃描</span></div>
+            <p class="observer-description">ZEC、ENA · H4/M15 或 H1/M5 · 低週期 OB 形成後加入觀察</p>
+            <div id="observerCards" class="observer-cards"></div>
+          </section>
         </section>
       </section>
     </main>
@@ -103,5 +108,6 @@
   <script src="closed-price-fix.js?v=3"></script>
   <script src="raised-sl.js?v=5"></script>
   <script src="push-fix.js?v=2"></script>
+  <script src="observer-board.js?v=1"></script>
 </body>
 </html>

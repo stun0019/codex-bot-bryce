@@ -1,7 +1,7 @@
 {
-  "name": "貓眼策略",
-  "short_name": "貓眼策略",
-  "description": "貓眼策略訊號通知",
+  "name": "Codex Bot",
+  "short_name": "Codex Bot",
+  "description": "Codex Bot 市場資訊與訊號紀錄",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

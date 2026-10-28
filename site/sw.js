@@ -23,7 +23,7 @@ self.addEventListener("push", (event) => {
     payload = { body: event.data ? event.data.text() : "" };
   }
 
-  const title = payload.title || "貓眼策略";
+  const title = payload.title || "Codex Bot";
   const options = {
     body: payload.body || "",
     icon: "assets/icon-192.png",

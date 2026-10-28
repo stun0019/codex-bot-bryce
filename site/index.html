@@ -4,22 +4,22 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
   <meta name="theme-color" content="#080d14">
-  <title>貓眼策略</title>
+  <title>Codex Bot</title>
   <link rel="manifest" href="manifest.json">
-  <link rel="icon" href="assets/favicon-32.png" type="image/png" sizes="32x32">
+  <link rel="icon" href="assets/favicon-32.png?v=bryce-1" type="image/png" sizes="32x32">
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="貓眼策略">
-  <link rel="stylesheet" href="styles.css?v=20261028-iphone-safe-area">
+  <meta name="apple-mobile-web-app-title" content="Codex Bot">
+  <link rel="stylesheet" href="styles.css?v=bryce-1">
 </head>
 <body>
   <div id="appShell">
     <header class="app-header">
       <a class="brand" href="#signals">
-        <img src="assets/CatAvatar.png?v=1" alt="">
-        <span>貓眼策略</span>
+        <span class="brand-emoji" aria-hidden="true">👾</span>
+        <span class="brand-wordmark"><strong>CODEX BOT</strong><small>市場觀測</small></span>
       </a>
       <div class="header-actions" aria-label="快捷功能">
         <div class="install-menu-wrap">
@@ -48,7 +48,7 @@
           <button class="header-icon-button" id="broadcastMenuButton" type="button" aria-label="近期訊號" aria-expanded="false" data-action="broadcast">📢</button>
           <section class="broadcast-menu" id="broadcastMenu" aria-label="近期訊號">
             <div class="broadcast-menu-head"><h2>近期訊號</h2></div>
-            <div class="broadcast-group-title"><span>貓眼訊號</span></div>
+            <div class="broadcast-group-title"><span>訊號紀錄</span></div>
             <div class="broadcast-history-list" id="broadcastHistoryList"></div>
           </section>
         </div>
@@ -76,32 +76,17 @@
       </div>
     </header>
 
-    <section class="partner-marquee" aria-label="合作夥伴">
-      <div class="marquee-track">
-        <div class="marquee-group">
-          <span class="marquee-item"><img src="assets/MaxCrypto.PNG" alt=""><b>MaxCrypto</b></span>
-          <span class="marquee-item"><img src="assets/HUMBLE%20Trader%20Academy%20.jpeg" alt=""><b>HUMBLE Trader Academy</b></span>
-          <span class="marquee-item"><img src="assets/MetaBear.png" alt=""><b>MetaBear</b></span>
-          <span class="marquee-item"><img src="assets/Ryan.JPG" alt=""><b>Ryan</b></span>
-          <span class="marquee-item"><img src="assets/%E5%B0%8F%E7%BE%8A-%E5%B9%A3%E5%9C%88%E5%A4%A7%E8%A1%A8%E5%93%A5.png" alt=""><b>小羊-幣圈大表哥</b></span>
-          <span class="marquee-item"><img src="assets/%E5%8A%A0%E5%AF%86%E6%B3%B0%E7%91%9E.png" alt=""><b>加密泰瑞</b></span>
-          <span class="marquee-item"><img src="assets/COINX%E5%B9%A3%E5%AD%B8%E9%99%A2.png" alt=""><b>COINX幣學院</b></span>
-          <span class="marquee-item"><img src="assets/Crypto%20Mao%20%E8%B2%93%E5%A4%A7.jpg" alt=""><b>Crypto Mao 貓大</b></span>
-        </div>
-        <div class="marquee-group" aria-hidden="true">
-          <span class="marquee-item"><img src="assets/MaxCrypto.PNG" alt=""><b>MaxCrypto</b></span>
-          <span class="marquee-item"><img src="assets/HUMBLE%20Trader%20Academy%20.jpeg" alt=""><b>HUMBLE Trader Academy</b></span>
-          <span class="marquee-item"><img src="assets/MetaBear.png" alt=""><b>MetaBear</b></span>
-          <span class="marquee-item"><img src="assets/Ryan.JPG" alt=""><b>Ryan</b></span>
-          <span class="marquee-item"><img src="assets/%E5%B0%8F%E7%BE%8A-%E5%B9%A3%E5%9C%88%E5%A4%A7%E8%A1%A8%E5%93%A5.png" alt=""><b>小羊-幣圈大表哥</b></span>
-          <span class="marquee-item"><img src="assets/%E5%8A%A0%E5%AF%86%E6%B3%B0%E7%91%9E.png" alt=""><b>加密泰瑞</b></span>
-          <span class="marquee-item"><img src="assets/COINX%E5%B9%A3%E5%AD%B8%E9%99%A2.png" alt=""><b>COINX幣學院</b></span>
-          <span class="marquee-item"><img src="assets/Crypto%20Mao%20%E8%B2%93%E5%A4%A7.jpg" alt=""><b>Crypto Mao 貓大</b></span>
-        </div>
+    <section class="feature-strip" aria-label="平台內容">
+      <div class="feature-list">
+        <span class="feature-item"><span class="feature-symbol" aria-hidden="true">01</span><b>市場資訊</b></span>
+        <span class="feature-item"><span class="feature-symbol" aria-hidden="true">02</span><b>價格追蹤</b></span>
+        <span class="feature-item"><span class="feature-symbol" aria-hidden="true">03</span><b>訊號紀錄</b></span>
+        <span class="feature-item"><span class="feature-symbol" aria-hidden="true">04</span><b>風險提示</b></span>
+        <span class="feature-item"><span class="feature-symbol" aria-hidden="true">05</span><b>教學文件</b></span>
       </div>
     </section>
 
-    <main class="terminal-shell">
+<main class="terminal-shell">
       <section class="legal-section legal-section-top" aria-label="風險警示與免責聲明">
         <div class="legal-toggle-head">
           <span>⚠️風險警示/免責聲明</span>

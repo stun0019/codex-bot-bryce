@@ -720,5 +720,6 @@
   ],
   "limits_reached": false,
   "total_bytes": 107848383,
-  "layout": "Files are under site/; root index.html redirects to site/index.html."
+  "layout": "Files are under site/; root index.html redirects to site/index.html.",
+  "note": "Historical download inventory only. Some referenced assets have been replaced or removed in the Bryce design."
 }

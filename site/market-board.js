@@ -13,6 +13,7 @@
   const DEFAULT_SYMBOLS = ["BTC-USDT", "ETH-USDT", "SOL-USDT"];
   const MAX_SYMBOLS = 12;
   const formatter = new Intl.NumberFormat("en-US", { maximumFractionDigits: 12 });
+  const turnoverFormatter = new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 2 });
 
   function validSymbol(raw) {
     const symbol = String(raw || "").trim().toUpperCase();
@@ -78,15 +79,18 @@
       const time = document.createElement("span");
       time.className = "market-card-time";
       const quote = feed.get(symbol);
-      const volumeQuote = feed.getVolume(symbol);
-      const base = symbol.slice(0, -5);
-      volume.textContent = volumeQuote
-        ? "24h 成交量 " + formatter.format(volumeQuote.baseVolume) + " " + base
-        : "24h 成交量 —";
-      if (volumeQuote && !volumeQuote.fresh) volume.dataset.stale = "true";
+      const turnoverQuote = feed.getTurnover(symbol);
+      volume.textContent = turnoverQuote
+        ? turnoverFormatter.format(turnoverQuote.quoteVolume)
+        : "—";
+      volume.title = turnoverQuote
+        ? "24h 成交額 " + formatter.format(turnoverQuote.quoteVolume)
+        : "24h 成交額尚無資料";
+      volume.setAttribute("aria-label", volume.title);
+      if (turnoverQuote && !turnoverQuote.fresh) volume.dataset.stale = "true";
       const unavailable = feed.isUnsupported(symbol);
       if (quote) {
-        price.textContent = formatter.format(quote.price) + " USDT";
+        price.textContent = formatter.format(quote.price);
         time.textContent = (quote.fresh && state === "live" ? "更新 " : "最後報價 ") +
           new Date(quote.at).toLocaleTimeString("zh-TW", { hour12: false });
         card.dataset.stale = String(!quote.fresh || state !== "live");

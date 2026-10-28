@@ -37,7 +37,7 @@
   const supported = typeof window.WebSocket === "function" && typeof window.DecompressionStream === "function";
 
   const prices = new Map(); // pair -> { price:Number, at:ms }
-  const volumes = new Map(); // pair -> { baseVolume:Number, at:ms } (rolling 24h)
+  const turnovers = new Map(); // pair -> { quoteVolume:Number, at:ms } (rolling 24h USDT)
   const wanted = new Set(); // active union of page and market board pairs
   const pageWanted = new Set();
   const marketWanted = new Set();
@@ -213,10 +213,10 @@
       }
       const data = msg && msg.data;
       if (data && data.s && msg.dataType === String(data.s).toUpperCase() + "@ticker") {
-        const baseVolume = Number(data.v);
-        if (Number.isFinite(baseVolume) && baseVolume >= 0) {
+        const quoteVolume = Number(data.q);
+        if (Number.isFinite(quoteVolume) && quoteVolume >= 0) {
           const pair = String(data.s).toUpperCase();
-          volumes.set(pair, { baseVolume, at: Date.now() });
+          turnovers.set(pair, { quoteVolume, at: Date.now() });
           if (prices.has(pair)) {
             batch.set(pair, prices.get(pair));
             scheduleFlush();
@@ -326,7 +326,7 @@
     conn.pairs.delete(pair);
     unsubscribePair(conn, pair);
     unsubscribeTicker(conn, pair);
-    volumes.delete(pair);
+    turnovers.delete(pair);
     if (!conn.pairs.size) {
       closeConn(conn);
       const index = conns.indexOf(conn);
@@ -365,7 +365,7 @@
       if (marketWanted.has(pair)) return;
       const conn = connFor(pair);
       if (conn) unsubscribeTicker(conn, pair);
-      volumes.delete(pair);
+      turnovers.delete(pair);
     });
     syncSymbols();
     marketWanted.forEach((pair) => {
@@ -465,9 +465,9 @@
     return restThrottled(pair, REST_MIN_INTERVAL_MS);
   }
 
-  function getVolume(symbol) {
+  function getTurnover(symbol) {
     const pair = normalizePair(symbol);
-    const rec = volumes.get(pair);
+    const rec = turnovers.get(pair);
     return rec ? { ...rec, fresh: Date.now() - rec.at < 120000 } : null;
   }
 
@@ -508,7 +508,7 @@
     setMarketSymbols,
     want,
     get,
-    getVolume,
+    getTurnover,
     price,
     isUnsupported,
     subscribe,

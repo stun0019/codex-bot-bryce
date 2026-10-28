@@ -37,7 +37,9 @@
   const supported = typeof window.WebSocket === "function" && typeof window.DecompressionStream === "function";
 
   const prices = new Map(); // pair -> { price:Number, at:ms }
-  const wanted = new Set(); // pairs the page needs
+  const wanted = new Set(); // active union of page and market board pairs
+  const pageWanted = new Set();
+  const marketWanted = new Set();
   const listeners = new Set();
   const pendingJump = new Map(); // pair -> { price, at }
   const restAt = new Map(); // pair -> 上次打 REST 的時間
@@ -292,9 +294,9 @@
     }
   }
 
-  // 頁面告知目前需要哪些幣（通常是未結案訂單的幣）。多出的取消訂閱，少的補訂閱。
-  function setSymbols(list) {
-    const next = new Set((Array.isArray(list) ? list : []).map(normalizePair).filter(Boolean));
+  // 主頁訊號與公開行情板各自維護訂閱；其中一方更新不會取消另一方的幣對。
+  function syncSymbols() {
+    const next = new Set([...pageWanted, ...marketWanted]);
     wanted.forEach((pair) => {
       if (!next.has(pair)) {
         wanted.delete(pair);
@@ -309,15 +311,27 @@
     });
   }
 
+  function setSymbols(list) {
+    pageWanted.clear();
+    (Array.isArray(list) ? list : []).map(normalizePair).filter(Boolean).forEach((pair) => pageWanted.add(pair));
+    syncSymbols();
+  }
+
+  function setMarketSymbols(list) {
+    marketWanted.clear();
+    (Array.isArray(list) ? list : []).map(normalizePair).filter(Boolean).forEach((pair) => marketWanted.add(pair));
+    syncSymbols();
+  }
+
   function isUnsupported(symbol) {
     return unsupported.has(normalizePair(symbol));
   }
 
   function want(symbol) {
     const pair = normalizePair(symbol);
-    if (!pair || wanted.has(pair) || unsupported.has(pair)) return;
-    wanted.add(pair);
-    addPair(pair);
+    if (!pair || pageWanted.has(pair) || unsupported.has(pair)) return;
+    pageWanted.add(pair);
+    syncSymbols();
   }
 
   function get(symbol) {
@@ -434,6 +448,7 @@
   window.CatPriceFeed = {
     supported,
     setSymbols,
+    setMarketSymbols,
     want,
     get,
     price,

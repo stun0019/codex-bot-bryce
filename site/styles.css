@@ -1787,3 +1787,43 @@ body[data-page="admin"] .terminal-shell {
     padding-top: calc(14px + env(safe-area-inset-top, 0px));
   }
 }
+
+
+/* Public BingX perpetual market board. */
+.market-board {
+  margin-bottom: 24px;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel);
+}
+.market-board-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.market-board-kicker { margin: 0 0 5px; color: var(--green); font: 700 11px Consolas, monospace; letter-spacing: .12em; }
+.market-board h1 { margin: 0; font-size: 23px; }
+.market-connection { color: var(--muted); font-size: 12px; white-space: nowrap; }
+.market-connection::before { content: ""; display: inline-block; width: 7px; height: 7px; margin-right: 7px; border-radius: 50%; background: currentColor; }
+.market-connection[data-state="live"] { color: var(--green); }
+.market-connection[data-state="error"] { color: var(--pink); }
+.market-add-form { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 18px 0; }
+.market-add-form label { margin-right: 4px; color: #9cb0c8; font-size: 12px; font-weight: 700; }
+.market-add-form input { width: min(220px, 100%); min-height: 36px; padding: 7px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--tile); color: var(--ink); text-transform: uppercase; }
+.market-add-form button { min-height: 36px; padding: 7px 14px; border: 1px solid var(--green); border-radius: 6px; background: #0b3733; color: var(--green); font-weight: 700; }
+.market-form-message { color: var(--pink); font-size: 12px; }
+.market-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(185px, 1fr)); gap: 10px; }
+.market-card { min-width: 0; padding: 14px; border: 1px solid var(--line); border-radius: 7px; background: var(--tile); }
+.market-card-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.market-card-symbol { font: 800 15px Consolas, monospace; }
+.market-card-remove { width: 24px; height: 24px; padding: 0; border: 0; background: transparent; color: var(--muted); font-size: 18px; line-height: 1; }
+.market-card-remove:hover { color: var(--pink); }
+.market-card-price { display: block; margin: 14px 0 6px; color: var(--green); font: 800 clamp(18px, 2vw, 25px) Consolas, monospace; overflow-wrap: anywhere; }
+.market-card[data-stale="true"] .market-card-price { color: var(--amber); }
+.market-card-time { color: var(--muted); font-size: 11px; }
+.market-board-note { margin: 14px 0 0; color: var(--muted); font-size: 11px; line-height: 1.5; }
+@media (max-width: 600px) {
+  .market-board { padding: 15px; }
+  .market-board h1 { font-size: 20px; }
+  .market-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .market-card { padding: 10px; }
+  .market-card-symbol { font-size: 12px; }
+  .market-card-price { font-size: 17px; }
+}

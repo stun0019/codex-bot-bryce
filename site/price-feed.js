@@ -37,6 +37,7 @@
   const supported = typeof window.WebSocket === "function" && typeof window.DecompressionStream === "function";
 
   const prices = new Map(); // pair -> { price:Number, at:ms }
+  const volumes = new Map(); // pair -> { baseVolume:Number, at:ms } (rolling 24h)
   const wanted = new Set(); // active union of page and market board pairs
   const pageWanted = new Set();
   const marketWanted = new Set();
@@ -44,7 +45,7 @@
   const pendingJump = new Map(); // pair -> { price, at }
   const restAt = new Map(); // pair -> 上次打 REST 的時間
   const unsupported = new Set(); // BingX 回「dataType not support」或 REST 回「offline」的幣（已下架合約）
-  const subRequests = new Map(); // 訂閱請求 id -> pair（用來對應伺服器回的錯誤碼）
+  const subRequests = new Map(); // id -> { pair, kind }
   const conns = []; // { ws, pairs:Set, subscribed:Set, attempts, timer, closedByUs }
   let batch = new Map();
   let flushTimer = null;
@@ -115,10 +116,27 @@
     if (conn.subscribed.has(pair) || unsupported.has(pair)) return;
     const id = String(nextId++);
     if (send(conn, { id, reqType: "sub", dataType: pair + "@lastPrice" })) {
-      subRequests.set(id, pair);
+      subRequests.set(id, { pair, kind: "price" });
       conn.pendingIds.add(id);
       conn.subscribed.add(pair);
+      if (marketWanted.has(pair)) subscribeTicker(conn, pair);
     }
+  }
+
+  function subscribeTicker(conn, pair) {
+    if (!marketWanted.has(pair) || conn.tickerSubscribed.has(pair) || unsupported.has(pair)) return;
+    const id = String(nextId++);
+    if (send(conn, { id, reqType: "sub", dataType: pair + "@ticker" })) {
+      subRequests.set(id, { pair, kind: "ticker" });
+      conn.pendingIds.add(id);
+      conn.tickerSubscribed.add(pair);
+    }
+  }
+
+  function unsubscribeTicker(conn, pair) {
+    if (!conn.tickerSubscribed.has(pair)) return;
+    send(conn, { id: String(nextId++), reqType: "unsub", dataType: pair + "@ticker" });
+    conn.tickerSubscribed.delete(pair);
   }
 
   function markUnsupported(pair) {
@@ -128,6 +146,7 @@
     if (conn) {
       conn.pairs.delete(pair);
       conn.subscribed.delete(pair);
+      unsubscribeTicker(conn, pair);
     }
   }
 
@@ -155,6 +174,7 @@
     ws.binaryType = "arraybuffer";
     conn.ws = ws;
     conn.subscribed = new Set();
+    conn.tickerSubscribed = new Set();
     conn.closedByUs = false;
     conn.lastMessageAt = Date.now();
 
@@ -182,19 +202,35 @@
       try { msg = JSON.parse(text); } catch (error) { return; }
       if (msg && msg.id && !msg.dataType) {
         // 訂閱回覆：code 0 成功；80015 = dataType not support（合約不存在／已下架）
-        const pair = subRequests.get(String(msg.id));
+        const request = subRequests.get(String(msg.id));
         subRequests.delete(String(msg.id));
         conn.pendingIds.delete(String(msg.id));
-        if (pair && Number(msg.code) !== 0) markUnsupported(pair);
+        if (request && Number(msg.code) !== 0) {
+          if (request.kind === "price" && Number(msg.code) === 80015) markUnsupported(request.pair);
+          if (request.kind === "ticker") conn.tickerSubscribed.delete(request.pair);
+        }
         return;
       }
       const data = msg && msg.data;
+      if (data && data.s && msg.dataType === String(data.s).toUpperCase() + "@ticker") {
+        const baseVolume = Number(data.v);
+        if (Number.isFinite(baseVolume) && baseVolume >= 0) {
+          const pair = String(data.s).toUpperCase();
+          volumes.set(pair, { baseVolume, at: Date.now() });
+          if (prices.has(pair)) {
+            batch.set(pair, prices.get(pair));
+            scheduleFlush();
+          }
+        }
+        return;
+      }
       if (data && data.s && data.c != null) acceptTick(String(data.s).toUpperCase(), data.c, "ws");
     };
     ws.onclose = () => {
       if (conn.ws !== ws) return;
       conn.ws = null;
       conn.subscribed = new Set();
+      conn.tickerSubscribed = new Set();
       forgetPending(conn);
       if (!conn.closedByUs && conn.pairs.size) scheduleReconnect(conn);
     };
@@ -229,6 +265,7 @@
         const dead = conn.ws;
         conn.ws = null;
         conn.subscribed = new Set();
+        conn.tickerSubscribed = new Set();
         forgetPending(conn);
         detach(dead);
         scheduleReconnect(conn);
@@ -258,6 +295,7 @@
       detach(ws);
     }
     conn.subscribed = new Set();
+    conn.tickerSubscribed = new Set();
   }
 
   function connFor(pair) {
@@ -267,7 +305,7 @@
   function connWithRoom() {
     let conn = conns.find((item) => item.pairs.size < MAX_PER_CONN);
     if (!conn) {
-      conn = { ws: null, pairs: new Set(), subscribed: new Set(), pendingIds: new Set(), attempts: 0, timer: null, closedByUs: false, lastMessageAt: 0 };
+      conn = { ws: null, pairs: new Set(), subscribed: new Set(), tickerSubscribed: new Set(), pendingIds: new Set(), attempts: 0, timer: null, closedByUs: false, lastMessageAt: 0 };
       conns.push(conn);
     }
     return conn;
@@ -287,6 +325,8 @@
     if (!conn) return;
     conn.pairs.delete(pair);
     unsubscribePair(conn, pair);
+    unsubscribeTicker(conn, pair);
+    volumes.delete(pair);
     if (!conn.pairs.size) {
       closeConn(conn);
       const index = conns.indexOf(conn);
@@ -318,9 +358,20 @@
   }
 
   function setMarketSymbols(list) {
+    const previous = new Set(marketWanted);
     marketWanted.clear();
     (Array.isArray(list) ? list : []).map(normalizePair).filter(Boolean).forEach((pair) => marketWanted.add(pair));
+    previous.forEach((pair) => {
+      if (marketWanted.has(pair)) return;
+      const conn = connFor(pair);
+      if (conn) unsubscribeTicker(conn, pair);
+      volumes.delete(pair);
+    });
     syncSymbols();
+    marketWanted.forEach((pair) => {
+      const conn = connFor(pair);
+      if (conn) subscribeTicker(conn, pair);
+    });
   }
 
   function isUnsupported(symbol) {
@@ -414,6 +465,12 @@
     return restThrottled(pair, REST_MIN_INTERVAL_MS);
   }
 
+  function getVolume(symbol) {
+    const pair = normalizePair(symbol);
+    const rec = volumes.get(pair);
+    return rec ? { ...rec, fresh: Date.now() - rec.at < 120000 } : null;
+  }
+
   function subscribe(fn) {
     if (typeof fn === "function") listeners.add(fn);
     return () => listeners.delete(fn);
@@ -451,6 +508,7 @@
     setMarketSymbols,
     want,
     get,
+    getVolume,
     price,
     isUnsupported,
     subscribe,

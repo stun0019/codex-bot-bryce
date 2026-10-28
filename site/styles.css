@@ -614,13 +614,6 @@ body.modal-open {
   letter-spacing: .12em;
 }
 
-.brand-wordmark small {
-  color: #91a5b9;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: .16em;
-}
-
 .terminal-shell {
   width: 100%;
   max-width: 1400px;
@@ -1517,7 +1510,6 @@ input[readonly] {
   }
 
   .brand-wordmark strong { font-size: 18px; }
-  .brand-wordmark small { font-size: 9px; }
 
   .header-actions {
     gap: 8px;
@@ -1809,15 +1801,17 @@ body[data-page="admin"] .terminal-shell {
 .market-add-form input { width: min(220px, 100%); min-height: 36px; padding: 7px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--tile); color: var(--ink); text-transform: uppercase; }
 .market-add-form button { min-height: 36px; padding: 7px 14px; border: 1px solid var(--green); border-radius: 6px; background: #0b3733; color: var(--green); font-weight: 700; }
 .market-form-message { color: var(--pink); font-size: 12px; }
-.market-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(185px, 1fr)); gap: 10px; }
-.market-card { min-width: 0; padding: 14px; border: 1px solid var(--line); border-radius: 7px; background: var(--tile); }
+.market-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(185px, 1fr)); gap: 8px; }
+.market-card { min-width: 0; padding: 10px 11px; border: 1px solid var(--line); border-radius: 7px; background: var(--tile); }
 .market-card-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .market-card-symbol { font: 800 15px Consolas, monospace; }
 .market-card-remove { width: 24px; height: 24px; padding: 0; border: 0; background: transparent; color: var(--muted); font-size: 18px; line-height: 1; }
 .market-card-remove:hover { color: var(--pink); }
-.market-card-price { display: block; margin: 14px 0 6px; color: var(--green); font: 800 clamp(18px, 2vw, 25px) Consolas, monospace; overflow-wrap: anywhere; }
+.market-card-price { display: block; margin: 7px 0 5px; color: var(--green); font: 800 clamp(15px, 1.5vw, 19px) Consolas, monospace; overflow-wrap: anywhere; }
 .market-card[data-stale="true"] .market-card-price { color: var(--amber); }
-.market-card-time { color: var(--muted); font-size: 11px; }
+.market-card-volume { display: block; color: #a9bbcc; font-size: 11px; line-height: 1.4; }
+.market-card-volume[data-stale="true"] { color: var(--muted); }
+.market-card-time { display: block; margin-top: 3px; color: var(--muted); font-size: 10px; }
 .market-board-note { margin: 14px 0 0; color: var(--muted); font-size: 11px; line-height: 1.5; }
 @media (max-width: 600px) {
   .market-board { padding: 15px; }
@@ -1825,5 +1819,6 @@ body[data-page="admin"] .terminal-shell {
   .market-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .market-card { padding: 10px; }
   .market-card-symbol { font-size: 12px; }
-  .market-card-price { font-size: 17px; }
+  .market-card-price { font-size: 15px; }
+  .market-card-volume { font-size: 10px; }
 }

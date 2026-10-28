@@ -73,9 +73,17 @@
       top.append(name, remove);
       const price = document.createElement("strong");
       price.className = "market-card-price";
+      const volume = document.createElement("span");
+      volume.className = "market-card-volume";
       const time = document.createElement("span");
       time.className = "market-card-time";
       const quote = feed.get(symbol);
+      const volumeQuote = feed.getVolume(symbol);
+      const base = symbol.slice(0, -5);
+      volume.textContent = volumeQuote
+        ? "24h 成交量 " + formatter.format(volumeQuote.baseVolume) + " " + base
+        : "24h 成交量 —";
+      if (volumeQuote && !volumeQuote.fresh) volume.dataset.stale = "true";
       const unavailable = feed.isUnsupported(symbol);
       if (quote) {
         price.textContent = formatter.format(quote.price) + " USDT";
@@ -87,7 +95,7 @@
         time.textContent = unavailable ? "合約不可用" : state === "error" ? "無法取得報價" : "等待報價";
         card.dataset.stale = "true";
       }
-      card.append(top, price, time);
+      card.append(top, price, volume, time);
       cards.append(card);
     }
   }

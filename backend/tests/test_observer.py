@@ -2,7 +2,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from codex_bot.bingx import MarketDataError, parse_closed_candles
+from codex_bot.bingx import MarketDataError, parse_closed_candles, parse_contract_symbols
 from codex_bot.scanner import Observer
 from codex_bot.strategy import Candle, StrategyConfig, detect
 
@@ -64,21 +64,108 @@ class MarketDataTests(unittest.TestCase):
         with self.assertRaises(MarketDataError):
             parse_closed_candles([["bad"]], "5m", 300000)
 
+    def test_contracts_keep_only_active_tradable_usdt(self):
+        rows = [
+            {"symbol": "ZEC-USDT", "currency": "USDT", "status": 1, "apiStateOpen": "true"},
+            {"symbol": "ENA-USDT", "currency": "USDT", "status": 1, "apiStateOpen": "true"},
+            {"symbol": "OLD-USDT", "currency": "USDT", "status": 0},
+            {"symbol": "HALT-USDT", "currency": "USDT", "status": 1, "apiStateOpen": "false"},
+            {"symbol": "BTC-USD", "currency": "USD", "status": 1},
+        ]
+        self.assertEqual(parse_contract_symbols(rows), ("ENA-USDT", "ZEC-USDT"))
+
 
 class ScannerTests(unittest.TestCase):
     def test_latest_only_and_deduplication(self):
         htf = candles(HTF, 0, 100)
         ltf = candles(LTF, 1000, 10)
         def fetcher(symbol, interval):
-            if symbol != "ZEC-USDT":
-                raise MarketDataError("offline")
             return htf if interval in ("4h", "1h") else ltf
         with tempfile.TemporaryDirectory() as temp:
-            observer = Observer(Path(temp) / "test.sqlite3", fetcher, CONFIG)
+            observer = Observer(Path(temp) / "test.sqlite3", fetcher, CONFIG,
+                                lambda: ("ZEC-USDT", "ENA-USDT"))
+            self.assertEqual(observer.scan_once(), 4)
+            self.assertEqual(observer.scan_once(), 0)
+            self.assertEqual(len(observer.candidates()), 4)
+            self.assertEqual(observer.status()["symbol_count"], 2)
+
+    def test_rotates_all_symbols_without_fixed_pair(self):
+        calls = []
+        def fetcher(symbol, interval):
+            calls.append((symbol, interval))
+            return candles(HTF, 0, 100) if interval in ("4h", "1h") else candles(LTF, 1000, 10)
+        with tempfile.TemporaryDirectory() as temp:
+            observer = Observer(Path(temp) / "test.sqlite3", fetcher, CONFIG,
+                                lambda: ("SOL-USDT", "BTC-USDT", "ETH-USDT"), batch_size=1)
+            observer.scan_once()
+            self.assertEqual({symbol for symbol, _ in calls}, {"BTC-USDT"})
+            observer.scan_once()
+            self.assertEqual({symbol for symbol, _ in calls}, {"BTC-USDT", "ETH-USDT"})
+            observer.scan_once()
+            self.assertEqual({symbol for symbol, _ in calls}, {"BTC-USDT", "ETH-USDT", "SOL-USDT"})
+            self.assertIsNotNone(observer.status()["last_full_pass_utc"])
+
+    def test_batch_cursor_survives_restart(self):
+        calls = []
+        def fetcher(symbol, interval):
+            calls.append(symbol)
+            return candles(HTF, 0, 100) if interval in ("4h", "1h") else candles(LTF, 1000, 10)
+        provider = lambda: ("BTC-USDT", "ETH-USDT", "SOL-USDT")
+        with tempfile.TemporaryDirectory() as temp:
+            database = Path(temp) / "test.sqlite3"
+            first = Observer(database, fetcher, CONFIG, provider, batch_size=1)
+            first.scan_once()
+            self.assertEqual(set(calls), {"BTC-USDT"})
+            calls.clear()
+            restarted = Observer(database, fetcher, CONFIG, provider, batch_size=1)
+            restarted.scan_once()
+            self.assertEqual(set(calls), {"ETH-USDT"})
+
+    def test_catches_up_after_next_batch(self):
+        htf = candles(HTF, 0, 100)
+        ltf = candles(LTF, 1000, 10)
+        lower_candles = [ltf[:-1]]
+        def fetcher(symbol, interval):
+            return htf if interval in ("4h", "1h") else lower_candles[0]
+        with tempfile.TemporaryDirectory() as temp:
+            observer = Observer(Path(temp) / "test.sqlite3", fetcher, CONFIG,
+                                lambda: ("ZEC-USDT",))
+            self.assertEqual(observer.scan_once(), 0)
+            lower_candles[0] = ltf
             self.assertEqual(observer.scan_once(), 2)
             self.assertEqual(observer.scan_once(), 0)
-            self.assertEqual(len(observer.candidates()), 2)
-            self.assertIn("ENA-USDT", observer.status()["error"])
+
+
+    def test_progress_survives_restart(self):
+        htf = candles(HTF, 0, 100)
+        ltf = candles(LTF, 1000, 10)
+        lower_candles = [ltf[:-1]]
+        def fetcher(symbol, interval):
+            return htf if interval in ("4h", "1h") else lower_candles[0]
+        with tempfile.TemporaryDirectory() as temp:
+            database = Path(temp) / "test.sqlite3"
+            first = Observer(database, fetcher, CONFIG, lambda: ("ZEC-USDT",))
+            self.assertEqual(first.scan_once(), 0)
+            lower_candles[0] = ltf
+            restarted = Observer(database, fetcher, CONFIG, lambda: ("ZEC-USDT",))
+            self.assertEqual(restarted.scan_once(), 2)
+
+    def test_contract_refresh_failure_keeps_last_universe_and_reports_error(self):
+        calls = [0]
+        def provider():
+            calls[0] += 1
+            if calls[0] > 1:
+                raise MarketDataError("unavailable")
+            return ("ZEC-USDT",)
+        def fetcher(symbol, interval):
+            return candles(HTF, 0, 100) if interval in ("4h", "1h") else candles(LTF, 1000, 10)
+        with tempfile.TemporaryDirectory() as temp:
+            observer = Observer(Path(temp) / "test.sqlite3", fetcher, CONFIG, provider)
+            observer.scan_once()
+            observer.next_universe_refresh = 0
+            observer.scan_once()
+            self.assertEqual(observer.status()["symbol_count"], 1)
+            self.assertIn("Contract refresh failed", observer.status()["error"])
 
 
 if __name__ == "__main__":

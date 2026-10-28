@@ -1,14 +1,16 @@
 # Codex Bot 觀察後端
 
-這是本機執行的觀察版後端。只讀取 BingX 公開的 USDT 永續合約 K 線，不需 API Key，沒有帳戶查詢、下單或自動交易功能。掃描 ZEC-USDT、ENA-USDT，獨立檢查 H4/M15 與 H1/M5。
+這是本機執行的觀察版後端。只讀取 BingX 公開的 USDT 永續合約資料，不需 API Key，沒有帳戶查詢、下單或自動交易功能。
 
 ## 家裡 Windows 電腦啟動
 
 1. 從同一個 GitHub 倉庫取得程式碼，安裝 Python 3.12。
 2. 雙擊 backend/start.bat。第一次執行會在 backend/.venv 安裝 FastAPI 和 Uvicorn。
-3. 用瀏覽器開啟 http://127.0.0.1:8000/api/observer/status 查看掃描狀態，或開啟 http://127.0.0.1:8000/api/observer/candidates 查看觀察名單。後端每 60 秒掃描一次，關閉命令視窗即停止。
+3. 用瀏覽器開啟 http://127.0.0.1:8000 查看行情與策略觀察名單；掃描狀態在 http://127.0.0.1:8000/api/observer/status 。
 
-本機資料存於 backend/data/observer.sqlite3，不會上傳到 GitHub。開機後若要持續運行，需再次啟動 start.bat 並保持電腦與命令視窗開啟。GitHub Pages 是靜態頁面，不會自行執行後端；觀察名單只在本機後端提供的首頁出現。
+後端自動向 BingX 公開合約 API 取得「目前可交易的 USDT 永續合約」，約每小時更新清單。以每批 15 幣輪流檢查 H4/M15 與 H1/M5；不限定 ZEC、ENA。公開 API 請求間隔至少 1.1 秒，完整掃完一輪可能需數十分鐘，並非所有幣都能即時發現。狀態 API 顯示合約總數、本輪進度、最近完成整輪時間與錯誤。每個幣及週期組合記錄已掃描的 K 線時間；下一輪會補看前次之後的資料。第一次啟動只新增當時最新已收盤 K 線形成的候選，不匯入舊歷史候選。
+
+可用環境變數 CODEX_SCAN_BATCH_SIZE、CODEX_SCAN_PAUSE_SECONDS、CODEX_UNIVERSE_REFRESH_SECONDS 調整運作頻率。調整前應留意 BingX 公開 API 的頻率限制。關閉命令視窗即停止；電腦重開後需再次執行。資料存於 backend/data/observer.sqlite3，不會上傳到 GitHub。GitHub Pages 是靜態頁面，不會自行執行後端；觀察名單只在本機後端提供的首頁出現。
 
 ## 暫定觀察規則
 
@@ -19,12 +21,12 @@
 - 回踩後，在低週期出現反向微趨勢，然後收盤突破其擺動點，視為 CHOCH；取突破前最近一根反向 K 線的全影線範圍作為低週期 OB。
 - 低週期 OB 一形成，就加入「策略觀察名單」。不等待低週期再次回踩，亦不產生進場、止損或止盈指令。
 
-擺動確認根數與 OB 回看根數在 StrategyConfig 可調。這是讓流程能運作的暫定定義，尚未依你的圖例驗證 OB / CHOCH 判法；觀察結果不能視為交易訊號。只儲存最新收盤低週期 K 線新形成的候選，不補登更早歷史候選。每次候選以策略版本、幣種、週期、方向與形成時間去重。
+擺動確認根數與 OB 回看根數在 StrategyConfig 可調。這是暫定定義，尚未依實際圖例驗證；觀察結果不能視為交易訊號。候選以策略版本、幣種、週期、方向與形成時間去重。
 
 ## 開發測試
 
-在專案根目錄執行：
+進入 backend 資料夾後執行：
 
-python -m unittest discover -s backend/tests -v
+python -m unittest discover -s tests -v
 
-測試使用人造 K 線，不會呼叫 BingX。
+測試使用人造 K 線與模擬合約清單，不會呼叫 BingX。

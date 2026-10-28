@@ -27,8 +27,9 @@
       const info = await statusResponse.json();
       const observations = await candidatesResponse.json();
       board.hidden = false;
-      status.textContent = info.error ? "部分行情讀取失敗" :
-        info.last_scan_utc ? "最近掃描 " + formatTime(info.last_scan_utc) : "等待首次掃描";
+      const coverage = info.symbol_count ? " · 本輪 " + info.scanned_in_pass + "/" + info.symbol_count + " 幣" : "";
+      status.textContent = (info.error ? "部分行情讀取失敗" :
+        info.last_scan_utc ? "最近掃描 " + formatTime(info.last_scan_utc) : "等待首次掃描") + coverage;
       cards.replaceChildren();
       if (!observations.length) {
         cards.append(line("p", "observer-empty", "目前沒有符合條件的觀察標的"));

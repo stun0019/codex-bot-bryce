@@ -26,8 +26,6 @@ self.addEventListener("push", (event) => {
   const title = payload.title || "Codex Bot";
   const options = {
     body: payload.body || "",
-    icon: "assets/icon-192.png",
-    badge: "assets/badge-96.png",
     tag: payload.tag || `cat-push-${Date.now()}`,
     renotify: true,
     data: {

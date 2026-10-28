@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#080d14">
+  <title>貓眼策略</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="assets/favicon-32.png" type="image/png" sizes="32x32">
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="貓眼策略">
+  <link rel="stylesheet" href="styles.css?v=20261028-iphone-safe-area">
+</head>
+<body>
+  <div id="appShell">
+    <header class="app-header">
+      <a class="brand" href="#signals">
+        <img src="assets/CatAvatar.png?v=1" alt="">
+        <span>貓眼策略</span>
+      </a>
+      <div class="header-actions" aria-label="快捷功能">
+        <div class="install-menu-wrap">
+          <button class="header-icon-button" id="installMenuButton" type="button" aria-label="網頁加入主畫面" aria-expanded="false" data-action="pin">📍</button>
+          <section class="install-menu" id="installMenu" aria-label="網頁加入主畫面" hidden>
+            <h2>網頁加入主畫面</h2>
+            <img src="assets/%E7%B6%B2%E9%A0%81%E5%8A%A0%E5%85%A5%E4%B8%BB%E7%95%AB%E9%9D%A2/%E7%B6%B2%E9%A0%81%E5%8A%A0%E5%85%A5%E4%B8%BB%E7%95%AB%E9%9D%A2.png" alt="網頁加入主畫面教學">
+          </section>
+        </div>
+        <div class="guide-menu-wrap">
+          <button class="header-icon-button" id="guideMenuButton" type="button" aria-label="教學文件" aria-expanded="false" data-action="guide">📚</button>
+          <section class="guide-menu" id="guideMenu" aria-label="教學文件" hidden>
+            <h2>教學文件</h2>
+            <a href="bingx-guide.html" target="_blank" rel="noopener">BingX買幣入金教學</a>
+            <a href="bitopro-guide.html" target="_blank" rel="noopener">BitoPro幣託出入金+BingX開單教學</a>
+            <a href="max-twd-guide.html" target="_blank" rel="noopener">Max交易所台幣出入金教學</a>
+            <a href="max-usdt-bingx-guide.html" target="_blank" rel="noopener">Max交易所轉USDT到BingX教學</a>
+            <button class="guide-image-button" id="positionGuideButton" type="button">倉位管理</button>
+          </section>
+          <section class="position-menu" id="positionGuideMenu" aria-label="倉位管理" hidden>
+            <h2>倉位管理</h2>
+            <img src="assets/%E5%80%89%E4%BD%8D%E7%AE%A1%E7%90%86/%E5%80%89%E4%BD%8D%E7%AE%A1%E7%90%86.png" alt="倉位管理">
+          </section>
+        </div>
+        <div class="broadcast-menu-wrap">
+          <button class="header-icon-button" id="broadcastMenuButton" type="button" aria-label="近期訊號" aria-expanded="false" data-action="broadcast">📢</button>
+          <section class="broadcast-menu" id="broadcastMenu" aria-label="近期訊號">
+            <div class="broadcast-menu-head"><h2>近期訊號</h2></div>
+            <div class="broadcast-group-title"><span>貓眼訊號</span></div>
+            <div class="broadcast-history-list" id="broadcastHistoryList"></div>
+          </section>
+        </div>
+        <div class="notification-menu-wrap">
+          <button class="header-icon-button" id="notificationMenuButton" type="button" aria-label="通知設定" aria-expanded="false" data-action="notifications">🔔</button>
+          <section class="notification-menu" id="notificationMenu" aria-label="通知設定" hidden>
+            <h2>通知設定</h2>
+            <div class="notification-options">
+              <label class="notification-option"><input id="toastNotifyToggle" type="checkbox"><span class="notification-check" aria-hidden="true"></span><span>彈窗通知</span></label>
+              <label class="notification-option"><input id="soundNotifyToggle" type="checkbox"><span class="notification-check" aria-hidden="true"></span><span>通知音效</span></label>
+              <label class="notification-option"><input id="entryNotifyToggle" type="checkbox"><span class="notification-check" aria-hidden="true"></span><span>進場通知</span></label>
+              <label class="notification-option"><input id="tpNotifyToggle" type="checkbox"><span class="notification-check" aria-hidden="true"></span><span>止盈通知</span></label>
+              <label class="notification-option"><input id="slNotifyToggle" type="checkbox"><span class="notification-check" aria-hidden="true"></span><span>止損通知</span></label>
+              <label class="notification-option"><input id="hedgeNotifyToggle" type="checkbox"><span class="notification-check" aria-hidden="true"></span><span>套保通知</span></label>
+              <label class="notification-option"><input id="ftpNotifyToggle" type="checkbox"><span class="notification-check" aria-hidden="true"></span><span>FTP變更通知</span></label>
+              <label class="notification-option"><input id="raisedSlNotifyToggle" type="checkbox"><span class="notification-check" aria-hidden="true"></span><span>上移止損通知</span></label>
+            </div>
+            <div class="device-push-block">
+              <b>裝置推播（鎖屏通知）</b>
+              <p>即使關掉這個分頁也能在手機鎖屏 / 桌面收到訊號通知</p>
+              <button id="enablePushButton" type="button">啟用裝置推播</button>
+            </div>
+          </section>
+        </div>
+      </div>
+    </header>
+
+    <section class="partner-marquee" aria-label="合作夥伴">
+      <div class="marquee-track">
+        <div class="marquee-group">
+          <span class="marquee-item"><img src="assets/MaxCrypto.PNG" alt=""><b>MaxCrypto</b></span>
+          <span class="marquee-item"><img src="assets/HUMBLE%20Trader%20Academy%20.jpeg" alt=""><b>HUMBLE Trader Academy</b></span>
+          <span class="marquee-item"><img src="assets/MetaBear.png" alt=""><b>MetaBear</b></span>
+          <span class="marquee-item"><img src="assets/Ryan.JPG" alt=""><b>Ryan</b></span>
+          <span class="marquee-item"><img src="assets/%E5%B0%8F%E7%BE%8A-%E5%B9%A3%E5%9C%88%E5%A4%A7%E8%A1%A8%E5%93%A5.png" alt=""><b>小羊-幣圈大表哥</b></span>
+          <span class="marquee-item"><img src="assets/%E5%8A%A0%E5%AF%86%E6%B3%B0%E7%91%9E.png" alt=""><b>加密泰瑞</b></span>
+          <span class="marquee-item"><img src="assets/COINX%E5%B9%A3%E5%AD%B8%E9%99%A2.png" alt=""><b>COINX幣學院</b></span>
+          <span class="marquee-item"><img src="assets/Crypto%20Mao%20%E8%B2%93%E5%A4%A7.jpg" alt=""><b>Crypto Mao 貓大</b></span>
+        </div>
+        <div class="marquee-group" aria-hidden="true">
+          <span class="marquee-item"><img src="assets/MaxCrypto.PNG" alt=""><b>MaxCrypto</b></span>
+          <span class="marquee-item"><img src="assets/HUMBLE%20Trader%20Academy%20.jpeg" alt=""><b>HUMBLE Trader Academy</b></span>
+          <span class="marquee-item"><img src="assets/MetaBear.png" alt=""><b>MetaBear</b></span>
+          <span class="marquee-item"><img src="assets/Ryan.JPG" alt=""><b>Ryan</b></span>
+          <span class="marquee-item"><img src="assets/%E5%B0%8F%E7%BE%8A-%E5%B9%A3%E5%9C%88%E5%A4%A7%E8%A1%A8%E5%93%A5.png" alt=""><b>小羊-幣圈大表哥</b></span>
+          <span class="marquee-item"><img src="assets/%E5%8A%A0%E5%AF%86%E6%B3%B0%E7%91%9E.png" alt=""><b>加密泰瑞</b></span>
+          <span class="marquee-item"><img src="assets/COINX%E5%B9%A3%E5%AD%B8%E9%99%A2.png" alt=""><b>COINX幣學院</b></span>
+          <span class="marquee-item"><img src="assets/Crypto%20Mao%20%E8%B2%93%E5%A4%A7.jpg" alt=""><b>Crypto Mao 貓大</b></span>
+        </div>
+      </div>
+    </section>
+
+    <main class="terminal-shell">
+      <section class="legal-section legal-section-top" aria-label="風險警示與免責聲明">
+        <div class="legal-toggle-head">
+          <span>⚠️風險警示/免責聲明</span>
+          <button class="legal-toggle-button" id="legalToggleButton" type="button" aria-expanded="false" aria-controls="legalContent">+</button>
+        </div>
+        <div class="legal-grid" id="legalContent" hidden>
+          <article class="legal-main"><h3>① 主風險警示</h3><p>數字貨幣與槓桿交易具有極高風險，價格可能在短時間內劇烈波動，您可能損失全部本金，甚至超過初始投入。本網站顯示之所有內容，包括但不限於交易紀錄、進場價、止損（SL）、止盈（TP）等，均僅供個人紀錄與資訊參考之用，不構成任何投資建議、要約或招攬。請僅以您能完全承受損失的資金進行交易，並在做出任何決定前自行評估或諮詢合格專業人士。</p></article>
+          <article><h3>② 服務條款</h3><p>使用本網站即表示您已達法定年齡，理解並接受數字貨幣交易的高度風險，且同意所有內容僅供資訊與教學參考。您須為自身的交易決策與結果負完全責任。</p></article>
+          <article><h3>③ 隱私政策</h3><p>我們僅在提供服務所需範圍內蒐集您的交易所 UID、通知設定，並依個人資料保護相關法規保存與處理。未經您授權，不會將資料外流或轉售予第三方。</p></article>
+          <article><h3>④ 免責聲明</h3><p>本網站及其經營者非持牌之投資顧問或證券商，所提供內容皆非投資建議。所有交易盈虧由使用者自行承擔；過往交易紀錄不代表未來結果，亦不保證任何獲利。</p></article>
+        </div>
+      </section>
+      <div class="legal-consent-modal" id="legalConsentModal" role="dialog" aria-modal="true" aria-labelledby="legalConsentTitle" hidden>
+        <div class="legal-consent-panel">
+          <h2 id="legalConsentTitle">⚠️風險警示/免責聲明</h2>
+          <div class="legal-consent-scroll" id="legalConsentScroll" tabindex="0"></div>
+          <button class="legal-consent-button" id="legalConsentButton" type="button" disabled>請先閱讀到底並同意</button>
+        </div>
+      </div>
+
+      <section id="signals" class="signals-dashboard">
+        <section id="signalsView" class="view-panel">
+          <section class="stat-grid" aria-label="訊號統計"></section>
+          <div class="list-head">
+            <h1>全部訊號 <span id="signalCount">(0 / 0)</span></h1>
+            <div class="list-actions">
+              <select id="statusFilter" aria-label="訊號篩選">
+                <option value="all">全部</option>
+                <option value="active">未平倉</option>
+                <option value="closed">減倉、清倉</option>
+              </select>
+              <button class="refresh-button" id="refreshBtn" type="button">更新</button>
+            </div>
+          </div>
+          <div id="signalGrid" class="terminal-grid" aria-live="polite"></div>
+        </section>
+      </section>
+    </main>
+  </div>
+  <script>
+    try {
+      localStorage.removeItem("cat-signal-orders-v5");
+      localStorage.removeItem("cat-db-migrated-v1");
+    } catch {}
+  </script>
+  <script src="notification-guard.js?v=1"></script>
+  <script src="price-feed.js?v=7"></script>
+  <script src="app.js?v=143"></script>
+  <script src="recent-order-fix.js?v=2"></script>
+  <script src="closed-price-fix.js?v=3"></script>
+  <script src="raised-sl.js?v=5"></script>
+  <script src="push-fix.js?v=2"></script>
+</body>
+</html>

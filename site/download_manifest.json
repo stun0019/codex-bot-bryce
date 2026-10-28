@@ -1,0 +1,724 @@
+{
+  "source": "https://maxcrypto.vercel.app",
+  "saved_at_utc": "2026-10-28T05:32:55.475587+00:00",
+  "scope": "Publicly served, discoverable same-origin frontend files; excludes private server code and API data.",
+  "files": [
+    {
+      "url": "https://maxcrypto.vercel.app/",
+      "path": "index.html",
+      "bytes": 11755,
+      "sha256": "f4100e77fa446cb7eb983a2475c2798e7ef3ca3a10e21c8d3b6b9758e5e23f1c",
+      "content_type": "text/html; charset=utf-8",
+      "original_sha256": "b3fed4bffea61f0610cd700cf1d16f13420e8e60c257f1151e721e246bcf4e58"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/manifest.json",
+      "path": "manifest.json",
+      "bytes": 659,
+      "sha256": "575fbe38f9a74385b3fac00f4c4ae0fd30e8a1e555ab209d33732d3302448ab0",
+      "content_type": "application/json; charset=utf-8",
+      "original_sha256": "816ea157da3025529295e0a9e120365753487e2abb251f7839b6eb09a3923c39"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/sw.js",
+      "path": "sw.js",
+      "bytes": 2329,
+      "sha256": "294240a3ac04f3e2971b2a15fedf8993d43386953643653eb61c5d05ef4ed075",
+      "content_type": "application/javascript; charset=utf-8",
+      "original_sha256": "9dd2f49ac3359edeb32afe2df181fa9807f80aa2638ed71effb12bfa2de15aa8"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/assets/favicon-32.png",
+      "path": "assets\\favicon-32.png",
+      "bytes": 2650,
+      "sha256": "b39272b2da37243750551b155f5ff970fa4cde0d0e182bea7ba1f3a29a4c077f",
+      "content_type": "image/png"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/assets/apple-touch-icon.png",
+      "path": "assets\\apple-touch-icon.png",
+      "bytes": 57424,
+      "sha256": "c58837e0a58a75f16eb2c2d575301aca810b41a12966231fb316b43280a42e1c",
+      "content_type": "image/png"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/styles.css?v=20261028-iphone-safe-area",
+      "path": "styles.css",
+      "bytes": 36774,
+      "sha256": "fff0168fd02722a8e6353845fa208eb5d2dace2f9f216d0fc2732aa6cf8ec537",
+      "content_type": "text/css; charset=utf-8"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/assets/CatAvatar.png?v=1",
+      "path": "assets\\CatAvatar.png",
+      "bytes": 2784227,
+      "sha256": "dd10dd9c2114e0d6f85a3cf91d313ca5cb2c8579aa7739b708ebcb3c92e34c83",
+      "content_type": "image/png"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/assets/%E7%B6%B2%E9%A0%81%E5%8A%A0%E5%85%A5%E4%B8%BB%E7%95%AB%E9%9D%A2/%E7%B6%B2%E9%A0%81%E5%8A%A0%E5%85%A5%E4%B8%BB%E7%95%AB%E9%9D%A2.png",
+      "path": "assets\\網頁加入主畫面\\網頁加入主畫面.png",
+      "bytes": 5596541,
+      "sha256": "374aa71bb2e4a172985947b9a63b082069559cb4b794dd0aa43c3e663349381f",
+      "content_type": "image/png"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/bingx-guide.html",
+      "path": "bingx-guide.html",
+      "bytes": 884,
+      "sha256": "efcdd314dcfc9aaf9918d350e04aac423d18517f31674fcca65bbad585a88fc5",
+      "content_type": "text/html; charset=utf-8"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/bitopro-guide.html",
+      "path": "bitopro-guide.html",
+      "bytes": 4150,
+      "sha256": "6701130ba684d5fc84e8c8c8cd28793178794eabf4b4b066fc5c3c6c5bd124df",
+      "content_type": "text/html; charset=utf-8"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/max-twd-guide.html",
+      "path": "max-twd-guide.html",
+      "bytes": 1567,
+      "sha256": "58e959c523e9b9d21a089cebff7f4dae164127f88875c99ff4cb9758ed2556a7",
+      "content_type": "text/html; charset=utf-8"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/max-usdt-bingx-guide.html",
+      "path": "max-usdt-bingx-guide.html",
+      "bytes": 2878,
+      "sha256": "802f52e29e805ba0ac185377e8c4c4065bdd638b21c63703fffb860532f78a52",
+      "content_type": "text/html; charset=utf-8"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/assets/%E5%80%89%E4%BD%8D%E7%AE%A1%E7%90%86/%E5%80%89%E4%BD%8D%E7%AE%A1%E7%90%86.png",
+      "path": "assets\\倉位管理\\倉位管理.png",
+      "bytes": 1166944,
+      "sha256": "a98d59c5ef20c0126613778dafa7379db7eb0fd9ce8019b1a5fd840ba4a271c8",
+      "content_type": "image/png"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/assets/MaxCrypto.PNG",
+      "path": "assets\\MaxCrypto.PNG",
+      "bytes": 2188690,
+      "sha256": "3b7d4077c7bc2e96ed15d6c7f89e5ab487b29338faeea5d112835741d14878e5",
+      "content_type": "image/png"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/assets/HUMBLE%20Trader%20Academy%20.jpeg",
+      "path": "assets\\HUMBLE Trader Academy .jpeg",
+      "bytes": 74105,
+      "sha256": "681b2c76f23aa4c64f1f05188c7a3e5902cb8a678382c2215d515320b613de52",
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/assets/MetaBear.png",
+      "path": "assets\\MetaBear.png",
+      "bytes": 1002765,
+      "sha256": "d8d6558510987ceaf856bbe517ea6d2e38ab13a83b8e443deff5e5ef283037b5",
+      "content_type": "image/png"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/assets/Ryan.JPG",
+      "path": "assets\\Ryan.JPG",
+      "bytes": 39035,
+      "sha256": "942d78ab5b338a97c07fe0ace05d82c5db33537cab16dd5c22f98ba5a25627aa",
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/assets/%E5%B0%8F%E7%BE%8A-%E5%B9%A3%E5%9C%88%E5%A4%A7%E8%A1%A8%E5%93%A5.png",
+      "path": "assets\\小羊-幣圈大表哥.png",
+      "bytes": 749586,
+      "sha256": "57d342b95f12ed5fc4f3da441e66c25973713e368a3026d1223f0c061f1a8b80",
+      "content_type": "image/png"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/assets/%E5%8A%A0%E5%AF%86%E6%B3%B0%E7%91%9E.png",
+      "path": "assets\\加密泰瑞.png",
+      "bytes": 1135137,
+      "sha256": "aee6e5ea678693ecd74047cb24d56cb988784c1a7a58931be62b06e4459bfaee",
+      "content_type": "image/png"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/assets/COINX%E5%B9%A3%E5%AD%B8%E9%99%A2.png",
+      "path": "assets\\COINX幣學院.png",
+      "bytes": 15269,
+      "sha256": "67a3c3f1b3a056d1b6e11f586363ae0361dd620d5324f7c78c73e8d657508b83",
+      "content_type": "image/png"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/assets/Crypto%20Mao%20%E8%B2%93%E5%A4%A7.jpg",
+      "path": "assets\\Crypto Mao 貓大.jpg",
+      "bytes": 183206,
+      "sha256": "76b935407d43d52912309286b13a633988d31bf0bc03d0961ce3e338ad74f895",
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/notification-guard.js?v=1",
+      "path": "notification-guard.js",
+      "bytes": 3527,
+      "sha256": "b77edcbcd939e574cac03835b6e0a7ccefe95690fc3e006fd48fbfbedab93494",
+      "content_type": "application/javascript; charset=utf-8"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/price-feed.js?v=7",
+      "path": "price-feed.js",
+      "bytes": 16375,
+      "sha256": "8c50a55684b25f4af06c8e45f2f8d7453aaf641960169e88300471ab0654980d",
+      "content_type": "application/javascript; charset=utf-8"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/app.js?v=143",
+      "path": "app.js",
+      "bytes": 152161,
+      "sha256": "04240e6d11cfb1a8ce18e54d846d044ba50b4f0c641c8451ed29b6dc89269e89",
+      "content_type": "application/javascript; charset=utf-8"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/recent-order-fix.js?v=2",
+      "path": "recent-order-fix.js",
+      "bytes": 5930,
+      "sha256": "90f1b1d61406b30d8bbd39834cdb7ae2a1b19a30e5802cc79875d585491f29b9",
+      "content_type": "application/javascript; charset=utf-8"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/closed-price-fix.js?v=3",
+      "path": "closed-price-fix.js",
+      "bytes": 5182,
+      "sha256": "83851d4f37f5ee995d47a1a6906b35b1dc21d020934362051fbe01421f418ce7",
+      "content_type": "application/javascript; charset=utf-8"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/raised-sl.js?v=5",
+      "path": "raised-sl.js",
+      "bytes": 14377,
+      "sha256": "0a78579f4d91fbf4c4ead1ffe063ccd3b94998d41d7d3aaf67309f337f540029",
+      "content_type": "application/javascript; charset=utf-8"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/push-fix.js?v=2",
+      "path": "push-fix.js",
+      "bytes": 5973,
+      "sha256": "3c102cdd5627148e58f9008507ae18f8093562d488c3ed348940a156578706a0",
+      "content_type": "application/javascript; charset=utf-8",
+      "original_sha256": "3a9023d0934fa82dbc24e77b0241c62cc533ab95702e1ac6bb9727ff66ea5f8f"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/assets/icon-192.png",
+      "path": "assets\\icon-192.png",
+      "bytes": 64911,
+      "sha256": "3856177417759c6af9058a272a6e8793967b7d6ead500b81a7695bfd7ef662eb",
+      "content_type": "image/png"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/assets/icon-512.png",
+      "path": "assets\\icon-512.png",
+      "bytes": 69234,
+      "sha256": "479f702ef8b17778fd80ce9e903ff3b7f5a2caa8a3b59da9631158dbfc3e1dd6",
+      "content_type": "image/png"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/assets/badge-96.png",
+      "path": "assets\\badge-96.png",
+      "bytes": 17947,
+      "sha256": "b9aa2c0c8d6e0fa51daeb02a514c2ea4e51ff40b30191d0c1a383117e5f01434",
+      "content_type": "image/png"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/assets/bitopro-guide-images/1.jpg",
+      "path": "assets\\bitopro-guide-images\\1.jpg",
+      "bytes": 150120,
+      "sha256": "51e94cda9657517b0a103a50f5a035fa22523589eb4165e097a8b8dbcea09b62",
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/assets/bitopro-guide-images/2.jpg",
+      "path": "assets\\bitopro-guide-images\\2.jpg",
+      "bytes": 213217,
+      "sha256": "fea1e9fdd312e72fb64e0ca86095a0c2b10c316920be454e5e5eb4b14f2bf503",
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/assets/bitopro-guide-images/3.jpg",
+      "path": "assets\\bitopro-guide-images\\3.jpg",
+      "bytes": 184199,
+      "sha256": "312b5d1279f05e18378bc62da284d5554f710a37b2e43ceb4fe1c450aaa4f9e9",
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/assets/bitopro-guide-images/4.jpg",
+      "path": "assets\\bitopro-guide-images\\4.jpg",
+      "bytes": 155050,
+      "sha256": "09a04c6cfe3c480fc1d90f03260e82f202ecaefbef74b6ec73b237299ad29bf0",
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/assets/bitopro-guide-images/5.jpg",
+      "path": "assets\\bitopro-guide-images\\5.jpg",
+      "bytes": 157725,
+      "sha256": "00140aa1b46917d95da730b280164cdf7f3d6732adb1d5f44509930aea58c525",
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/assets/bitopro-guide-images/6.jpg",
+      "path": "assets\\bitopro-guide-images\\6.jpg",
+      "bytes": 140670,
+      "sha256": "450f26f6b5e08c7ff4e3cb0b18aef4fd4cae150e390ca1663370951b7a39e27a",
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/assets/bitopro-guide-images/7.jpg",
+      "path": "assets\\bitopro-guide-images\\7.jpg",
+      "bytes": 177506,
+      "sha256": "160a9e43c627e65bfa126b2d0a9e652a946b345d39df524ffeb2cb66bee64441",
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/assets/bitopro-guide-images/8.jpg",
+      "path": "assets\\bitopro-guide-images\\8.jpg",
+      "bytes": 187000,
+      "sha256": "55d246d0d6b9cf9848104f5b5ac170e26569ab83036f77f95ba5b22e6038fd82",
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/assets/bitopro-guide-images/9.jpg",
+      "path": "assets\\bitopro-guide-images\\9.jpg",
+      "bytes": 203139,
+      "sha256": "d66fa326783e98e476b00392e0299bd62ad57a5510179f07881f631eeda3f1cc",
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/assets/bitopro-guide-images/10.jpg",
+      "path": "assets\\bitopro-guide-images\\10.jpg",
+      "bytes": 204927,
+      "sha256": "bf433163303667b20ccf1290044a7ff2451915e4d8e994bbbdd6b8e0847bd9b0",
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/assets/bitopro-guide-images/11.jpg",
+      "path": "assets\\bitopro-guide-images\\11.jpg",
+      "bytes": 159263,
+      "sha256": "1f153bf38ceb880bd43a3d936f1dbfb90ad5d7f3eb65bfb4ed59b24607e20595",
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/assets/bitopro-guide-images/12.jpg",
+      "path": "assets\\bitopro-guide-images\\12.jpg",
+      "bytes": 98738,
+      "sha256": "1e0eb074fc23cb9a75e249986a6c8d23458f6a4de910b24b88295b852dff4d58",
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/assets/bitopro-guide-images/13.jpg",
+      "path": "assets\\bitopro-guide-images\\13.jpg",
+      "bytes": 93928,
+      "sha256": "4f5607e138a2875a1dacd9870f7cd4c99336f8f1fb3d78fef8248d3b5031fc2e",
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/assets/bitopro-guide-images/14.jpg",
+      "path": "assets\\bitopro-guide-images\\14.jpg",
+      "bytes": 129513,
+      "sha256": "76dd24f590023443501ea095e48e65df93ea417990b56f302056c0710a750cf1",
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/assets/bitopro-guide-images/15.jpg",
+      "path": "assets\\bitopro-guide-images\\15.jpg",
+      "bytes": 220677,
+      "sha256": "36bc0d6ef451c264069832d2fa4e27ff5e9285bd700277065ea0cd8a1f8319ed",
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/assets/bitopro-guide-images/16.jpg",
+      "path": "assets\\bitopro-guide-images\\16.jpg",
+      "bytes": 190932,
+      "sha256": "1b4dd685ca3e245a05cdafbc2d7ae7eb4aec60763e68036605d07d8d63e8194e",
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/assets/bitopro-guide-images/17.jpg",
+      "path": "assets\\bitopro-guide-images\\17.jpg",
+      "bytes": 188139,
+      "sha256": "d997cfe265209820759524030ff450fe21decb56f9506f285ee381d19c517953",
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/assets/bitopro-guide-images/18.jpg",
+      "path": "assets\\bitopro-guide-images\\18.jpg",
+      "bytes": 138322,
+      "sha256": "f795b726be0e810a996126101b167543b8f3f5891c450433f8e2e6fbd1c9c981",
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/assets/bitopro-guide-images/19.jpg",
+      "path": "assets\\bitopro-guide-images\\19.jpg",
+      "bytes": 175776,
+      "sha256": "a2d6e86f2caee209f5820462bb5b1b893ccd2791b4c9fec2dfb2430f8636d8af",
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/assets/bitopro-guide-images/20.jpg",
+      "path": "assets\\bitopro-guide-images\\20.jpg",
+      "bytes": 197920,
+      "sha256": "741f83b7ca6aa08bf4f3a047ed331c4747519a3e949f248d993230060a64f4b4",
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/assets/bitopro-guide-images/21.jpg",
+      "path": "assets\\bitopro-guide-images\\21.jpg",
+      "bytes": 170054,
+      "sha256": "25698fac81ec8bc82ef903e2df7ad8f5801dd5b995b8b8a49547fa42779af0f1",
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/assets/bitopro-guide-images/22.jpg",
+      "path": "assets\\bitopro-guide-images\\22.jpg",
+      "bytes": 148758,
+      "sha256": "30cac1ca1bead7195f8d5d6489872e4e3af5969a2acf3e6733b128907369eb8e",
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/assets/bitopro-guide-images/23.jpg",
+      "path": "assets\\bitopro-guide-images\\23.jpg",
+      "bytes": 142442,
+      "sha256": "211c396144cebedf6739693329a5c0567710d78b5077b0faf4532e6df53c7d2e",
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/assets/bitopro-guide-images/24.jpg",
+      "path": "assets\\bitopro-guide-images\\24.jpg",
+      "bytes": 189998,
+      "sha256": "5fa53bea2303e7f75e0143c27766eef3fa2656e7c230d8788ee7d7004328ff27",
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/assets/bitopro-guide-images/25.jpg",
+      "path": "assets\\bitopro-guide-images\\25.jpg",
+      "bytes": 174718,
+      "sha256": "b49c36a6f199f3677ddbd63a0db37abfd5a6fe3172d612e0b26b01c085b455c9",
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/assets/bitopro-guide-images/26.jpg",
+      "path": "assets\\bitopro-guide-images\\26.jpg",
+      "bytes": 214428,
+      "sha256": "e5d679022aff6f285d86a0b0225f5db59c4f176a873cb5e1c876e2560300f0cd",
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/assets/bitopro-guide-images/27.jpg",
+      "path": "assets\\bitopro-guide-images\\27.jpg",
+      "bytes": 130232,
+      "sha256": "b81f5ba8baa4dd2146010ce953a1017145003818c4f8ef3542473cfba28968b7",
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/assets/bitopro-guide-images/28.jpg",
+      "path": "assets\\bitopro-guide-images\\28.jpg",
+      "bytes": 161064,
+      "sha256": "377445de1027eb5b0267e9cf842513c97166558a3e4462e9b05c9056ce25c0d8",
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/assets/bitopro-guide-images/29.jpg",
+      "path": "assets\\bitopro-guide-images\\29.jpg",
+      "bytes": 315600,
+      "sha256": "e9980bee134590dc5a3740b3d4455206bf845420b9bfd6d6abbd656b29ad28ce",
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/assets/bitopro-guide-images/30.jpg",
+      "path": "assets\\bitopro-guide-images\\30.jpg",
+      "bytes": 197045,
+      "sha256": "a1aed28d121ee40978942d4d9493e79c7951f1dcc1c4346067407327b8d438e0",
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/assets/bitopro-guide-images/31.jpg",
+      "path": "assets\\bitopro-guide-images\\31.jpg",
+      "bytes": 154821,
+      "sha256": "5117c3d13fffd2578a77136418a109bd13281ec0998ad74712f9dee5e062eddf",
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/assets/bitopro-guide-images/32.jpg",
+      "path": "assets\\bitopro-guide-images\\32.jpg",
+      "bytes": 203771,
+      "sha256": "d76c8ce01f46019d93c06d874f31e207a50f82f8c536e47305d23cca36bf52be",
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/assets/bitopro-guide-images/33.jpg",
+      "path": "assets\\bitopro-guide-images\\33.jpg",
+      "bytes": 307566,
+      "sha256": "79b9302f469c5b4ba080fff4fa694d49ebb0f4c47100c03a21d40fded0c5f165",
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/assets/max-twd-guide-images/1.png",
+      "path": "assets\\max-twd-guide-images\\1.png",
+      "bytes": 537684,
+      "sha256": "e4b9c443075c9612616ffe6492a3171647cc17257b2bc7962821870a8e6a6111",
+      "content_type": "image/png"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/assets/max-twd-guide-images/2.png",
+      "path": "assets\\max-twd-guide-images\\2.png",
+      "bytes": 2255078,
+      "sha256": "2d7127ac0f0b9ab0e9c42d6315f122f85beed9d68b231d3f99227e4df520c0f2",
+      "content_type": "image/png"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/assets/max-twd-guide-images/3.png",
+      "path": "assets\\max-twd-guide-images\\3.png",
+      "bytes": 2515781,
+      "sha256": "bb31ad994c18dd7da2a14d09b2b6f117165dbecf1e023a163ab0758abd9e68bf",
+      "content_type": "image/png"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/assets/max-twd-guide-images/4.png",
+      "path": "assets\\max-twd-guide-images\\4.png",
+      "bytes": 3224752,
+      "sha256": "ac948701fcd30c7bf09de4dc6a76e5aa41819740d7cfd0d03a9db87e4c5ad5f5",
+      "content_type": "image/png"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/assets/max-twd-guide-images/5.png",
+      "path": "assets\\max-twd-guide-images\\5.png",
+      "bytes": 2598103,
+      "sha256": "9fb797ce720641f9ae05523b7dc8e8189235823e2bb7ab25be2fc132779e0db5",
+      "content_type": "image/png"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/assets/max-twd-guide-images/6.png",
+      "path": "assets\\max-twd-guide-images\\6.png",
+      "bytes": 3698366,
+      "sha256": "ef40c7078f1913b061e77c1b97165f03d4d318d8388edc842eba8daa91493b2a",
+      "content_type": "image/png"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/assets/max-twd-guide-images/7.png",
+      "path": "assets\\max-twd-guide-images\\7.png",
+      "bytes": 3294229,
+      "sha256": "ebc43704f8a00d84154540bf3d83813d2dc6aafa0d4e6e778ae33e02198dba2a",
+      "content_type": "image/png"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/assets/max-twd-guide-images/8.png",
+      "path": "assets\\max-twd-guide-images\\8.png",
+      "bytes": 4038093,
+      "sha256": "c71a5fea44094ecdc5d72af868d54cf6889d58e7bf97816a1a746f300a467be5",
+      "content_type": "image/png"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/assets/max-twd-guide-images/9.png",
+      "path": "assets\\max-twd-guide-images\\9.png",
+      "bytes": 2119796,
+      "sha256": "e263a08eff5e372d5213cebd23d593ae363c5b60419c9fe3829f414d1f6fbdb2",
+      "content_type": "image/png"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/assets/max-usdt-bingx-guide-images/1.png",
+      "path": "assets\\max-usdt-bingx-guide-images\\1.png",
+      "bytes": 513570,
+      "sha256": "17abca14e3cb427ebb4c5c2fda7076546a7c15a323085f734655f690540671de",
+      "content_type": "image/png"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/assets/max-usdt-bingx-guide-images/2.png",
+      "path": "assets\\max-usdt-bingx-guide-images\\2.png",
+      "bytes": 3473896,
+      "sha256": "07faf1fd9adfd687f40706143ce87a80cbac542115584f500a2297809e164758",
+      "content_type": "image/png"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/assets/max-usdt-bingx-guide-images/3.png",
+      "path": "assets\\max-usdt-bingx-guide-images\\3.png",
+      "bytes": 4791292,
+      "sha256": "e13e9b104b521449ebd735f55debd554032e1cf784572641b05ef68f0ef0ed9c",
+      "content_type": "image/png"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/assets/max-usdt-bingx-guide-images/4.png",
+      "path": "assets\\max-usdt-bingx-guide-images\\4.png",
+      "bytes": 3917079,
+      "sha256": "24e947ee81fdefe9d39debccf8b7f425bc2fe4c2e05f136c8423ce5211702407",
+      "content_type": "image/png"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/assets/max-usdt-bingx-guide-images/5.png",
+      "path": "assets\\max-usdt-bingx-guide-images\\5.png",
+      "bytes": 3801398,
+      "sha256": "3df838ab47d9a475e512fd3c04d4e90a852c0cf945c889560154760d43637bf7",
+      "content_type": "image/png"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/assets/max-usdt-bingx-guide-images/6.png",
+      "path": "assets\\max-usdt-bingx-guide-images\\6.png",
+      "bytes": 3888106,
+      "sha256": "9c9a2bd2cd84b9f8b0d8f54319afe1ae5d7f68b8ffe50f957e92de04dfb19034",
+      "content_type": "image/png"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/assets/max-usdt-bingx-guide-images/7.png",
+      "path": "assets\\max-usdt-bingx-guide-images\\7.png",
+      "bytes": 2897470,
+      "sha256": "a3bee2828f104d3db0e2c1fd5a9287a9215ebdabcd04d3afa6cd2b420baf0125",
+      "content_type": "image/png"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/assets/max-usdt-bingx-guide-images/8.png",
+      "path": "assets\\max-usdt-bingx-guide-images\\8.png",
+      "bytes": 3012603,
+      "sha256": "a81dfb0ccc1cedab9a337951d7c3135c37991a11f8c1ff4c1e383d748d7cfc2a",
+      "content_type": "image/png"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/assets/max-usdt-bingx-guide-images/9.png",
+      "path": "assets\\max-usdt-bingx-guide-images\\9.png",
+      "bytes": 3262142,
+      "sha256": "f62f4860025dd3039770a4fccabb56df5b2b145e0f894755216d16fb1b268eca",
+      "content_type": "image/png"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/assets/max-usdt-bingx-guide-images/10.png",
+      "path": "assets\\max-usdt-bingx-guide-images\\10.png",
+      "bytes": 4192076,
+      "sha256": "604158f9eae4698814be22543c600c1810f7ae577e865d8247f54893ee76823d",
+      "content_type": "image/png"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/assets/max-usdt-bingx-guide-images/11.png",
+      "path": "assets\\max-usdt-bingx-guide-images\\11.png",
+      "bytes": 2388849,
+      "sha256": "33db91047adfb0af0f50ead3a702dd708a1238102b95fc8ad20b82c7c67483ed",
+      "content_type": "image/png"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/assets/max-usdt-bingx-guide-images/12.png",
+      "path": "assets\\max-usdt-bingx-guide-images\\12.png",
+      "bytes": 3152627,
+      "sha256": "247be54dc75c0fbcfc96eb558a641a88a3bbe83587cf8c5123203962c6c7268a",
+      "content_type": "image/png"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/assets/max-usdt-bingx-guide-images/13.png",
+      "path": "assets\\max-usdt-bingx-guide-images\\13.png",
+      "bytes": 1929594,
+      "sha256": "be619af405eb198044b52d9368870f59a76f79769bc477decdb4bc0fa1f1dbb6",
+      "content_type": "image/png"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/assets/max-usdt-bingx-guide-images/14.png",
+      "path": "assets\\max-usdt-bingx-guide-images\\14.png",
+      "bytes": 1816151,
+      "sha256": "0e15f86740e62de9b0538a8e65281ca0732aa320eab827d253c6871bca9c9b72",
+      "content_type": "image/png"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/assets/max-usdt-bingx-guide-images/15.png",
+      "path": "assets\\max-usdt-bingx-guide-images\\15.png",
+      "bytes": 3246807,
+      "sha256": "69b5442ffc920a7ae4133792988fbbd6bb2f0186ac13e28bc4e61aad8b1c0c76",
+      "content_type": "image/png"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/assets/max-usdt-bingx-guide-images/16.png",
+      "path": "assets\\max-usdt-bingx-guide-images\\16.png",
+      "bytes": 4194635,
+      "sha256": "cb09764be15b3c89ef3d187a881beb91cf7e289cc521474069df35ea36feb62c",
+      "content_type": "image/png"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/assets/max-usdt-bingx-guide-images/17.png",
+      "path": "assets\\max-usdt-bingx-guide-images\\17.png",
+      "bytes": 2434297,
+      "sha256": "83bec78094f1fb8173838fb650744206edb351f3add9be5d8235dde189cd17a1",
+      "content_type": "image/png"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/assets/max-usdt-bingx-guide-images/18.png",
+      "path": "assets\\max-usdt-bingx-guide-images\\18.png",
+      "bytes": 1759683,
+      "sha256": "57187ac3d455f21a6d410bd791dcd0166591a3579704b49e4f5a4904f093ea4b",
+      "content_type": "image/png"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/assets/BingX%E8%B2%B7%E5%B9%A3%E5%85%A5%E9%87%91%E6%95%99%E5%AD%B8/S__797286409.jpg",
+      "path": "assets\\BingX買幣入金教學\\S__797286409.jpg",
+      "bytes": 287168,
+      "sha256": "34fadf6f19b34ba7fa15028598c75b3f30b134634cab0d88dea24dd36ef11ffd",
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/assets/BingX%E8%B2%B7%E5%B9%A3%E5%85%A5%E9%87%91%E6%95%99%E5%AD%B8/S__797286410.jpg",
+      "path": "assets\\BingX買幣入金教學\\S__797286410.jpg",
+      "bytes": 230602,
+      "sha256": "4253016aa4358dec4ce15adce4b38b8865d45b2c588a680a76ce2738ed982223",
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/assets/max-usdt-bingx-guide-images/19.png",
+      "path": "assets\\max-usdt-bingx-guide-images\\19.png",
+      "bytes": 2981944,
+      "sha256": "2721d6817124092701bd5c39d609d3cad03520335cf1c875d055625f6524a35f",
+      "content_type": "image/png"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/assets/max-usdt-bingx-guide-images/20.png",
+      "path": "assets\\max-usdt-bingx-guide-images\\20.png",
+      "bytes": 2070889,
+      "sha256": "48242d261b89cb6dc00484cefdd7b3962afefd460407c27a889383f70a04e102",
+      "content_type": "image/png"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/assets/max-usdt-bingx-guide-images/21.png",
+      "path": "assets\\max-usdt-bingx-guide-images\\21.png",
+      "bytes": 2034173,
+      "sha256": "9a970bb08135e21b399351f71da06595eceb054629fe4218e7ca60e0a250f84d",
+      "content_type": "image/png"
+    }
+  ],
+  "errors": [
+    {
+      "url": "https://maxcrypto.vercel.app/keys.map",
+      "error": "HTTP Error 404: Not Found"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/event.data.js",
+      "error": "HTTP Error 404: Not Found"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/keys.map",
+      "error": "HTTP Error 404: Not Found"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/event.data.js",
+      "error": "HTTP Error 404: Not Found"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/response.js",
+      "error": "HTTP Error 404: Not Found"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/conns.map",
+      "error": "HTTP Error 404: Not Found"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/...JS",
+      "error": "HTTP Error 404: Not Found"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/events.map",
+      "error": "HTTP Error 404: Not Found"
+    },
+    {
+      "url": "https://maxcrypto.vercel.app/orders.map",
+      "error": "HTTP Error 404: Not Found"
+    }
+  ],
+  "limits_reached": false,
+  "total_bytes": 107848383,
+  "layout": "Files are under site/; root index.html redirects to site/index.html."
+}

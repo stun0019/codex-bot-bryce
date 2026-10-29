@@ -23,7 +23,7 @@
   const REST_URL = "/api/bingx/price?symbol=";
   const REST_MIN_INTERVAL_MS = 120000;
   const REST_MIN_INTERVAL_NO_WS_MS = 15000;
-  const MAX_PER_CONN = 150;
+  const MAX_PER_CONN = 35; // scanner uses three channels per pair; keep headroom per socket
   const STALE_MS = 30000;
   const BATCH_MS = 1000;
   const JUMP_GUARD = 0.25;
@@ -37,10 +37,12 @@
   const supported = typeof window.WebSocket === "function" && typeof window.DecompressionStream === "function";
 
   const prices = new Map(); // pair -> { price:Number, at:ms }
-  const turnovers = new Map(); // pair -> { quoteVolume:Number, at:ms } (rolling 24h USDT)
-  const wanted = new Set(); // active union of page and market board pairs
+  const tickers = new Map(); // pair -> documented 24h ticker fields; v is base asset volume
+  const books = new Map(); // pair -> best bid/ask and exchange timestamp
+  const wanted = new Set(); // union of independent subscription owners
   const pageWanted = new Set();
   const marketWanted = new Set();
+  const scannerWanted = new Set();
   const listeners = new Set();
   const pendingJump = new Map(); // pair -> { price, at }
   const restAt = new Map(); // pair -> 上次打 REST 的時間
@@ -56,6 +58,12 @@
     if (!raw) return "";
     if (raw.includes("-")) return raw;
     return raw.endsWith("USDT") ? raw.slice(0, -4) + "-USDT" : raw + "-USDT";
+  }
+
+  function finiteNumber(value) {
+    if (value == null || value === "") return null;
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
   }
 
   async function gunzip(arrayBuffer) {
@@ -119,12 +127,13 @@
       subRequests.set(id, { pair, kind: "price" });
       conn.pendingIds.add(id);
       conn.subscribed.add(pair);
-      if (marketWanted.has(pair)) subscribeTicker(conn, pair);
+      if (marketWanted.has(pair) || scannerWanted.has(pair)) subscribeTicker(conn, pair);
+      if (scannerWanted.has(pair)) subscribeBookTicker(conn, pair);
     }
   }
 
   function subscribeTicker(conn, pair) {
-    if (!marketWanted.has(pair) || conn.tickerSubscribed.has(pair) || unsupported.has(pair)) return;
+    if (!(marketWanted.has(pair) || scannerWanted.has(pair)) || conn.tickerSubscribed.has(pair) || unsupported.has(pair)) return;
     const id = String(nextId++);
     if (send(conn, { id, reqType: "sub", dataType: pair + "@ticker" })) {
       subRequests.set(id, { pair, kind: "ticker" });
@@ -139,14 +148,35 @@
     conn.tickerSubscribed.delete(pair);
   }
 
+  function subscribeBookTicker(conn, pair) {
+    if (!scannerWanted.has(pair) || conn.bookSubscribed.has(pair) || unsupported.has(pair)) return;
+    const id = String(nextId++);
+    if (send(conn, { id, reqType: "sub", dataType: pair + "@bookTicker" })) {
+      subRequests.set(id, { pair, kind: "book" });
+      conn.pendingIds.add(id);
+      conn.bookSubscribed.add(pair);
+    }
+  }
+
+  function unsubscribeBookTicker(conn, pair) {
+    if (!conn.bookSubscribed.has(pair)) return;
+    send(conn, { id: String(nextId++), reqType: "unsub", dataType: pair + "@bookTicker" });
+    conn.bookSubscribed.delete(pair);
+  }
+
   function markUnsupported(pair) {
     if (!pair || unsupported.has(pair)) return;
     unsupported.add(pair);
     const conn = connFor(pair);
     if (conn) {
       conn.pairs.delete(pair);
-      conn.subscribed.delete(pair);
+      unsubscribePair(conn, pair);
       unsubscribeTicker(conn, pair);
+      unsubscribeBookTicker(conn, pair);
+      if (!conn.pairs.size) {
+        closeConn(conn);
+        conns.splice(conns.indexOf(conn), 1);
+      }
     }
   }
 
@@ -175,6 +205,7 @@
     conn.ws = ws;
     conn.subscribed = new Set();
     conn.tickerSubscribed = new Set();
+    conn.bookSubscribed = new Set();
     conn.closedByUs = false;
     conn.lastMessageAt = Date.now();
 
@@ -208,20 +239,34 @@
         if (request && Number(msg.code) !== 0) {
           if (request.kind === "price" && Number(msg.code) === 80015) markUnsupported(request.pair);
           if (request.kind === "ticker") conn.tickerSubscribed.delete(request.pair);
+          if (request.kind === "book") conn.bookSubscribed.delete(request.pair);
         }
         return;
       }
       const data = msg && msg.data;
       if (data && data.s && msg.dataType === String(data.s).toUpperCase() + "@ticker") {
-        const quoteVolume = Number(data.q);
-        if (Number.isFinite(quoteVolume) && quoteVolume >= 0) {
-          const pair = String(data.s).toUpperCase();
-          turnovers.set(pair, { quoteVolume, at: Date.now() });
-          if (prices.has(pair)) {
-            batch.set(pair, prices.get(pair));
-            scheduleFlush();
-          }
-        }
+        const pair = String(data.s).toUpperCase();
+        const price = finiteNumber(data.c);
+        const priceChange = finiteNumber(data.p);
+        const open = price != null && priceChange != null ? price - priceChange : null;
+        tickers.set(pair, {
+          price,
+          baseVolume24h: finiteNumber(data.v),
+          high24h: finiteNumber(data.h),
+          low24h: finiteNumber(data.l),
+          // Derive percentage from documented absolute change and latest price.
+          // data.P has ambiguous scaling across payloads; do not assume its unit.
+          changePct: open != null && open > 0 ? priceChange / open * 100 : null,
+          at: Date.now()
+        });
+        return;
+      }
+      if (data && data.s && msg.dataType === String(data.s).toUpperCase() + "@bookTicker") {
+        const pair = String(data.s).toUpperCase();
+        const bid = finiteNumber(data.b);
+        const ask = finiteNumber(data.a);
+        const timestamp = finiteNumber(data.T);
+        books.set(pair, { bid, ask, timestamp, at: Date.now() });
         return;
       }
       if (data && data.s && data.c != null) acceptTick(String(data.s).toUpperCase(), data.c, "ws");
@@ -231,6 +276,7 @@
       conn.ws = null;
       conn.subscribed = new Set();
       conn.tickerSubscribed = new Set();
+      conn.bookSubscribed = new Set();
       forgetPending(conn);
       if (!conn.closedByUs && conn.pairs.size) scheduleReconnect(conn);
     };
@@ -266,6 +312,7 @@
         conn.ws = null;
         conn.subscribed = new Set();
         conn.tickerSubscribed = new Set();
+        conn.bookSubscribed = new Set();
         forgetPending(conn);
         detach(dead);
         scheduleReconnect(conn);
@@ -296,6 +343,7 @@
     }
     conn.subscribed = new Set();
     conn.tickerSubscribed = new Set();
+    conn.bookSubscribed = new Set();
   }
 
   function connFor(pair) {
@@ -305,7 +353,7 @@
   function connWithRoom() {
     let conn = conns.find((item) => item.pairs.size < MAX_PER_CONN);
     if (!conn) {
-      conn = { ws: null, pairs: new Set(), subscribed: new Set(), tickerSubscribed: new Set(), pendingIds: new Set(), attempts: 0, timer: null, closedByUs: false, lastMessageAt: 0 };
+      conn = { ws: null, pairs: new Set(), subscribed: new Set(), tickerSubscribed: new Set(), bookSubscribed: new Set(), pendingIds: new Set(), attempts: 0, timer: null, closedByUs: false, lastMessageAt: 0 };
       conns.push(conn);
     }
     return conn;
@@ -326,7 +374,9 @@
     conn.pairs.delete(pair);
     unsubscribePair(conn, pair);
     unsubscribeTicker(conn, pair);
-    turnovers.delete(pair);
+    unsubscribeBookTicker(conn, pair);
+    tickers.delete(pair);
+    books.delete(pair);
     if (!conn.pairs.size) {
       closeConn(conn);
       const index = conns.indexOf(conn);
@@ -334,9 +384,9 @@
     }
   }
 
-  // 主頁訊號與公開行情板各自維護訂閱；其中一方更新不會取消另一方的幣對。
+  // Every owner contributes symbols; removing one owner never cancels another.
   function syncSymbols() {
-    const next = new Set([...pageWanted, ...marketWanted]);
+    const next = new Set([...pageWanted, ...marketWanted, ...scannerWanted]);
     wanted.forEach((pair) => {
       if (!next.has(pair)) {
         wanted.delete(pair);
@@ -364,13 +414,37 @@
     previous.forEach((pair) => {
       if (marketWanted.has(pair)) return;
       const conn = connFor(pair);
-      if (conn) unsubscribeTicker(conn, pair);
-      turnovers.delete(pair);
+      if (conn && !scannerWanted.has(pair)) unsubscribeTicker(conn, pair);
+      if (!scannerWanted.has(pair)) tickers.delete(pair);
     });
     syncSymbols();
     marketWanted.forEach((pair) => {
       const conn = connFor(pair);
       if (conn) subscribeTicker(conn, pair);
+    });
+  }
+
+  function setScannerSymbols(list) {
+    const previous = new Set(scannerWanted);
+    scannerWanted.clear();
+    (Array.isArray(list) ? list : []).map(normalizePair).filter(Boolean).forEach((pair) => scannerWanted.add(pair));
+    previous.forEach((pair) => {
+      if (scannerWanted.has(pair)) return;
+      const conn = connFor(pair);
+      if (conn) {
+        unsubscribeBookTicker(conn, pair);
+        if (!marketWanted.has(pair)) unsubscribeTicker(conn, pair);
+      }
+      books.delete(pair);
+      if (!marketWanted.has(pair)) tickers.delete(pair);
+    });
+    syncSymbols();
+    scannerWanted.forEach((pair) => {
+      const conn = connFor(pair);
+      if (conn) {
+        subscribeTicker(conn, pair);
+        subscribeBookTicker(conn, pair);
+      }
     });
   }
 
@@ -465,10 +539,21 @@
     return restThrottled(pair, REST_MIN_INTERVAL_MS);
   }
 
-  function getTurnover(symbol) {
+  function getTicker(symbol) {
     const pair = normalizePair(symbol);
-    const rec = turnovers.get(pair);
-    return rec ? { ...rec, fresh: Date.now() - rec.at < 120000 } : null;
+    const rec = tickers.get(pair);
+    return rec ? { ...rec, fresh: Date.now() - rec.at < 20000 } : null;
+  }
+
+  function getBookTicker(symbol) {
+    const pair = normalizePair(symbol);
+    const rec = books.get(pair);
+    if (!rec) return null;
+    const now = Date.now();
+    const valid = rec.bid > 0 && rec.ask > 0 && rec.ask >= rec.bid &&
+      Number.isFinite(rec.timestamp) && rec.timestamp > 0 &&
+      rec.timestamp <= now + 30000;
+    return { ...rec, fresh: valid && now - rec.at < 10000 && now - rec.timestamp < 10000 };
   }
 
   function subscribe(fn) {
@@ -506,9 +591,11 @@
     supported,
     setSymbols,
     setMarketSymbols,
+    setScannerSymbols,
     want,
     get,
-    getTurnover,
+    getTicker,
+    getBookTicker,
     price,
     isUnsupported,
     subscribe,

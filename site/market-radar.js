@@ -111,10 +111,10 @@
     const outcome = engine.evaluate(config.universe, snapshots, config, now, previousOrder);
     previousOrder = outcome.results.map((row) => row.symbol);
     const state = feed.status();
-    const connected = state.connections.some((conn) => conn.state === WebSocket.OPEN);
-    status.textContent = !feed.supported ? "瀏覽器不支援 WebSocket / GZIP" :
+    const connected = state.connections.length > 0 && state.connections.every((conn) => conn.state === WebSocket.OPEN);
+    status.textContent = !feed.supported ? "瀏覽器不支援 WebSocket" :
       navigator.onLine === false ? "網路已斷線" :
-      connected ? "即時掃描中" : "連線中／重試中";
+      connected ? "即時掃描中" : state.lastError ? "幣安連線失敗／重試中" : "連線中／重試中";
     status.dataset.state = connected ? "live" : "pending";
     progress.textContent = "候選 " + config.universe.length + " · 有效 " +
       outcome.validMarkets + " · 排除 " + outcome.filtered +

@@ -6,8 +6,6 @@
   const MOVING_PROFIT_LABEL = "移動止盈";
   const EDIT_LABEL = "修改";
   const EMPTY_LABEL = "未設定";
-  const PRICE_PROXY_URL = "/api/bingx/price?symbol=";
-  const PRICE_PROXY_MIN_INTERVAL_MS = 60 * 1000;
 
   // 管理員代碼：主程式提供 window.CatAdmin；沒有時才退回舊的 bigbird.chug/<token> 路徑規則。
   const getAdminCodeFromPath = () => {
@@ -285,39 +283,15 @@
       || status.includes("上移止損");
   };
 
-  // 同站代理備援節流：每個幣對 60 秒最多打一次 /api/bingx/price。
-  const proxyLastCallAt = new Map();
-
-  async function fetchProxyPrice(pair) {
-    const now = Date.now();
-    const last = proxyLastCallAt.get(pair) || 0;
-    if (now - last < PRICE_PROXY_MIN_INTERVAL_MS) return null;
-    proxyLastCallAt.set(pair, now);
-    const response = await fetch(PRICE_PROXY_URL + encodeURIComponent(pair), { cache: "no-store" });
-    if (!response.ok) {
-      console.warn(`raised-sl: price proxy ${pair} ${response.status}`);
+  // 共用 Binance 行情模組，包含合約單位換算、資料時效與 REST 備援。
+  async function fetchBinancePrice(symbol) {
+    try {
+      const price = await window.CatPriceFeed.price(symbol);
+      return Number.isFinite(price) && price > 0 ? price : null;
+    } catch (error) {
+      console.warn("raised-sl: Binance price unavailable", error);
       return null;
     }
-    const data = await response.json().catch(() => ({}));
-    const raw = data?.data?.price ?? data?.price;
-    const price = Number(raw);
-    return Number.isFinite(price) ? price : null;
-  }
-
-  async function fetchBingxPrice(symbol) {
-    const pair = cleanSymbol(symbol).replace(/USDT$/i, "-USDT");
-    if (!pair) return null;
-    // 優先用 price-feed.js 的 WebSocket 快取
-    if (window.CatPriceFeed) {
-      try {
-        const live = await window.CatPriceFeed.price(pair);
-        if (Number.isFinite(live)) return live;
-      } catch (error) {
-        console.warn(`raised-sl: CatPriceFeed.price ${pair} failed`, error);
-      }
-    }
-    // BingX REST 對帶瀏覽器 Origin 的請求回 403，所以備援改走同站代理（有節流）。
-    return fetchProxyPrice(pair);
   }
 
   async function checkRaisedStopHits() {
@@ -340,7 +314,7 @@
       const key = `raised-sl-hit:${order.id}:${order.raisedSl}`;
       if (localStorage.getItem(key)) continue;
       try {
-        const price = await fetchBingxPrice(order.symbol);
+        const price = await fetchBinancePrice(order.symbol);
         if (price !== null && price <= raised) {
           localStorage.setItem(key, String(Date.now()));
           await patchOrder(order.id, { action: "raised-sl-hit" });

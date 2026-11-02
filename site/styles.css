@@ -1074,21 +1074,21 @@ input[readonly] {
   color: #f0c84b;
 }
 
-.price-box.bingx-price.online {
+.price-box.binance-price.online {
   background: #08251d;
 }
 
-.price-box.bingx-price.online .box-label,
-.price-box.bingx-price.online strong {
+.price-box.binance-price.online .box-label,
+.price-box.binance-price.online strong {
   color: var(--green);
 }
 
-.price-box.bingx-price.closed-final-price .box-label,
-.price-box.bingx-price.closed-final-price strong {
+.price-box.binance-price.closed-final-price .box-label,
+.price-box.binance-price.closed-final-price strong {
   color: var(--green);
 }
 
-.price-box.bingx-price.offline .box-label b {
+.price-box.binance-price.offline .box-label b {
   color: var(--pink);
 }
 
@@ -1691,7 +1691,7 @@ input[readonly] {
     padding: 11px 30px 11px 12px;
   }
 
-  .price-box.bingx-price,
+  .price-box.binance-price,
   .price-box.final-profit {
     grid-column: 1 / -1;
   }
@@ -1781,7 +1781,7 @@ body[data-page="admin"] .terminal-shell {
 }
 
 
-/* Browser-only BingX market radar. */
+/* Browser-only Binance market radar. */
 .market-radar {
   margin-bottom: 24px;
   padding: 20px;

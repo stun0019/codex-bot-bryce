@@ -1,4 +1,4 @@
-// Static candidate universe, not a claim to cover every BingX perpetual contract.
+// Static candidate universe, not a claim to cover every Binance perpetual contract.
 window.CodexRadarConfig = Object.freeze({
   universe: [
     "BTC-USDT", "ETH-USDT", "SOL-USDT", "BNB-USDT", "XRP-USDT",
@@ -21,7 +21,7 @@ window.CodexRadarConfig = Object.freeze({
   }),
   liquidityBottomPercentile: 0.20,
   minMarketsForLiquidityFilter: 10,
-  maxSpreadPct: 0.50, // Initial scanner safeguard, not a BingX official limit.
+  maxSpreadPct: 0.50, // Initial scanner safeguard, not a Binance official limit.
   biasThresholdPct: 0.50,
   relativeStrengthScalePct: 3,
   momentumScalePct: 1.5,

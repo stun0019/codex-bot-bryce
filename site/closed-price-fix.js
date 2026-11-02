@@ -83,7 +83,7 @@
       if (!order || !isClosedOrder(order)) return;
 
       const price = finalPrice(order);
-      const box = card.querySelector(".price-box.bingx-price");
+      const box = card.querySelector(".price-box.binance-price");
       const value = box && box.querySelector("strong");
       const time = box && box.querySelector(".box-label b");
       if (!price || !box || !value) return;

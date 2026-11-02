@@ -57,6 +57,25 @@
       return catalog;
     }
 
+    async function topMarkets(signal) {
+      const listed = await markets(signal);
+      const rows = await json("/fapi/v1/ticker/24hr", signal);
+      if (!Array.isArray(rows)) throw new Error("無法取得幣安 24 小時成交額排名");
+      const volumes = new Map();
+      for (const row of rows) {
+        if (!row || row.quoteVolume == null || row.quoteVolume === "" ||
+            (row.st != null && Number(row.st) !== 1)) continue;
+        const volume = Number(row.quoteVolume);
+        if (Number.isFinite(volume) && volume > 0) volumes.set(row.symbol, Math.max(volume, volumes.get(row.symbol) || 0));
+      }
+      const ranked = listed.filter(market => volumes.has(market.symbol))
+        .map(market => ({ ...market, quoteVolume24h: volumes.get(market.symbol) }))
+        .sort((a, b) => b.quoteVolume24h - a.quoteVolume24h || a.symbol.localeCompare(b.symbol))
+        .slice(0, 20);
+      if (!ranked.length) throw new Error("沒有有效的 USDT 永續合約成交額資料");
+      return ranked;
+    }
+
     async function candles(symbol, interval, asOf, signal) {
       if (!Object.hasOwn(Engine.INTERVALS, interval)) throw new Error("只允許 4H 與 15M K 線");
       const bucket = Math.floor(asOf / Engine.INTERVALS[interval]), key = symbol + ":" + interval;
@@ -72,9 +91,9 @@
     async function scan({ capital = Engine.SETTINGS.capital, signal, onProgress = () => {} } = {}) {
       const time = await json("/fapi/v1/time", signal), asOf = Number(time.serverTime);
       if (!Number.isFinite(asOf) || asOf <= 0) throw new Error("幣安時間無效");
-      const localAt = clock(), universe = await markets(signal), candidates = [];
+      const localAt = clock(), universe = await topMarkets(signal), candidates = [];
       const state = { total: universe.length, completed: 0, trending: 0, errors: 0, candidates, asOf,
-        serverOffset: asOf - localAt, failures: [] };
+        serverOffset: asOf - localAt, symbols: universe.map(market => market.symbol), failures: [] };
       onProgress({ ...state });
       let cursor = 0, fatal = null;
       await Promise.all(Array.from({ length: Math.min(concurrency, universe.length) }, async () => {
@@ -100,7 +119,7 @@
       if (fatal) throw fatal;
       return { ...state, candidates: [...candidates].sort((a,b) => a.symbol.localeCompare(b.symbol)) };
     }
-    return { scan, markets, candles, getBackoffUntil: () => backoffUntil };
+    return { scan, markets, topMarkets, candles, getBackoffUntil: () => backoffUntil };
   }
   const api = { createClient };
   if (typeof module !== "undefined" && module.exports) module.exports = api;

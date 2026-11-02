@@ -92,14 +92,14 @@
     refresh.disabled = true; refresh.textContent = "掃描中…";
     list.setAttribute("aria-busy", "true");
     status.textContent = "連接幣安"; status.dataset.state = "pending";
-    progress.textContent = "讀取合約清單與已收盤 K 線"; meter.value = 0; meter.max = 1;
+    progress.textContent = "讀取 24H 成交額 Top20 與已收盤 K 線"; meter.value = 0; meter.max = 1;
     render();
     try {
       const outcome = await client.scan({ capital, signal: currentController.signal, onProgress(state) {
         offset = state.serverOffset;
         candidates = state.candidates;
         status.textContent = "策略掃描中";
-        progress.textContent = "已掃描 " + state.completed + " / " + state.total + " · 4H 趨勢成立 " + state.trending +
+        progress.textContent = "成交額 Top20 · 已掃描 " + state.completed + " / " + state.total + " · 4H 趨勢成立 " + state.trending +
           (state.errors ? " · 資料不可用 " + state.errors : "");
         meter.max = state.total; meter.value = state.completed;
         if (visibleCandidates().map(c => c.symbol + c.confirmedAt).join(",") !== lastVisibleKey) render();

@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>策略掃描 · Codex Bot</title>
   <link rel="icon" type="image/svg+xml" href="favicon.svg?v=1">
-  <link rel="stylesheet" href="styles.css?v=strategy-1">
+  <link rel="stylesheet" href="styles.css?v=paper-1">
 </head>
 <body data-page="strategy">
   <div id="appShell">
@@ -22,6 +22,7 @@
           <div class="list-head">
             <div><p class="strategy-kicker">24H 成交額 TOP20 · 4H 趨勢 ＋ 15M 進場</p><h1 id="scannerTitle">策略掃描 <span id="candidateCount">(0 / 0)</span></h1></div>
             <div class="list-actions">
+              <a class="paper-jump" href="#paperTitle">模擬交易 ↓</a>
               <select id="directionFilter" aria-label="策略方向"><option value="all">全部方向</option><option value="LONG">做多候選</option><option value="SHORT">做空候選</option></select>
               <button class="refresh-button" id="refreshBtn" type="button">更新</button>
             </div>
@@ -48,10 +49,38 @@
           </details>
         </div>
       </section>
+      <section class="paper-panel signals-dashboard" aria-labelledby="paperTitle">
+        <div class="list-head">
+          <div><p class="strategy-kicker">前向測試 · 訊號獨立模擬 · 本機紀錄</p><h2 id="paperTitle">模擬交易 <span id="paperCount">(0 / 0)</span></h2></div>
+          <div class="list-actions"><button id="paperPause" type="button" disabled>暫停新增</button><button id="paperExport" type="button">匯出紀錄</button></div>
+        </div>
+        <p class="paper-intro">新候選以產生後的新成交報價模擬進場。每筆按當時總資金的 3% 獨立計算，並納入估算進出場費用與停損滑價；數量可能與策略卡片的參考部位不同。本版不共用保證金，也不代表 70 USDT 帳戶資金曲線。</p>
+        <div class="paper-stats" aria-label="模擬交易績效">
+          <div><span>已平倉</span><strong id="paperClosed">0</strong><small id="paperOpen">0 持倉 · 0 待報價</small></div>
+          <div><span>平倉淨獲利勝率</span><strong id="paperWinRate">—</strong><small>僅計連續追蹤的已平倉樣本</small></div>
+          <div><span>累計淨損益 USDT</span><strong id="paperNet">0.00</strong><small>已扣模擬手續費與滑價</small></div>
+          <div><span>平均每筆淨損益</span><strong id="paperAverage">—</strong><small>USDT／已平倉</small></div>
+          <div><span>累積損益最大回撤</span><strong id="paperDrawdown">0.00</strong><small>USDT · 非帳戶淨值回撤</small></div>
+          <div><span>最大連敗</span><strong id="paperStreak">0</strong><small>依淨損益計算</small></div>
+        </div>
+        <details class="paper-assumptions"><summary>模擬成交與費用假設</summary>
+          <div class="paper-settings"><label>單邊手續費 % <input id="paperFee" type="number" min="0" max="1" step="0.001" value="0.05"></label><label>單邊不利滑價 % <input id="paperSlippage" type="number" min="0" max="1" step="0.001" value="0.02"></label></div>
+          <p id="paperSettingsMessage">預設值為模擬假設，並非你的帳戶實際費率；調整只影響新訊號。</p>
+          <p>進場沿用當次停損與目標，依模擬成交價檢查價差盈虧比至少 1:2。止盈／止損依後續成交報價觸及判定，採觸發時報價加不利滑價模擬市價出場。費後盈虧比可能低於 2R；跳價也可能使實際模擬損失高於原預算。未計資金費率與委託簿深度。</p>
+        </details>
+        <div class="paper-toolbar"><span id="paperStatus" role="status">準備本機紀錄</span><select id="paperFilter" aria-label="模擬交易篩選"><option value="all">全部紀錄</option><option value="active">持倉／待報價</option><option value="closed">已平倉</option><option value="SKIPPED">略過</option><option value="REVIEW">待核對</option></select></div>
+        <p id="paperBreakdown" class="paper-breakdown" role="status">尚無平倉樣本</p>
+        <div class="paper-table-wrap"><table class="paper-table"><thead><tr><th>幣種／訊號時間</th><th>方向</th><th>模擬進場</th><th>停損</th><th>止盈</th><th>數量</th><th>出場價</th><th>狀態</th><th>淨損益 USDT</th><th>說明／成交時間</th></tr></thead><tbody id="paperRows"></tbody></table></div>
+        <p class="strategy-note">此為啟用後累積的前向模擬，未重播歷史行情。關閉／重新開啟頁面、斷線或成交報價中斷超過 30 秒時，未完成交易會標成「待核對」，不計入勝率。候選到期不會結束已進場的模擬持倉。紀錄僅存在本瀏覽器／本網站，清除網站資料會遺失；可定期匯出。</p>
+      </section>
+
     </main>
   </div>
   <script src="strategy-engine.js?v=1"></script>
   <script src="strategy-data.js?v=top20-1"></script>
-  <script src="strategy-scanner.js?v=top20-1"></script>
+  <script src="price-feed.js?v=paper-1"></script>
+  <script src="paper-engine.js?v=1"></script>
+  <script src="paper-panel.js?v=1"></script>
+  <script src="strategy-scanner.js?v=paper-1"></script>
 </body>
 </html>

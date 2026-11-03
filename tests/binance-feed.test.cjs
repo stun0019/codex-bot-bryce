@@ -198,3 +198,13 @@ test('removing an owner preserves other owners, but clears removed prices', asyn
   h.feed.setMarketSymbols([]); await h.advance(); assert.equal(h.feed.get('BTC'), null);
   assert.equal(h.sockets[0].readyState, 3);
 });
+
+test('paper observers see each valid quote before UI batching and jump filtering',async()=>{
+  const h=harness();await h.start();const quotes=[];
+  const off=h.feed.subscribeTicks(quote=>quotes.push(quote.price));
+  const emit=p=>h.emit('market',{e:'aggTrade',s:'BTCUSDT',p,E:h.now});
+  emit('100');emit('150');emit('101');emit('NaN');
+  assert.deepEqual(quotes,[100,150,101]);assert.equal(h.feed.get('BTC').price,101);
+  off();emit('102');assert.equal(quotes.length,3);
+  assert.ok(h.feed.status().connections[0].openedAt>0);
+});

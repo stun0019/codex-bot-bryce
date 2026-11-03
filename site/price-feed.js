@@ -12,6 +12,7 @@
     RATS: "1000RATS", CAT: "1000CAT", CHEEMS: "1000CHEEMS" };
   const owners = { page: new Set(), market: new Set(), scanner: new Set() };
   const prices = new Map(), tickers = new Map(), books = new Map();
+  const tickListeners = new Set();
   const listeners = new Set(), pendingJump = new Map(), restAt = new Map();
   const restPending = new Map(), unsupported = new Set(), refs = new Map();
   const conns = [];
@@ -97,6 +98,8 @@
     if (!(price > 0) || !Number.isFinite(timestamp) || timestamp <= 0 ||
         timestamp > now + 30000 || now - timestamp > STALE_MS ||
         (prev && timestamp < prev.timestamp)) return false;
+    // Paper execution observes each valid exchange quote before UI jump filtering or batching.
+    tickListeners.forEach(fn => { try { fn({ pair, price, at: now, timestamp, source }); } catch (_) { /* isolate */ } });
     if (prev && now - prev.at < 60000 && Math.abs(price / prev.price - 1) > 0.25) {
       const candidate = pendingJump.get(pair);
       if (!candidate || (Math.abs(price / candidate.price - 1) >= 0.1 && now - candidate.at <= 10000)) {
@@ -357,10 +360,11 @@
     setMarketSymbols: list => setOwner("market", list),
     setScannerSymbols: list => setOwner("scanner", list),
     isUnsupported: symbol => unsupported.has(normalizePair(symbol)),
+    subscribeTicks(fn) { if (typeof fn === "function") tickListeners.add(fn); return () => tickListeners.delete(fn); },
     subscribe(fn) { if (typeof fn === "function") listeners.add(fn); return () => listeners.delete(fn); },
     status() { return { supported, exchange: "Binance", wanted: wanted.size, prices: prices.size,
       lastError, unsupported: [...unsupported], connections: conns.filter(c => c.desired.size).map(c => ({
-        route: c.route, state: c.ws ? c.ws.readyState : -1, subscribed: c.active.size,
+        route: c.route, openedAt: c.openedAt, state: c.ws ? c.ws.readyState : -1, subscribed: c.active.size,
         silentMs: c.lastMessageAt ? Date.now() - c.lastMessageAt : null })) }; }
   };
 })();

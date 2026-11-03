@@ -98,6 +98,7 @@
       const outcome = await client.scan({ capital, signal: currentController.signal, onProgress(state) {
         offset = state.serverOffset;
         candidates = state.candidates;
+        window.PaperTrading?.acceptCandidates(state.candidates, capital, Date.now() + offset);
         status.textContent = "策略掃描中";
         progress.textContent = "成交額 Top20 · 已掃描 " + state.completed + " / " + state.total + " · 4H 趨勢成立 " + state.trending +
           (state.errors ? " · 資料不可用 " + state.errors : "");

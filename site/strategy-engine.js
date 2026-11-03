@@ -53,6 +53,15 @@
     return Number((Math[direction](normalized) * step).toFixed(Math.min(14, decimals(step))));
   }
 
+  function targets(entry, stopLoss, direction, tick) {
+    const long = direction === "LONG", distance = Math.abs(entry - stopLoss);
+    return [2, 3, 4].map(rr => {
+      let value = quantize(entry + (long ? 1 : -1) * distance * rr, tick, long ? "ceil" : "floor");
+      if (Math.abs(value - entry) / distance < rr) value = Number((value + (long ? tick : -tick)).toFixed(Math.min(14, decimals(tick))));
+      return value > 0 ? value : null;
+    });
+  }
+
   function position(candidate, market, capital = SETTINGS.capital) {
     const budget = capital * SETTINGS.riskFraction;
     if (!(capital > 0) || !Number.isFinite(capital)) return { ok: false, reason: "總資金無效" };
@@ -102,7 +111,7 @@
     let target = quantize(entry + (long ? 1 : -1) * distance * SETTINGS.rewardRisk, tick, long ? "ceil" : "floor");
     if (Math.abs(target - entry) / distance < SETTINGS.rewardRisk) target = Number((target + (long ? tick : -tick)).toFixed(Math.min(14, decimals(tick))));
     if (!(target > 0)) return null;
-    const candidate = { symbol: market.symbol, direction, entry, stopLoss, target,
+    const candidate = { symbol: market.symbol, direction, entry, stopLoss, target, targets: targets(entry, stopLoss, direction, tick),
       tickSize: tick, stepSize: Number(market.stepSize), confirmedAt: confirmation.closeTime + 1,
       expiresAt: confirmation.closeTime + 1 + INTERVALS["15m"], trendAt: fourHour[fourHour.length - 1].closeTime + 1,
       ma4h20: ma(fourHour, 20), ma15m5: ma5, ma15m10: ma(fifteenMinute, 10), ma15m20: ma(fifteenMinute, 20) };
@@ -111,7 +120,7 @@
     return candidate;
   }
 
-  const api = { INTERVALS, SETTINGS, closedBars, ma, trend, evaluate, position, decimals, quantize };
+  const api = { INTERVALS, SETTINGS, closedBars, ma, trend, evaluate, position, decimals, quantize, targets };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   root.StrategyEngine = api;
 })(typeof window !== "undefined" ? window : globalThis);

@@ -30,7 +30,7 @@
   }
   function checkConnection() {
     const generation = feed.status().connections.filter(c => c.route === "market").map(c => c.openedAt).join(",");
-    if (currentGeneration && generation !== currentGeneration && model.trades.some(t => t.status === "OPEN")) {
+    if (currentGeneration && generation !== currentGeneration && model.trades.some(t => t.status === "OPEN" || window.TargetEngine.pending(t))) {
       model.interrupt("行情連線已重建，期間觸價順序需核對", now()); changed = dirty = true;
     }
     currentGeneration = generation;
@@ -52,8 +52,9 @@
   function render() {
     if (!dirty) return; dirty = false;
     const stats = model.stats();
+    window.TargetView.stats($("paperTargets"), model.trades);
     $("paperClosed").textContent = String(stats.closed);
-    $("paperOpen").textContent = stats.open + " 持倉 · " + stats.waiting + " 待報價";
+    $("paperOpen").textContent = stats.open + " 持倉 · " + stats.waiting + " 待報價 · " + model.trades.filter(t => window.TargetEngine.pending(t)).length + " 筆三段追蹤";
     $("paperWinRate").textContent = stats.winRate == null ? "—" : stats.winRate.toFixed(1) + "%";
     $("paperNet").textContent = signed(stats.netPnl); $("paperNet").dataset.tone = stats.netPnl >= 0 ? "positive" : "negative";
     $("paperAverage").textContent = signed(stats.averagePnl);
@@ -73,7 +74,7 @@
     table.replaceChildren();
     const visible = [...model.trades].reverse().filter(trade => filter.value === "all" ||
       (filter.value === "closed" ? Engine.CLOSED.has(trade.status) : filter.value === "active" ?
-        trade.status === "OPEN" || trade.status === "WAITING_PRICE" : trade.status === filter.value));
+        trade.status === "OPEN" || trade.status === "WAITING_PRICE" || window.TargetEngine.pending(trade) : trade.status === filter.value));
     $("paperCount").textContent = "(" + visible.length + " / " + model.trades.length + ")";
     if (!visible.length) {
       const row = node("tr", "paper-empty"), td = node("td", "", model.trades.length ? "此篩選下沒有紀錄。" :
@@ -87,10 +88,12 @@
       const pnlCell = cell("淨損益 USDT", signed(pnl), "paper-pnl"); pnlCell.dataset.tone = pnl == null ? "neutral" : pnl >= 0 ? "positive" : "negative";
       if (trade.status === "OPEN") pnlCell.append(node("small", "", "未實現估算"));
       const stateCell = cell("狀態", ""); stateCell.append(node("span", "paper-badge", labels[trade.status]));
-      const reason = cell("說明／成交時間", ""); reason.append(node("span", "", trade.reason),
+      const reason = cell("說明／成交時間", ""); reason.append(node("span", "", trade.reason + " · 原出場目標 " + price(trade.target)),
         node("small", "", trade.closedAt ? "出場 " + time(trade.closedAt) : trade.openedAt ? "進場 " + time(trade.openedAt) : "發現 " + time(trade.detectedAt)));
+      const targetCell = cell("TP1／TP2／TP3", ""); targetCell.append(window.TargetView.detail(trade));
+      if (window.TargetEngine.pending(trade)) stateCell.append(node("small", "", "三段目標繼續追蹤"));
       row.append(identity, cell("方向", trade.direction === "LONG" ? "做多" : "做空"), cell("模擬進場", price(trade.entry)),
-        cell("停損", price(trade.stopLoss)), cell("止盈", price(trade.target)), cell("數量", price(trade.quantity)),
+        cell("停損", price(trade.stopLoss)), targetCell, cell("數量", price(trade.quantity)),
         cell("出場價", price(trade.exit)), stateCell, pnlCell, reason); table.append(row);
     }
   }

@@ -1,6 +1,7 @@
 (function (root) {
   "use strict";
   const Engine = root.StrategyEngine || (typeof require === "function" ? require("./strategy-engine.js") : null);
+  const Targets = root.TargetEngine || (typeof require === "function" ? require("./target-engine.js") : null);
   const DEFAULTS = Object.freeze({ enabled: true, feeRate: 0.0005, slippage: 0.0002 });
   const ACTIVE = new Set(["WAITING_PRICE", "OPEN"]), CLOSED = new Set(["TAKE_PROFIT", "STOP_LOSS"]);
   const STATUSES = new Set([...ACTIVE, ...CLOSED, "SKIPPED", "REVIEW"]);
@@ -19,7 +20,7 @@
     const config = settings(saved?.settings), trades = saved ? JSON.parse(JSON.stringify(saved.trades)) : [];
     const seen = new Set();
     for (const trade of trades) {
-      if (!trade || !STATUSES.has(trade.status) || !/^[A-Z0-9]+USDT$/.test(trade.symbol) ||
+      if (!trade || !Targets.valid(trade) || !STATUSES.has(trade.status) || !/^[A-Z0-9]+USDT$/.test(trade.symbol) ||
           !["LONG", "SHORT"].includes(trade.direction) || trade.id !== key(trade) || seen.has(trade.id) ||
           !finite(trade.detectedAt) || !finite(trade.confirmedAt) || !finite(trade.expiresAt) ||
           !(trade.stopLoss > 0) || !(trade.target > 0) || !(trade.tickSize > 0) || !(trade.capital > 0) ||
@@ -32,6 +33,7 @@
     }
     function skip(trade, reason, at) { trade.status = "SKIPPED"; trade.reason = reason; trade.resolvedAt = at; }
     function review(trade, reason, at) {
+      Targets.interrupt(trade, reason, at);
       if (trade.status === "WAITING_PRICE") skip(trade, reason, at);
       else if (trade.status === "OPEN") { trade.status = "REVIEW"; trade.reason = reason; trade.reviewAt = at; }
     }
@@ -72,6 +74,7 @@
       if (!(quantity > 0) || quantity < (trade.market.minQty || 0) || quantity * entry < (trade.market.minNotional || 0)) {
         skip(trade, "含估算費用的風險預算不足幣安最小部位", at); return;
       }
+      trade.targets = Targets.create(entry, trade.stopLoss, trade.direction, trade.tickSize); trade.targetsLastQuoteAt = at;
       Object.assign(trade, { status: "OPEN", reason: "連續追蹤中", entry, quantity, openedAt: at,
         observedEntry: price, entryFee: entry * quantity * trade.feeRate,
         estimatedStopRisk: quantity * riskPerUnit, entryRewardRisk: rr, lastPrice: price, lastQuoteAt: at });
@@ -85,12 +88,19 @@
       if (!(price > 0) || !finite(price) || !finite(at)) return false;
       let changed = false;
       for (const trade of trades) {
-        if (trade.symbol !== symbol || !ACTIVE.has(trade.status) || at < trade.detectedAt || at < (trade.lastQuoteAt || 0)) continue;
+        if (trade.symbol !== symbol || (!ACTIVE.has(trade.status) && !Targets.pending(trade)) || at < trade.detectedAt || at < (trade.lastQuoteAt || 0)) continue;
         if (trade.status === "WAITING_PRICE") {
           if (at >= Math.min(trade.expiresAt, trade.detectedAt + MAX_GAP_MS)) skip(trade, "未及時取得新成交報價", at);
           else open(trade, price, at);
           changed = true; continue; // The fill tick cannot also close its newly opened trade.
         }
+        if (Targets.pending(trade)) {
+          if (at < trade.targetsLastQuoteAt) continue;
+          if (at - trade.targetsLastQuoteAt > MAX_GAP_MS) Targets.interrupt(trade, "三段目標報價中斷，需核對", at);
+          else { Targets.quote(trade, price, at); trade.targetsLastQuoteAt = at; }
+          changed = true;
+        }
+        if (trade.status !== "OPEN") continue;
         if (at - trade.lastQuoteAt > MAX_GAP_MS) { review(trade, "報價追蹤中斷，期間觸價順序需核對", at); changed = true; continue; }
         trade.lastPrice = price; trade.lastQuoteAt = at; changed = true;
         const long = trade.direction === "LONG";
@@ -106,12 +116,13 @@
     }
     function interrupt(reason, at) {
       let changed = false;
-      for (const trade of trades) if (ACTIVE.has(trade.status)) { review(trade, reason, at); changed = true; }
+      for (const trade of trades) { if (Targets.interrupt(trade, reason, at)) changed = true; if (ACTIVE.has(trade.status)) { review(trade, reason, at); changed = true; } }
       return changed;
     }
     function expire(now) {
       let changed = false;
       for (const trade of trades) {
+        if (Targets.pending(trade) && now - trade.targetsLastQuoteAt > MAX_GAP_MS) { Targets.interrupt(trade, "三段目標超過 30 秒無報價，需核對", now); changed = true; }
         if (trade.status === "WAITING_PRICE" && now >= Math.min(trade.expiresAt, trade.detectedAt + MAX_GAP_MS)) {
           skip(trade, "未及時取得新成交報價", now); changed = true;
         } else if (trade.status === "OPEN" && now - trade.lastQuoteAt > MAX_GAP_MS) {
@@ -130,7 +141,7 @@
       }
       const byDirection = direction => { const rows = closed.filter(t => t.direction === direction); return { count: rows.length,
         winRate: rows.length ? rows.filter(t => t.netPnl > 0).length / rows.length * 100 : null }; };
-      return { closed: closed.length, wins, losses: closed.filter(t => t.netPnl < 0).length,
+      return { targets: Targets.stats(trades), closed: closed.length, wins, losses: closed.filter(t => t.netPnl < 0).length,
         winRate: closed.length ? wins / closed.length * 100 : null, netPnl: pnl,
         averagePnl: closed.length ? pnl / closed.length : null, maxDrawdown, maxLossStreak,
         open: trades.filter(t => t.status === "OPEN").length, waiting: trades.filter(t => t.status === "WAITING_PRICE").length,
@@ -138,7 +149,7 @@
         long: byDirection("LONG"), short: byDirection("SHORT") };
     }
     return { trades, settings: config, addCandidates, tick, interrupt, expire, stats, netAt,
-      activeSymbols: () => [...new Set(trades.filter(t => ACTIVE.has(t.status)).map(t => t.symbol))],
+      activeSymbols: () => [...new Set(trades.filter(t => ACTIVE.has(t.status) || Targets.pending(t)).map(t => t.symbol))],
       snapshot: () => ({ version: 1, settings: { ...config }, trades }) };
   }
   const api = { createModel, DEFAULTS, MAX_GAP_MS, CLOSED };

@@ -21,6 +21,11 @@ function setup(options={}){
 test('scans active USDT perpetuals with only 4H and 15M, fetching entries only after trend passes',async()=>{
   const {client,calls}=setup(),states=[];const result=await client.scan({onProgress:state=>states.push(state)});
   assert.equal(result.total,2);assert.equal(result.completed,2);assert.equal(result.trending,1);assert.equal(result.candidates.length,1);assert.equal(result.candidates[0].symbol,'BTCUSDT');
+  assert.equal(result.rankedMarkets.length,2);assert.equal(result.rankedMarkets[0].symbol,'ETHUSDT');
+  assert.equal(result.observations.length,2);
+  assert.equal(result.observations.find(o=>o.symbol==='BTCUSDT').status,'CANDIDATE');
+  assert.equal(result.observations.find(o=>o.symbol==='ETHUSDT').status,'NO_TREND');
+  assert.ok(Number.isFinite(result.observations.find(o=>o.symbol==='BTCUSDT').ma15m5));
   const klines=calls.filter(url=>url.pathname.endsWith('klines'));
   assert.equal(klines.length,3);assert.ok(klines.every(url=>['4h','15m'].includes(url.searchParams.get('interval'))));
   assert.ok(!klines.some(url=>url.searchParams.get('symbol')==='ETHUSDT'&&url.searchParams.get('interval')==='15m'));
@@ -43,7 +48,7 @@ test('aborted scans and exchange failures do not fabricate candidates',async()=>
   const aborted=new AbortController();aborted.abort();const {client,calls}=setup();
   await assert.rejects(client.scan({signal:aborted.signal}),{name:'AbortError'});assert.equal(calls.length,0);
   const broken=setup({fetch:async parsed=>({ok:true,status:200,json:async()=>parsed.pathname.endsWith('/time')?{serverTime:NOW}:parsed.pathname.endsWith('exchangeInfo')?exchange():parsed.pathname.endsWith('/ticker/24hr')?[{symbol:'BTCUSDT',quoteVolume:'10'},{symbol:'ETHUSDT',quoteVolume:'20'}]:[]})});
-  const result=await broken.client.scan();assert.equal(result.candidates.length,0);assert.equal(result.errors,2);
+  const result=await broken.client.scan();assert.equal(result.candidates.length,0);assert.equal(result.errors,2);assert.equal(result.observations.length,2);assert.ok(result.observations.every(o=>o.status==="ERROR"&&o.reason));
 });
 
 test('only the top 20 by numeric USDT turnover enter strategy scanning',async()=>{

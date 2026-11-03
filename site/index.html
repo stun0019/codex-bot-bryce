@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>策略掃描 · Codex Bot</title>
   <link rel="icon" type="image/svg+xml" href="favicon.svg?v=1">
-  <link rel="stylesheet" href="styles.css?v=paper-1">
+  <link rel="stylesheet" href="styles.css?v=tp-1">
 </head>
 <body data-page="strategy">
   <div id="appShell">
@@ -22,7 +22,7 @@
           <div class="list-head">
             <div><p class="strategy-kicker">24H 成交額 TOP20 · 4H 趨勢 ＋ 15M 進場</p><h1 id="scannerTitle">策略掃描 <span id="candidateCount">(0 / 0)</span></h1></div>
             <div class="list-actions">
-              <a class="paper-jump" href="#paperTitle">模擬交易 ↓</a>
+              <a class="paper-jump" href="#paperTitle">模擬交易 ↓</a><a class="paper-jump" href="#backtest">歷史回測 ↓</a>
               <select id="directionFilter" aria-label="策略方向"><option value="all">全部方向</option><option value="LONG">做多候選</option><option value="SHORT">做空候選</option></select>
               <button class="refresh-button" id="refreshBtn" type="button">更新</button>
             </div>
@@ -63,6 +63,8 @@
           <div><span>累積損益最大回撤</span><strong id="paperDrawdown">0.00</strong><small>USDT · 非帳戶淨值回撤</small></div>
           <div><span>最大連敗</span><strong id="paperStreak">0</strong><small>依淨損益計算</small></div>
         </div>
+        <h3>TP1／TP2／TP3 觸及率</h3><div id="paperTargets" class="target-stats" aria-label="前向模擬三段目標觸及率"></div>
+        <p class="lab-help">下方原有損益與費後勝率仍按原單一目標出場計算；三段目標為獨立觀察，不代表分批出場。</p>
         <details class="paper-assumptions"><summary>模擬成交與費用假設</summary>
           <div class="paper-settings"><label>單邊手續費 % <input id="paperFee" type="number" min="0" max="1" step="0.001" value="0.05"></label><label>單邊不利滑價 % <input id="paperSlippage" type="number" min="0" max="1" step="0.001" value="0.02"></label></div>
           <p id="paperSettingsMessage">預設值為模擬假設，並非你的帳戶實際費率；調整只影響新訊號。</p>
@@ -70,17 +72,66 @@
         </details>
         <div class="paper-toolbar"><span id="paperStatus" role="status">準備本機紀錄</span><select id="paperFilter" aria-label="模擬交易篩選"><option value="all">全部紀錄</option><option value="active">持倉／待報價</option><option value="closed">已平倉</option><option value="SKIPPED">略過</option><option value="REVIEW">待核對</option></select></div>
         <p id="paperBreakdown" class="paper-breakdown" role="status">尚無平倉樣本</p>
-        <div class="paper-table-wrap"><table class="paper-table"><thead><tr><th>幣種／訊號時間</th><th>方向</th><th>模擬進場</th><th>停損</th><th>止盈</th><th>數量</th><th>出場價</th><th>狀態</th><th>淨損益 USDT</th><th>說明／成交時間</th></tr></thead><tbody id="paperRows"></tbody></table></div>
+        <div class="paper-table-wrap"><table class="paper-table"><thead><tr><th>幣種／訊號時間</th><th>方向</th><th>模擬進場</th><th>停損</th><th>TP1／TP2／TP3</th><th>數量</th><th>出場價</th><th>狀態</th><th>淨損益 USDT</th><th>說明／成交時間</th></tr></thead><tbody id="paperRows"></tbody></table></div>
         <p class="strategy-note">此為啟用後累積的前向模擬，未重播歷史行情。關閉／重新開啟頁面、斷線或成交報價中斷超過 30 秒時，未完成交易會標成「待核對」，不計入勝率。候選到期不會結束已進場的模擬持倉。紀錄僅存在本瀏覽器／本網站，清除網站資料會遺失；可定期匯出。</p>
+      </section>
+
+      <section class="lab-panel signals-dashboard" aria-labelledby="backtestTitle" id="backtest">
+        <div class="list-head"><div><p class="strategy-kicker">歷史重播 · 每筆獨立測試 · 瀏覽器本機保存</p><h2 id="backtestTitle">策略回測</h2></div><button id="btExport" type="button" disabled>匯出報告 JSON</button></div>
+        <p class="lab-intro">選擇日期與合約，重播已收盤的 4H＋15M 策略。累積淨損益曲線代表獨立訊號結果，並非共用 70 USDT 保證金的帳戶資金曲線。回測不會建立前向模擬持倉。</p>
+        <form id="btForm" class="lab-form">
+          <label>開始日期（台北）<input id="btStart" type="date" required></label><label>結束日期（含當日）<input id="btEnd" type="date" required></label>
+          <label class="lab-wide">回測範圍<select id="btMode"><option value="fixed">固定選定合約（非歷史 Top20）</option><option value="recorded">已保存的當時 Top20（僅有快照時段）</option></select></label>
+          <label class="lab-wide" id="btSymbolsLabel">合約（最多 20 個，逗號分隔）<input id="btSymbols" value="BTCUSDT, ETHUSDT, SOLUSDT" autocomplete="off" spellcheck="false"></label>
+          <button type="button" id="btUseTop">填入目前 Top20</button>
+          <label>每筆參考資金 USDT<input id="btCapital" type="number" min="0.01" step="0.01" value="70" required></label>
+          <label>單邊手續費 %<input id="btFee" type="number" min="0" max="1" step="0.001" value="0.05" required></label>
+          <label>單邊不利滑價 %<input id="btSlip" type="number" min="0" max="1" step="0.001" value="0.02" required></label>
+          <label class="lab-wide">同根 K 雙觸價<select id="btAmbiguous"><option value="stop-first">保守：停損優先，計入績效</option><option value="review">標記不確定，不列入勝率</option></select></label>
+          <label class="lab-wide">止盈目標政策<select id="btTargetPolicy"><option value="signal">原規則：固定訊號目標，成交不足 2R 略過</option><option value="entry2r">研究變體：依模擬成交價重算至少 2R</option></select></label>
+          <div class="lab-form-actions"><button id="btRun" type="submit">執行歷史回測</button><button id="btCancel" type="button" disabled>取消</button></div>
+        </form>
+        <p class="lab-help">最多 90 天；費率為模擬假設。固定幣種模式使用目前交易精度，可能有選樣與生存者偏差。Top20 模式只使用在決策時間前已完成保存、且未超過 15 分鐘的快照，不推測缺失排名。</p>
+        <p id="btStatus" role="status" class="lab-status">尚未執行回測</p><progress id="btProgress" max="1" value="0" aria-label="歷史回測進度"></progress>
+        <div class="lab-report-picker"><label>本機已保存報告<select id="btReports"><option value="">尚無報告</option></select></label></div>
+        <div id="btReport" hidden>
+          <p id="btCoverage" class="lab-coverage"></p>
+          <div class="paper-stats lab-stats">
+            <div><span>已平倉／仍持倉</span><strong id="btClosed">—</strong></div><div><span>費後勝率</span><strong id="btWinRate">—</strong></div><div><span>累計淨損益 USDT</span><strong id="btNet">—</strong></div><div><span>最大回撤 USDT</span><strong id="btDrawdown">—</strong></div><div><span>獲利因子</span><strong id="btFactor">—</strong></div><div><span>最大連敗</span><strong id="btStreak">—</strong></div>
+          </div>
+          <h3>TP1／TP2／TP3 觸及率</h3><div id="btTargets" class="target-stats" aria-label="歷史回測三段目標觸及率"></div>
+          <p class="lab-help">損益與費後勝率沿用所選單一目標政策；三段目標皆以實際模擬成交價計算，獨立觀察至原停損或各自觸及。舊報告需重新執行回測才有完整三段資料。</p>
+          <p id="btSamples" class="paper-breakdown"></p><h3>獨立訊號累積淨損益</h3><div id="btCurve" class="lab-svg"></div>
+          <details class="paper-assumptions"><summary>本次資料範圍與成交假設</summary><ul id="btAssumptions"></ul></details>
+          <div class="lab-group-head"><h3>績效拆解</h3><select id="btGroup" aria-label="回測績效分組"><option value="symbol">依幣種</option><option value="month">依月份（台北）</option><option value="direction">依多空</option></select></div>
+          <div class="lab-table-wrap"><table class="lab-table"><thead><tr><th>分組</th><th>平倉</th><th>勝率</th><th>平均淨損益</th><th>累計淨損益</th><th>獲利因子</th><th>TP1 觸及率</th><th>TP2 觸及率</th><th>TP3 觸及率</th></tr></thead><tbody id="btGroupRows"></tbody></table></div>
+          <div class="lab-group-head"><h3>交易明細</h3><select id="btTradeFilter" aria-label="回測交易篩選"><option value="all">全部</option><option value="closed">已平倉</option><option value="OPEN">期末持倉</option><option value="SKIPPED">略過</option><option value="REVIEW">不確定</option></select></div>
+          <p id="btTradeCount" class="lab-help"></p><div class="lab-table-wrap"><table class="lab-table"><thead><tr><th>幣種／方向</th><th>進場時間（台北）</th><th>進場</th><th>停損</th><th>TP1／TP2／TP3</th><th>狀態</th><th>淨損益</th><th>圖表</th></tr></thead><tbody id="btTradeRows"></tbody></table></div>
+          <section id="btChartPanel" hidden class="lab-chart-panel" aria-labelledby="btChartTitle"><div class="lab-group-head"><h3 id="btChartTitle">交易圖表</h3><div class="lab-form-actions"><button id="bt15m" type="button" aria-pressed="true">15M</button><button id="bt4h" type="button" aria-pressed="false">4H</button><button id="btEarlier" type="button">← 較早</button><button id="btLater" type="button">較晚 →</button></div></div><p id="btChartInfo" class="lab-help"></p><div id="btCandles" class="lab-svg"></div><p id="btReadout" class="lab-help"></p><p class="lab-help">15M：MA5 藍／MA10 紫／MA20 黃；4H：MA20 黃。進出場標記為所在 K 棒；歷史 OHLC 不能還原精確盤中成交先後。</p></section>
+        </div>
+      </section>
+      <section class="lab-panel signals-dashboard" aria-labelledby="scanArchiveTitle">
+        <div class="list-head"><div><p class="strategy-kicker">完整 Top20 掃描快照 · 本機 IndexedDB</p><h2 id="scanArchiveTitle">掃描歷史</h2></div></div>
+        <p id="scanArchiveSummary" class="lab-help">讀取本機掃描紀錄</p><p id="scanArchiveError" class="lab-status" role="status"></p>
+        <label class="lab-record-picker">查看某次掃描<select id="scanArchivePicker"><option value="">尚無紀錄</option></select></label>
+        <div class="lab-table-wrap"><table class="lab-table"><thead><tr><th>排名</th><th>合約</th><th>當時 24H 成交額 USDT</th><th>4H 方向</th><th>判定結果</th><th>說明</th></tr></thead><tbody id="scanArchiveRows"></tbody></table></div>
+        <p class="lab-help">自新版啟用起，保存每輪排名、符合／不符合條件與資料錯誤。關閉頁面不會繼續掃描；舊版本未曾記錄的歷史時段無法自動補回。資料只存在本裝置／瀏覽器，清除網站資料會遺失。</p>
       </section>
 
     </main>
   </div>
-  <script src="strategy-engine.js?v=1"></script>
-  <script src="strategy-data.js?v=top20-1"></script>
+  <script src="strategy-engine.js?v=tp-1"></script>
+  <script src="strategy-data.js?v=tp-1"></script>
   <script src="price-feed.js?v=paper-1"></script>
-  <script src="paper-engine.js?v=1"></script>
-  <script src="paper-panel.js?v=1"></script>
-  <script src="strategy-scanner.js?v=paper-1"></script>
+  <script src="target-engine.js?v=1"></script>
+  <script src="target-view.js?v=1"></script>
+  <script src="paper-engine.js?v=tp-1"></script>
+  <script src="paper-panel.js?v=tp-1"></script>
+  <script src="bt-store.js?v=1"></script>
+  <script src="bt-engine.js?v=tp-1"></script>
+  <script src="bt-data.js?v=1"></script>
+  <script src="bt-charts.js?v=tp-1"></script>
+  <script src="bt-panel.js?v=tp-1"></script>
+  <script src="strategy-scanner.js?v=tp-1"></script>
 </body>
 </html>

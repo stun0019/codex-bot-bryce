@@ -39,7 +39,7 @@
     const subtitle = node("p", "strategy-subtitle", long ? "4H 多頭確認 · 15M 回踩完成" : "4H 空頭確認 · 15M 反彈完成");
     const prices = node("dl", "strategy-prices");
     prices.append(metric("進場參考", number(candidate.entry, candidate.tickSize)),
-      metric("停損", number(candidate.stopLoss, candidate.tickSize)), metric("目標", number(candidate.target, candidate.tickSize)));
+      metric("停損", number(candidate.stopLoss, candidate.tickSize)), ...Engine.targets(candidate.entry, candidate.stopLoss, candidate.direction, candidate.tickSize).map((target,index) => metric("TP" + (index + 1) + " · 1:" + (index + 2), target == null ? "無效價位" : number(target, candidate.tickSize))));
     const rr = Math.abs(candidate.target - candidate.entry) / Math.abs(candidate.entry - candidate.stopLoss);
     const foot = node("p", "strategy-foot", "價格／均線確認 · 預估 " + rr.toFixed(2).replace(/\.00$/, "") + "R · 等待執行");
     const risk = node("p", "strategy-risk", plan.ok ?
@@ -94,8 +94,10 @@
     status.textContent = "連接幣安"; status.dataset.state = "pending";
     progress.textContent = "讀取 24H 成交額 Top20 與已收盤 K 線"; meter.value = 0; meter.max = 1;
     render();
+    let scanState = null;
     try {
       const outcome = await client.scan({ capital, signal: currentController.signal, onProgress(state) {
+        scanState = state;
         offset = state.serverOffset;
         candidates = state.candidates;
         window.PaperTrading?.acceptCandidates(state.candidates, capital, Date.now() + offset);
@@ -106,6 +108,7 @@
         if (visibleCandidates().map(c => c.symbol + c.confirmedAt).join(",") !== lastVisibleKey) render();
       } });
       candidates = outcome.candidates; completed = true;
+      void window.ScanArchive?.save(outcome, capital);
       status.textContent = outcome.errors ? "掃描完成 · 部分資料不可用" : "掃描完成";
       status.dataset.state = outcome.errors ? "partial" : "live";
       updated.dateTime = new Date(Date.now() + offset).toISOString();
@@ -113,6 +116,7 @@
       nextScanAt = Math.floor(outcome.asOf / Engine.INTERVALS["15m"] + 1) * Engine.INTERVALS["15m"] + 3000;
       if (outcome.errors) console.info("Strategy scanner skipped unavailable data:", outcome.failures);
     } catch (error) {
+      void window.ScanArchive?.save(scanState || { asOf: Date.now() + offset, serverOffset: offset }, capital, error.message);
       candidates = []; // Do not present partial or failed scans as completed signals.
       status.textContent = error.retryAt ? "請求限流 · 等待重試" : error.name === "AbortError" ? "掃描已停止" : "連線失敗 · 等待重試";
       status.dataset.state = "error";

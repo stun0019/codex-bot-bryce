@@ -93,25 +93,32 @@
       if (!Number.isFinite(asOf) || asOf <= 0) throw new Error("幣安時間無效");
       const localAt = clock(), universe = await topMarkets(signal), candidates = [];
       const state = { total: universe.length, completed: 0, trending: 0, errors: 0, candidates, asOf,
-        serverOffset: asOf - localAt, symbols: universe.map(market => market.symbol), failures: [] };
+        serverOffset: asOf - localAt, symbols: universe.map(market => market.symbol), rankedMarkets: universe.map(market => ({ ...market })), observations: [], failures: [] };
       onProgress({ ...state });
       let cursor = 0, fatal = null;
       await Promise.all(Array.from({ length: Math.min(concurrency, universe.length) }, async () => {
         while (cursor < universe.length && !fatal) {
           if (signal?.aborted) { fatal = new DOMException("Aborted", "AbortError"); break; }
           const market = universe[cursor++];
+          const observation = { symbol: market.symbol, quoteVolume24h: market.quoteVolume24h, status: "NO_TREND", direction: null, reason: "4H 價格與 MA20 方向未同向" };
           try {
             const fourHour = await candles(market.symbol, "4h", asOf, signal);
-            if (Engine.trend(fourHour)) {
+            observation.price4h = fourHour.at(-1).close; observation.ma4h20 = Engine.ma(fourHour, 20);
+            observation.direction = Engine.trend(fourHour);
+            if (observation.direction) {
               state.trending++;
               const fifteen = await candles(market.symbol, "15m", asOf, signal);
+              observation.price15m = fifteen.at(-1).close; observation.ma15m5 = Engine.ma(fifteen, 5); observation.ma15m10 = Engine.ma(fifteen, 10); observation.ma15m20 = Engine.ma(fifteen, 20);
+              observation.status = "NO_ENTRY"; observation.reason = "15M 回踩／反彈或 MA5 收盤穿越未同時成立";
               const result = Engine.evaluate(market, fourHour, fifteen, asOf, capital);
-              if (result) { result.market = market; candidates.push(result); }
+              if (result) { result.market = market; candidates.push(result); observation.status = "CANDIDATE"; observation.reason = "4H 趨勢與 15M 進場條件成立"; }
             }
           } catch (error) {
+            observation.status = "ERROR"; observation.reason = error.message;
             if (error.name === "AbortError" || error.retryAt) fatal = error;
             else { state.errors++; if (state.failures.length < 10) state.failures.push({ symbol: market.symbol, message: error.message }); }
           }
+          state.observations.push(observation);
           state.completed++;
           onProgress({ ...state, candidates: [...candidates] });
         }

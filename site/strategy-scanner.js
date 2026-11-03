@@ -48,7 +48,7 @@
       "部位 " + number(plan.quantity, candidate.stepSize) + " · 估算風險 " + money(plan.risk) + " USDT · 目標獲利 " + money(plan.profit) + " USDT" : plan.reason);
     risk.dataset.state = plan.ok ? "ready" : "blocked";
     const details = node("details", "strategy-details");
-    details.append(node("summary", "", "檢視計算"));
+    details.append(node("summary", "", "詳細資訊"));
     const detailList = node("dl", "strategy-calculations");
     detailList.append(metric("4H MA20", number(candidate.ma4h20, candidate.tickSize)),
       metric("15M MA5", number(candidate.ma15m5, candidate.tickSize)),
@@ -56,9 +56,9 @@
       metric("15M 確認時間（台北）", time(candidate.confirmedAt)),
       metric("名目部位金額", plan.ok ? money(plan.notional) + " USDT" : "未達下單要求"),
       metric("每筆風險上限", money(capital * Engine.SETTINGS.riskFraction) + " USDT"));
-    details.append(detailList);
+    details.append(subtitle, foot, risk, detailList);
     const confirmed = node("p", "strategy-confirmed", "確認時間 " + time(candidate.confirmedAt) + " · BINANCE 永續");
-    result.append(head, subtitle, confirmed, prices, foot, risk, details);
+    result.append(head, confirmed, prices, details);
     return result;
   }
 

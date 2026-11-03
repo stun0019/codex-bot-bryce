@@ -124,3 +124,49 @@ body[data-page="strategy"] :focus-visible { outline:2px solid var(--yellow);outl
   .target-stats{grid-template-columns:1fr}.target-stat{display:grid;grid-template-columns:1fr auto;padding:14px;gap:7px}.target-stat strong{grid-column:2;grid-row:1/4;font-size:29px;align-self:center}.target-stat small{grid-column:1}.target-help{font-size:10px}.lab-form{padding:15px;gap:15px}.lab-form input,.lab-form select{font-size:11px!important}.lab-svg{overflow-x:auto}.lab-svg svg{min-width:600px}.desk-footer{font-size:9px;flex-wrap:wrap;line-height:1.8}
 }
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*::before,*::after{transition:none!important;animation:none!important}}
+
+/* Consistent card values and readable card labels. */
+body[data-page="strategy"] { --card-number-size:23px; }
+.strategy-card .strategy-prices { grid-template-columns:minmax(0,1fr)!important;gap:8px; }
+.strategy-card .strategy-prices>.strategy-metric { grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px; }
+.strategy-card .strategy-prices>.strategy-metric dt { font-size:14px;flex-shrink:0; }
+.strategy-card .strategy-prices>.strategy-metric dd,
+.desk-stat strong,.paper-stats strong,.target-stat strong { font-size:var(--card-number-size); }
+.strategy-card .strategy-prices>.strategy-metric dd { font-family:"Cascadia Code",Consolas,monospace;font-weight:550;line-height:1.4;margin:0;white-space:nowrap;overflow-wrap:normal; }
+.strategy-card .strategy-symbol { font-size:21px; }
+.strategy-card .strategy-badge { font-size:12px;padding:5px 8px; }
+.strategy-card .strategy-confirmed { font-size:12px;line-height:1.8;margin:13px 0 16px; }
+.strategy-card .strategy-details summary,.card-explanation summary { font-size:14px;min-height:26px;cursor:pointer; }
+.strategy-card .strategy-details :is(p,dt),.card-explanation :is(p,small) { font-size:14px;line-height:1.9; }
+.strategy-card .strategy-calculations { grid-template-columns:minmax(0,1fr);gap:13px; }
+.strategy-card .strategy-calculations dd { font-size:var(--card-number-size);line-height:1.6; }
+.strategy-card .strategy-calculations>.strategy-metric:nth-child(4) dd { font-size:14px; }
+.paper-table td,.paper-table td::before,.paper-table small,.paper-table .paper-badge { font-size:14px;line-height:1.6; }
+.paper-table td:first-child strong { font-size:21px; }.paper-table td:first-child small { font-size:12px; }
+.paper-table tr:not(.paper-empty)>td:nth-child(3),.paper-table tr:not(.paper-empty)>td:nth-child(4),
+.paper-table tr:not(.paper-empty)>td:nth-child(6),.paper-table tr:not(.paper-empty)>td:nth-child(7),.paper-table tr:not(.paper-empty)>td:nth-child(9) { font:550 var(--card-number-size)/1.4 "Cascadia Code",Consolas,monospace; }
+.paper-table tr:not(.paper-empty)>td:is(:nth-child(3),:nth-child(4),:nth-child(6),:nth-child(7),:nth-child(9)) { grid-column:1/-1;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:10px;background:#0b0e11;border-radius:7px;padding:12px; }
+.paper-table td::before { font-family:Inter,"Segoe UI","Microsoft JhengHei",system-ui,sans-serif;font-weight:400; }
+.paper-table tr:not(.paper-empty)>td:nth-child(9)>small { grid-column:1/-1;text-align:right; }
+.paper-table .target-detail { grid-template-columns:minmax(0,1fr);gap:8px; }
+.target-level,.paper-table .target-level { display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px; }
+.target-value { display:flex;align-items:center;gap:12px;min-width:0; }
+.target-caption,.paper-table .target-caption { font-size:14px;color:#a7b0bd; }
+.target-price,.paper-table .target-price { font:550 var(--card-number-size)/1.4 "Cascadia Code",Consolas,monospace;color:#eaecef;white-space:nowrap; }
+.target-level small,.paper-table .target-level small { font-size:13px;white-space:nowrap; }
+.paper-table .target-value { display:grid;grid-template-columns:35px minmax(0,1fr);gap:8px; }
+.target-level[data-state="HIT"] .target-price { color:var(--yellow); }
+.paper-table td:last-child::before { display:none; }
+.card-explanation { color:#a3adba; }.card-explanation summary { color:#b7bdc6; }
+.desk-stat>span,.paper-stats span,.target-stat>span { font-size:14px; }
+.desk-stat>small,.paper-stats small,.target-stat small { font-size:12px;line-height:1.7; }
+@media(max-width:700px){
+  .strategy-card{padding:18px 15px 14px}.strategy-card .strategy-prices>.strategy-metric{padding:11px 10px}.strategy-card .strategy-prices>.strategy-metric dt{font-size:13px}
+  .strategy-card .strategy-confirmed{font-size:12px}.strategy-card .strategy-symbol{font-size:20px}.strategy-card .strategy-badge{font-size:11px}
+  .desk-stat>span{font-size:12px;flex-wrap:wrap}.desk-stat>small{font-size:11px}.desk-stat strong,.paper-stats strong,.target-stat strong{font-size:var(--card-number-size)}
+  .paper-table tr{padding:16px 14px}.paper-table .target-level{gap:8px;padding:10px}.paper-table .target-caption{font-size:13px}.paper-table .target-level small{font-size:12px}
+}
+
+.paper-stats>div>small:not(#paperOpen) { display:none; }
+.paper-table .target-level .target-caption { font-size:14px; }
+body[data-page="strategy"] { min-width:0; } @media(max-width:360px){ .paper-table .target-level { flex-wrap:wrap; } .paper-table .target-value { flex:1 1 100%;display:flex;justify-content:space-between; } .paper-table .target-level small { margin-left:auto!important; } }

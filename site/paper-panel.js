@@ -72,6 +72,7 @@
       model.activeSymbols().length ? connection ? "成交報價追蹤中 · 本機保存" : "連接成交報價中" :
       model.settings.enabled ? "等待新的策略候選 · 本機保存" : "已暫停新增 · 原持倉繼續追蹤");
     status.dataset.state = storageMessage ? "error" : isLeader ? "live" : "pending";
+    const expanded = new Set([...table.querySelectorAll("tr[data-key]")].filter(row => row.querySelector("details")?.open).map(row => row.dataset.key));
     table.replaceChildren();
     const visible = [...model.trades].reverse().filter(trade => filter.value === "all" ||
       (filter.value === "closed" ? Engine.CLOSED.has(trade.status) : filter.value === "active" ?
@@ -83,14 +84,16 @@
       td.colSpan = 10; row.append(td); table.append(row); return;
     }
     for (const trade of visible) {
-      const row = node("tr", ""); row.dataset.status = trade.status;
+      const row = node("tr", ""); row.dataset.status = trade.status; row.dataset.key = trade.id;
       const identity = cell("幣種／訊號", ""); identity.append(node("strong", "", trade.symbol), node("small", "", time(trade.confirmedAt)));
       let pnl = Engine.CLOSED.has(trade.status) ? trade.netPnl : trade.status === "OPEN" ? model.netAt(trade, trade.lastPrice).net : null;
       const pnlCell = cell("淨損益 USDT", signed(pnl), "paper-pnl"); pnlCell.dataset.tone = pnl == null ? "neutral" : pnl >= 0 ? "positive" : "negative";
       if (trade.status === "OPEN") pnlCell.append(node("small", "", "未實現估算"));
       const stateCell = cell("狀態", ""); stateCell.append(node("span", "paper-badge", labels[trade.status]));
-      const reason = cell("說明／成交時間", ""); reason.append(node("span", "", trade.reason + " · 原出場目標 " + price(trade.target)),
+      const reason = cell("", ""), explanation = node("details", "card-explanation");
+      explanation.append(node("summary", "", "詳細資訊"), node("p", "", trade.reason + " · 原出場目標 " + price(trade.target)),
         node("small", "", trade.closedAt ? "出場 " + time(trade.closedAt) : trade.openedAt ? "進場 " + time(trade.openedAt) : "發現 " + time(trade.detectedAt)));
+      explanation.open = expanded.has(trade.id); reason.append(explanation);
       const targetCell = cell("TP1／TP2／TP3", ""); targetCell.append(window.TargetView.detail(trade));
       if (window.TargetEngine.pending(trade)) stateCell.append(node("small", "", "三段目標繼續追蹤"));
       row.append(identity, cell("方向", trade.direction === "LONG" ? "做多" : "做空"), cell("模擬進場", price(trade.entry)),

@@ -7,7 +7,8 @@
     const box=el("div",null,"target-detail");
     if(!trade.targets){box.append(el("small",trade.entry?"舊紀錄：無三段追蹤資料":"尚未成交"));return box;}
     for(const target of trade.targets){const row=el("div",null,"target-level");row.dataset.state=target.status;
-      row.append(el("span",target.label+" · "+price(target.price)),el("small",labels[target.status]));
+      const identity=el("span",null,"target-value");identity.append(el("span",target.label,"target-caption"),el("strong",price(target.price),"target-price"));
+      row.append(identity,el("small",labels[target.status]));
       if(target.at)row.title=new Date(target.at).toLocaleString("zh-TW",{timeZone:"Asia/Taipei",hour12:false});box.append(row);}
     return box;
   }

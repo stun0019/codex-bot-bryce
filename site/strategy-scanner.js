@@ -35,7 +35,9 @@
     result.dataset.direction = candidate.direction;
     result.dataset.key = candidate.symbol + ":" + candidate.confirmedAt;
     const head = node("div", "strategy-card-head");
-    head.append(node("h2", "strategy-symbol", candidate.symbol), node("span", "strategy-badge", long ? "做多候選" : "做空候選"));
+    const identity = node("div", "strategy-card-identity");
+    identity.append(node("span", "strategy-token", candidate.symbol.replace(/^1000/, "").slice(0, 1)), node("h2", "strategy-symbol", candidate.symbol));
+    head.append(identity, node("span", "strategy-badge", long ? "做多候選" : "做空候選"));
     const subtitle = node("p", "strategy-subtitle", long ? "4H 多頭確認 · 15M 回踩完成" : "4H 空頭確認 · 15M 反彈完成");
     const prices = node("dl", "strategy-prices");
     prices.append(metric("進場參考", number(candidate.entry, candidate.tickSize)),
@@ -55,7 +57,8 @@
       metric("名目部位金額", plan.ok ? money(plan.notional) + " USDT" : "未達下單要求"),
       metric("每筆風險上限", money(capital * Engine.SETTINGS.riskFraction) + " USDT"));
     details.append(detailList);
-    result.append(head, subtitle, prices, foot, risk, details);
+    const confirmed = node("p", "strategy-confirmed", "確認時間 " + time(candidate.confirmedAt) + " · BINANCE 永續");
+    result.append(head, subtitle, confirmed, prices, foot, risk, details);
     return result;
   }
 
@@ -70,6 +73,7 @@
     $("riskBudget").textContent = money(capital * Engine.SETTINGS.riskFraction) + " USDT";
     const visible = visibleCandidates(), all = candidates.filter(c => c.expiresAt > Date.now() + offset);
     count.textContent = "(" + visible.length + " / " + all.length + ")";
+    window.DashboardUI?.setCandidates(all.length);
     lastVisibleKey = visible.map(c => c.symbol + c.confirmedAt).join(",");
     list.replaceChildren();
     if (!visible.length) {

@@ -52,6 +52,7 @@
   function render() {
     if (!dirty) return; dirty = false;
     const stats = model.stats();
+    window.DashboardUI?.updateSummary(stats);
     window.TargetView.stats($("paperTargets"), model.trades);
     $("paperClosed").textContent = String(stats.closed);
     $("paperOpen").textContent = stats.open + " 持倉 · " + stats.waiting + " 待報價 · " + model.trades.filter(t => window.TargetEngine.pending(t)).length + " 筆三段追蹤";

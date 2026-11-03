@@ -3,26 +3,46 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#000000">
+  <meta name="theme-color" content="#0b0e11">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>策略掃描 · Codex Bot</title>
-  <link rel="icon" type="image/svg+xml" href="favicon.svg?v=1">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg?v=yellow-1">
   <link rel="stylesheet" href="styles.css?v=tp-1">
+  <link rel="stylesheet" href="dashboard.css?v=1">
 </head>
 <body data-page="strategy">
   <div id="appShell">
     <header class="app-header">
-      <a class="brand" href="#signals"><span class="brand-emoji" aria-hidden="true">👾</span><span class="brand-wordmark"><strong>CODEX BOT</strong></span></a>
-      <span class="strategy-exchange">BINANCE · USDT 永續合約</span>
+      <a class="brand" href="#overview" aria-label="CODEX BOT 策略總覽"><span class="desk-mark"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4v16M12 2v20M19 6v12"/><rect x="3" y="7" width="4" height="7" rx="1"/><rect x="10" y="9" width="4" height="8" rx="1"/><rect x="17" y="9" width="4" height="5" rx="1"/></svg></span><span class="brand-wordmark"><strong>CODEX BOT</strong><small>STRATEGY TERMINAL</small></span></a>
+      <div class="desk-header-right"><span class="strategy-exchange"><i class="desk-exchange-dot"></i>BINANCE · USDT 永續</span><a class="desk-header-link" href="#scans"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7a9 9 0 1 1-1 7M4 2v5h5m3 0v6l4 2"/></svg>掃描紀錄</a></div>
     </header>
-    <main class="terminal-shell">
-      <section id="signals" class="signals-dashboard" aria-labelledby="scannerTitle">
+    <main id="overview" class="terminal-shell">
+      <div class="desk-intro"><div><p class="desk-eyebrow">BINANCE FUTURES · STRATEGY DESK</p><h2>交易策略工作台<span class="desk-version">4H + 15M</span></h2><p>順勢掃描，讓每一筆決策都有依據。</p></div><span class="desk-local"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="3"/><path d="M10 17h4"/></svg>瀏覽器本機紀錄</span></div>
+      <section id="overviewSummary" class="desk-overview" aria-label="前向模擬績效總覽">
+        <div class="desk-overview-head"><span><i></i> 前向模擬績效</span><span>僅計本機累積 · 獨立訊號</span></div>
+        <div class="desk-stats">
+          <div class="desk-stat"><span>累計淨損益 <small>USDT</small></span><strong id="deskNet">0.00</strong><small id="deskClosed">0 筆已平倉</small></div>
+          <div class="desk-stat"><span>費後勝率</span><strong id="deskWin">—</strong><small id="deskWins">0 勝 / 0 敗</small></div>
+          <div class="desk-stat"><span>TP1 觸及率 <em>2R</em></span><strong id="deskTP1">—</strong><small id="deskTPCount1">0 / 0 筆已判定</small></div>
+          <div class="desk-stat"><span>TP2 觸及率 <em>3R</em></span><strong id="deskTP2">—</strong><small id="deskTPCount2">0 / 0 筆已判定</small></div>
+          <div class="desk-stat"><span>TP3 觸及率 <em>4R</em></span><strong id="deskTP3">—</strong><small id="deskTPCount3">0 / 0 筆已判定</small></div>
+          <div class="desk-stat"><span>模擬持倉</span><strong id="deskTracking">0</strong><small id="deskWaiting">0 待報價 · 0 待核對</small></div>
+        </div>
+        <p class="desk-stats-note">觸及率以「已觸及＋先停損」為分母，追蹤中與待核對另計；獨立訊號損益並非共用帳戶淨值。</p>
+      </section>
+      <nav class="desk-nav" aria-label="主要功能">
+        <a href="#signals" data-desk-link="signals" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 17V7m8 13V4m8 13V7M1 10h6m2 5h6m2-5h6"/></svg>策略掃描<span id="deskCandidateCount">0</span></a>
+        <a href="#paperTitle" data-desk-link="paper"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="18" height="15" rx="2"/><path d="M8 6V3h8v3M3 12h18m-11 0v3h4v-3"/></svg>模擬交易<span id="deskPaperCount">0</span></a>
+        <a href="#backtest" data-desk-link="backtest"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4v16h17M7 15l4-5 4 3 5-7"/></svg>歷史回測</a>
+        <a href="#scans" data-desk-link="scans"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7a9 9 0 1 1-1 7M4 2v5h5m3 0v6l4 2"/></svg>掃描歷史</a>
+      </nav>
+
+      <section id="signals" data-desk-panel="signals" class="signals-dashboard" aria-labelledby="scannerTitle">
         <div id="signalsView" class="view-panel">
           <div class="list-head">
             <div><p class="strategy-kicker">24H 成交額 TOP20 · 4H 趨勢 ＋ 15M 進場</p><h1 id="scannerTitle">策略掃描 <span id="candidateCount">(0 / 0)</span></h1></div>
             <div class="list-actions">
-              <a class="paper-jump" href="#paperTitle">模擬交易 ↓</a><a class="paper-jump" href="#backtest">歷史回測 ↓</a>
               <select id="directionFilter" aria-label="策略方向"><option value="all">全部方向</option><option value="LONG">做多候選</option><option value="SHORT">做空候選</option></select>
               <button class="refresh-button" id="refreshBtn" type="button">更新</button>
             </div>
@@ -49,7 +69,7 @@
           </details>
         </div>
       </section>
-      <section class="paper-panel signals-dashboard" aria-labelledby="paperTitle">
+      <section id="paper" data-desk-panel="paper" class="paper-panel signals-dashboard" aria-labelledby="paperTitle">
         <div class="list-head">
           <div><p class="strategy-kicker">前向測試 · 訊號獨立模擬 · 本機紀錄</p><h2 id="paperTitle">模擬交易 <span id="paperCount">(0 / 0)</span></h2></div>
           <div class="list-actions"><button id="paperPause" type="button" disabled>暫停新增</button><button id="paperExport" type="button">匯出紀錄</button></div>
@@ -64,7 +84,7 @@
           <div><span>最大連敗</span><strong id="paperStreak">0</strong><small>依淨損益計算</small></div>
         </div>
         <h3>TP1／TP2／TP3 觸及率</h3><div id="paperTargets" class="target-stats" aria-label="前向模擬三段目標觸及率"></div>
-        <p class="lab-help">下方原有損益與費後勝率仍按原單一目標出場計算；三段目標為獨立觀察，不代表分批出場。</p>
+        <p class="lab-help">原有損益與費後勝率仍按原單一目標出場計算；三段目標為獨立觀察，不代表分批出場。</p>
         <details class="paper-assumptions"><summary>模擬成交與費用假設</summary>
           <div class="paper-settings"><label>單邊手續費 % <input id="paperFee" type="number" min="0" max="1" step="0.001" value="0.05"></label><label>單邊不利滑價 % <input id="paperSlippage" type="number" min="0" max="1" step="0.001" value="0.02"></label></div>
           <p id="paperSettingsMessage">預設值為模擬假設，並非你的帳戶實際費率；調整只影響新訊號。</p>
@@ -76,7 +96,7 @@
         <p class="strategy-note">此為啟用後累積的前向模擬，未重播歷史行情。關閉／重新開啟頁面、斷線或成交報價中斷超過 30 秒時，未完成交易會標成「待核對」，不計入勝率。候選到期不會結束已進場的模擬持倉。紀錄僅存在本瀏覽器／本網站，清除網站資料會遺失；可定期匯出。</p>
       </section>
 
-      <section class="lab-panel signals-dashboard" aria-labelledby="backtestTitle" id="backtest">
+      <section class="lab-panel signals-dashboard" aria-labelledby="backtestTitle" id="backtest" data-desk-panel="backtest">
         <div class="list-head"><div><p class="strategy-kicker">歷史重播 · 每筆獨立測試 · 瀏覽器本機保存</p><h2 id="backtestTitle">策略回測</h2></div><button id="btExport" type="button" disabled>匯出報告 JSON</button></div>
         <p class="lab-intro">選擇日期與合約，重播已收盤的 4H＋15M 策略。累積淨損益曲線代表獨立訊號結果，並非共用 70 USDT 保證金的帳戶資金曲線。回測不會建立前向模擬持倉。</p>
         <form id="btForm" class="lab-form">
@@ -110,7 +130,7 @@
           <section id="btChartPanel" hidden class="lab-chart-panel" aria-labelledby="btChartTitle"><div class="lab-group-head"><h3 id="btChartTitle">交易圖表</h3><div class="lab-form-actions"><button id="bt15m" type="button" aria-pressed="true">15M</button><button id="bt4h" type="button" aria-pressed="false">4H</button><button id="btEarlier" type="button">← 較早</button><button id="btLater" type="button">較晚 →</button></div></div><p id="btChartInfo" class="lab-help"></p><div id="btCandles" class="lab-svg"></div><p id="btReadout" class="lab-help"></p><p class="lab-help">15M：MA5 藍／MA10 紫／MA20 黃；4H：MA20 黃。進出場標記為所在 K 棒；歷史 OHLC 不能還原精確盤中成交先後。</p></section>
         </div>
       </section>
-      <section class="lab-panel signals-dashboard" aria-labelledby="scanArchiveTitle">
+      <section id="scans" data-desk-panel="scans" class="lab-panel signals-dashboard" aria-labelledby="scanArchiveTitle">
         <div class="list-head"><div><p class="strategy-kicker">完整 Top20 掃描快照 · 本機 IndexedDB</p><h2 id="scanArchiveTitle">掃描歷史</h2></div></div>
         <p id="scanArchiveSummary" class="lab-help">讀取本機掃描紀錄</p><p id="scanArchiveError" class="lab-status" role="status"></p>
         <label class="lab-record-picker">查看某次掃描<select id="scanArchivePicker"><option value="">尚無紀錄</option></select></label>
@@ -118,6 +138,7 @@
         <p class="lab-help">自新版啟用起，保存每輪排名、符合／不符合條件與資料錯誤。關閉頁面不會繼續掃描；舊版本未曾記錄的歷史時段無法自動補回。資料只存在本裝置／瀏覽器，清除網站資料會遺失。</p>
       </section>
 
+      <footer class="desk-footer"><span>CODEX BOT / STRATEGY DESK</span><span>BINANCE USDT 永續 · 4H + 15M · 瀏覽器本機保存</span></footer>
     </main>
   </div>
   <script src="strategy-engine.js?v=tp-1"></script>
@@ -126,12 +147,13 @@
   <script src="target-engine.js?v=1"></script>
   <script src="target-view.js?v=1"></script>
   <script src="paper-engine.js?v=tp-1"></script>
-  <script src="paper-panel.js?v=tp-1"></script>
+  <script src="dashboard-ui.js?v=1"></script>
+  <script src="paper-panel.js?v=yellow-1"></script>
   <script src="bt-store.js?v=1"></script>
   <script src="bt-engine.js?v=tp-1"></script>
   <script src="bt-data.js?v=1"></script>
   <script src="bt-charts.js?v=tp-1"></script>
   <script src="bt-panel.js?v=tp-1"></script>
-  <script src="strategy-scanner.js?v=tp-1"></script>
+  <script src="strategy-scanner.js?v=yellow-1"></script>
 </body>
 </html>

@@ -15,6 +15,7 @@
     return {entry,stopLoss,target:targets[0],targets,rewardRisks:targets.map(t=>Math.abs(t-entry)/distance)};
   }
   function valid(candidate){
+    const bos=root.BosEngine||(typeof require==="function"?require("./bos-engine.js"):null);if(bos?.isVersion(candidate?.strategyVersion))return bos.valid(candidate);
     try{
       const p=PROFILES[candidate.profileId],f=candidate.fib,d=E.INTERVALS[p?.low],h=E.INTERVALS[p?.high],long=candidate.direction==="LONG";
       if(candidate.strategyVersion!==VERSION||candidate.targetMode!=="FIB"||candidate.entryType!=="LIMIT_FIB"||!p||!f||f.version!==2||f.entryLevel!==ENTRY_LEVEL||!Array.isArray(f.levels)||f.levels.length!==4||f.levels.some((v,i)=>v!==LEVELS[i])||!Array.isArray(candidate.exitFractions)||candidate.exitFractions.length!==4||candidate.exitFractions.some((v,i)=>v!==[.2,.3,.3,.2][i]))return false;
@@ -112,6 +113,6 @@
     for(const bar of lower){while(h<higher.length&&higher[h].closeTime<=bar.closeTime)analyzer.pushHigh(higher[h++]);if(h)result=analyzer.pushLow(bar,market,capital);}
     return result;
   }
-  const api={VERSION,ENTRY_LEVEL,LEVELS,PROFILES,prices,valid,createAnalyzer,analyze,isVersion:v=>v===VERSION};
+  const api={VERSION,ENTRY_LEVEL,LEVELS,PROFILES,prices,valid,createAnalyzer,analyze,isVersion:v=>v===VERSION||["sma83-ema200-bos-15m5m-v1","ema20-60-bos-dual-v1"].includes(v)};
   if(typeof module!=="undefined"&&module.exports)module.exports=api;root.FibEngine=api;
 })(typeof window!=="undefined"?window:globalThis);

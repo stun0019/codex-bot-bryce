@@ -23,7 +23,7 @@
     const ratio=previous?.volume>0&&Number.isFinite(last?.volume)&&last.volume>=0?last.volume/previous.volume:null;
     return {enabled:true,rsi:value,volumeRatio:ratio,at:last?last.closeTime+1:null,matches:value!=null&&ratio!=null&&ratio>=3&&(direction==="LONG"?value<30:direction==="SHORT"&&value>70)};
   }
-  const PROFILES=Object.freeze({"4h15m":{id:"4h15m",label:"4H＋15M",high:"4h",low:"15m"},"1h5m":{id:"1h5m",label:"1H＋5M",high:"1h",low:"5m"}});
+  const PROFILES=Object.freeze({"15m5m":{id:"15m5m",label:"15M＋5M",high:"15m",low:"5m"},"4h15m":{id:"4h15m",label:"4H＋15M",high:"4h",low:"15m"},"1h5m":{id:"1h5m",label:"1H＋5M",high:"1h",low:"5m"}});
   const RULES=Object.freeze({pivotLeft:2,pivotRight:2,atrPeriod:14,displacement:1.2,obLookback:6,zoneMaxBars:80});
   function profile(id="4h15m"){if(!PROFILES[id])throw new Error("未知 SMC 時間框架");return PROFILES[id];}
   const copy=value=>JSON.parse(JSON.stringify(value));

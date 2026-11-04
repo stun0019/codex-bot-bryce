@@ -7,9 +7,9 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>策略掃描 · Codex Bot</title>
-  <link rel="icon" type="image/svg+xml" href="favicon.svg?v=yellow-1">
-  <link rel="stylesheet" href="styles.css?v=tp-1">
-  <link rel="stylesheet" href="dashboard.css?v=fib-zone-qtr-1">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg?v=dual-1">
+  <link rel="stylesheet" href="styles.css?v=dual-1">
+  <link rel="stylesheet" href="dashboard.css?v=dual-1"><link rel="stylesheet" href="single-page.css?v=dual-1">
 </head>
 <body data-page="strategy">
   <div id="appShell">
@@ -18,7 +18,7 @@
       <div class="desk-header-right"><span class="strategy-exchange"><i class="desk-exchange-dot"></i>BINANCE · USDT 永續</span></div>
     </header>
     <main id="overview" class="terminal-shell">
-      <div class="desk-intro"><div><p class="desk-eyebrow">BINANCE FUTURES · STRATEGY DESK</p><h2>交易策略工作台<span class="desk-version">EMA＋Fib · 4H＋15M / 1H＋5M</span></h2><p>順勢掃描，讓每一筆決策都有依據。</p></div><span class="desk-local"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="3"/><path d="M10 17h4"/></svg>瀏覽器本機紀錄</span></div>
+      <div class="desk-intro"><div><p class="desk-eyebrow">BINANCE FUTURES · STRATEGY DESK</p><h2>交易訊號<span class="desk-version">EMA20 · EMA60 · VOL ｜1H＋5M / 4H＋15M</span></h2><p>順勢掃描，讓每一筆決策都有依據。</p></div><span class="desk-local"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="3"/><path d="M10 17h4"/></svg>瀏覽器本機紀錄</span></div>
       <div id="accountHomeSlot"></div>
       <section id="sharedAccount" class="shared-account" aria-labelledby="accountTitle">
         <div class="account-heading"><h3 id="accountTitle">共用模擬帳戶</h3><span id="accountStatus" role="status">準備共用帳戶</span></div>
@@ -30,31 +30,15 @@
         </div>
         <details class="account-details"><summary>風控及帳戶起算方式</summary><p>單筆、全部持倉與待成交、同方向停損風險上限均為5%，名目部位上限50x；不對沖抵銷風險。未實現獲利不增加可開倉資金，未實現虧損會扣除可用額度。這是本機模擬估算，不是幣安帳戶實際可用保證金。</p><p id="accountMarginDetail"></p><p id="accountStarted"></p><p>舊已平倉損益不回加初始餘額；既有持倉保留原計畫並納入風險。持倉核對中或超限時停止新增；超限先取消待成交計畫，不自動改寫既有持倉。清空會重設帳戶至初始資金。</p></details>
       </section>
-      <section id="overviewSummary" class="desk-overview" aria-label="前向模擬績效總覽">
-        <div class="desk-overview-head"><span><i></i> Fib 前向模擬績效</span><span>歷史訊號統計 · 帳戶淨值另列</span></div>
-        <div class="desk-stats">
-          <div class="desk-stat"><span>累計淨損益 <small>USDT</small></span><strong id="deskNet">0.00</strong><small id="deskClosed">0 筆已平倉</small></div>
-          <div class="desk-stat"><span>費後勝率</span><strong id="deskWin">—</strong><small id="deskWins">0 勝 / 0 敗</small></div>
-          <div class="desk-stat"><span>TP1 觸及率 <em>Fib 0</em></span><strong id="deskTP1">—</strong><small id="deskTPCount1">0 / 0 筆已判定</small></div>
-          <div class="desk-stat"><span>TP2 觸及率 <em>Fib −0.27</em></span><strong id="deskTP2">—</strong><small id="deskTPCount2">0 / 0 筆已判定</small></div>
-          <div class="desk-stat"><span>TP3 觸及率 <em>Fib −0.618</em></span><strong id="deskTP3">—</strong><small id="deskTPCount3">0 / 0 筆已判定</small></div>
-          <div class="desk-stat"><span>TP4 觸及率 <em>Fib −1</em></span><strong id="deskTP4">—</strong><small id="deskTPCount4">0 / 0 筆已判定</small></div>
-          <div class="desk-stat"><span>模擬持倉</span><strong id="deskTracking">0</strong><small id="deskWaiting">0 待報價 · 0 待核對</small></div>
-        </div>
-        <p class="desk-stats-note">觸及率以「已觸及＋先出場」為分母，追蹤中與待核對另計；獨立訊號損益並非共用帳戶淨值。</p>
-      </section>
-      <nav class="desk-nav" aria-label="主要功能">
-        <a href="#signals" data-desk-link="signals" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 17V7m8 13V4m8 13V7M1 10h6m2 5h6m2-5h6"/></svg>策略掃描<span id="deskCandidateCount">0</span></a>
-        <a href="#paperTitle" data-desk-link="paper"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="18" height="15" rx="2"/><path d="M8 6V3h8v3M3 12h18m-11 0v3h4v-3"/></svg>模擬交易<span id="deskPaperCount">0</span></a>
-        <a href="#backtestTitle" data-desk-link="backtest"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4v16h16M7 15l4-5 4 3 5-8"/></svg>歷史回測</a>
-      </nav>
+
+
 
       <section id="signals" data-desk-panel="signals" class="signals-dashboard" aria-labelledby="scannerTitle">
         <div id="signalsView" class="view-panel">
           <div class="list-head">
-            <div><p class="strategy-kicker">24H 成交額 TOP20 · EMA趨勢＋區域破結構＋Fib</p><h1 id="scannerTitle">策略掃描 <span id="candidateCount">(0 / 0)</span></h1></div>
+            <div><p class="strategy-kicker">24H 成交額 TOP20 · 大框架EMA20／60 · 小框架BOS回抽</p><h1 id="scannerTitle">掃描 <span id="candidateCount">(0 / 0)</span></h1></div>
             <div class="list-actions">
-              <select id="timeframeFilter" aria-label="EMA時間框架"><option value="all">全部週期</option><option value="4h15m">4H＋15M</option><option value="1h5m">1H＋5M</option></select><select id="directionFilter" aria-label="策略方向"><option value="all">全部方向</option><option value="LONG">做多候選</option><option value="SHORT">做空候選</option></select>
+              <select id="timeframeFilter" hidden><option value="all">全部週期</option></select><select id="directionFilter" aria-label="策略方向"><option value="all">全部方向</option><option value="LONG">做多候選</option><option value="SHORT">做空候選</option></select>
               <button class="refresh-button" id="refreshBtn" type="button">更新</button>
               <label class="entry-filter-toggle"><input id="rsiEntryFilter" type="checkbox"><span>RSI＋放量過濾</span></label>
             </div>
@@ -70,24 +54,21 @@
           <p id="scanProgress" class="strategy-progress" role="status">等待幣安資料</p>
           <p id="candidateRecordStatus" class="lab-help" role="status"></p>
           <div id="strategyList" class="strategy-list" aria-live="off"></div>
-          <p class="strategy-note">每輪依 24H USDT 成交額選取前 20 個合約。僅使用兩套各自已收盤的K線；每5分鐘更新。先觸高框架區域，再由小框架收盤破結構、確認新極值，卡片以Fib 0.715作限價進場參考，需新成交報價觸價才算成交。卡片與模擬共用含費用、停損滑價及分批限制的預留計畫；未計資金費率與強平。候選不會自動下單。</p>
-          <details class="strategy-rules">
-            <summary>策略條件與資金管理</summary>
-            <ul><li>4H＋15M、1H＋5M獨立：大框架EMA20＜EMA60＜EMA200只空，鏡像只多；其餘觀望。</li><li>大框架左右各2根收盤確認轉折。壓力區為轉折高點K的實體上緣至最高價；支撐區為最低價至實體下緣。區域先成立，後續才允許觸區；高框架收盤越過遠端則失效。</li><li>空單先進壓力區，再等小框架收盤跌破已確認前低L0；從觸區後、突破時已確認的反向上漲K前高H，連到突破後已確認新低L1，多單鏡像。所有轉折左右各2根確認。</li><li>L1確認後預掛Fib 0.715，直接等新成交觸價，不再加觸價後確認；0.5不進場。L1確認前已碰0.715則略過，不回填歷史成交。</li><li>停損在Fib 1外1tick；TP1／2／3／4為Fib 0／−0.27／−0.618／−1。TP1含估算費用與滑價不足2R不開倉。</li><li>TP1出原始20%、TP2出30%、TP3出30%、TP4出剩餘20%。每達一個TP，剩餘部位回撤該TP就全出；同一觸價及重複同價報價不立即全出。</li><li>觸區後等破結構、破結構後等新極值、計畫確認後等進場，各最多1根大框架時間。進場前創新極值則重新等L1，區域或趨勢失效則取消；進場後價位凍結。</li><li>可選RSI＋放量過濾：小框架多RSI＜30、空＞70，量≥前根3倍。初始200USDT，單筆／總／同向風險均最多5%，名目最多50x。</li></ul>
-          </details>
+
+          <details class="strategy-rules"><summary>策略與成交規則</summary><p>大框架EMA20＞EMA60只多，EMA20＜EMA60只空。左右各2根確認支撐／壓力；同向支撐／壓力尚未失效才找機會。5M 收盤突破已確認前高／前低，量高於前20根均量；12根內回抽突破價並收回同方向，確認收盤價作限價參考，有效1根5M，不補歷史成交。</p><p>停損：回抽及確認K極值外1tick。Fib以BOS前反向轉折為1，突破至回抽確認前推進極值為0，四個目標為0／−0.27／−0.618／−1。TP1費後不足2R不建立部位。20%／30%／30%／20%出場，回撤上一個已達TP出清。</p><p>初始200 USDT，單筆及全部持倉含待成交風險最多5%，50x名目上限。使用公開行情估算成交，未連接實際下單；資料只存在本機。舊已進場持倉沿原規則追蹤，舊待成交停止，新策略績效獨立計算。</p></details>
         </div>
       </section>
       <section id="paper" data-desk-panel="paper" class="paper-panel signals-dashboard" aria-labelledby="paperTitle">
         <div class="list-head">
-          <div><p class="strategy-kicker">前向測試 · 共用帳戶風控 · 本機紀錄</p><h2 id="paperTitle">模擬交易 <span id="paperCount">(0 / 0)</span></h2></div>
+          <div><p class="strategy-kicker">1H＋5M / 4H＋15M · 本機保存</p><h2 id="paperTitle">交易紀錄 <span id="paperCount">(0 / 0)</span></h2></div>
           <div class="list-actions"><button id="paperPause" type="button" disabled>暫停新增</button><button id="paperClear" type="button" disabled>清空</button><button id="paperRecover" type="button" disabled>重新核對</button><button id="paperExport" type="button">匯出紀錄</button></div>
         </div>
         <div class="paper-summary-folds">
-          <details class="paper-summary-fold"><summary>帳戶與風控說明</summary><div class="paper-fold-content"><div id="paperAccountSlot"></div>        <p class="paper-intro">策略掃描的所有Fib確認候選自動顯示在此。以Fib 0.715為限價參考，等待新成交觸價才進場；未取得風控額度的候選列為未進場並說明原因。兩套週期共用帳戶，合計停損風險與同方向風險上限均為5%；待成交先預留保證金與費用，卡片顯示同一份預留數量。成交前會因帳戶狀態改變重新核驗，失敗顯示原因。上方帳戶資訊是本期淨值，下面保留歷史訊號統計。</p>
-<p class="lab-help">累積盈虧以本期起算帳戶淨值計算，包含已實現與未實現損益，並非獨立訊號損益相加後除以本金；持倉核對中使用最後可確認估值。</p></div></details>
+          <details class="paper-summary-fold"><summary>帳戶與風控說明</summary><div class="paper-fold-content"><div id="paperAccountSlot"></div>        <p class="paper-intro">帳戶包含舊持倉風險；目前策略只建立1H＋5M / 4H＋15M訊號。新候選經共用風控後，等新成交觸及確認價才進場。</p>
+<p class="lab-help">上方累積盈虧＝所選策略的費後已實現與可確認未實現損益÷初始資金。預設僅計新版；持倉待核對時顯示「—」。帳戶餘額與可用風險仍包含舊持倉，不重設或刪除舊紀錄。</p></div></details>
           <details class="paper-summary-fold"><summary>詳細績效與計算方式</summary><div class="paper-fold-content">        <div class="paper-stats" aria-label="模擬交易績效">
           <div><span>已平倉</span><strong id="paperClosed">0</strong><small id="paperOpen">0 持倉 · 0 待報價</small></div>
-          <div><span>平倉淨獲利勝率</span><strong id="paperWinRate">—</strong><small>僅計連續追蹤的已平倉樣本</small></div>
+          <div><span>平倉淨獲利勝率</span><strong id="paperWinRate">—</strong><small>計入連續追蹤與補查確認的已平倉樣本</small></div>
           <div><span>累計淨損益 USDT</span><strong id="paperNet">0.00</strong><small>已扣模擬手續費與滑價</small></div>
           <div><span>平均每筆淨損益</span><strong id="paperAverage">—</strong><small>USDT／已平倉</small></div>
           <div><span>累積損益最大回撤</span><strong id="paperDrawdown">0.00</strong><small>USDT · 非帳戶淨值回撤</small></div>
@@ -98,44 +79,37 @@
         <details class="paper-assumptions"><summary>費用與成交假設</summary>
           <div class="paper-settings"><label>單邊手續費 % <input id="paperFee" type="number" min="0" max="1" step="0.001" value="0.05"></label><label>單邊不利滑價 % <input id="paperSlippage" type="number" min="0" max="1" step="0.001" value="0.02"></label></div>
           <p id="paperSettingsMessage">預設值為模擬假設，並非你的帳戶實際費率；調整只影響新訊號。</p>
-          <p>進場使用Fib 0.715限價，止盈分四次、原停損或TP回撤保護價出清剩餘部位；出場按觸發報價加不利滑價估算。費後盈虧比可能低於 2R；跳價也可能使實際模擬損失高於原預算。未計資金費率與委託簿深度。</p>
+          <p>進場使用回抽確認收盤價限價，止盈分四次、原停損或TP回撤保護價出清剩餘部位；出場按觸發報價加不利滑價估算。費後盈虧比可能低於 2R；跳價也可能使實際模擬損失高於原預算。未計資金費率與委託簿深度。</p>
         </details>
 <p class="lab-help">策略勝率依下方週期篩選，只計已平倉且費後淨獲利的樣本。TP觸及率分母為已觸及＋先出場，未進場、追蹤中、核對中與待核對不列入；TP4為新Fib最後出場目標，舊策略沿用原規則。</p></div></details>
         </div>
         <div id="paperSummary" class="paper-summary-grid" aria-label="模擬交易績效摘要"></div>
-        <div class="paper-toolbar"><span id="paperStatus" role="status">準備本機紀錄</span><select id="paperTimeframe" aria-label="模擬交易策略週期"><option value="fib">EMA＋Fib・全部週期</option><option value="all">全部（含舊策略）</option><option value="fib:4h15m">Fib · 4H＋15M</option><option value="fib:1h5m">Fib · 1H＋5M</option><option value="pre-fib">舊策略</option></select><select id="paperFilter" aria-label="模擬交易篩選"><option value="all">全部紀錄</option><option value="active">持倉／待報價</option><option value="closed">已平倉</option><option value="NOT_ENTERED">未進場候選</option><option value="SKIPPED">已取消／略過</option><option value="RECOVERING">核對中</option><option value="REVIEW">待核對</option></select></div>
+        <div class="paper-toolbar"><span id="paperStatus" role="status">準備本機紀錄</span><select id="paperTimeframe" aria-label="紀錄策略"><option value="current">目前策略</option><option value="all">全部紀錄（含舊策略）</option></select><select id="paperFilter" aria-label="模擬交易篩選"><option value="all">全部紀錄</option><option value="active">持倉／待報價</option><option value="closed">已平倉</option><option value="NOT_ENTERED">未進場候選</option><option value="SKIPPED">已取消／略過</option><option value="RECOVERING">核對中</option><option value="REVIEW">待核對</option></select></div>
         <p id="paperRecoverySummary" class="paper-breakdown" role="status"></p>
         <p id="paperBreakdown" class="paper-breakdown" role="status">尚無平倉樣本</p>
-        <div class="paper-table-wrap"><table class="paper-table"><thead><tr><th>幣種／訊號時間</th><th>方向</th><th>模擬進場</th><th>停損</th><th>TP1／TP2／TP3／TP4</th><th>數量</th><th>出場價</th><th>狀態</th><th>淨損益 USDT</th><th>說明／成交時間</th></tr></thead><tbody id="paperRows"></tbody></table></div>
-        <p class="strategy-note">此為啟用後累積的前向模擬，補查僅用於核對已存在的持倉。新版持倉在刷新、斷線或超過 30 秒無報價後，會保存檢查點並自動補查聚合成交，確認後恢復追蹤或補記出場。資料缺漏、超過補查範圍或舊版未保存成交編號者才列為待核對。候選到期不會結束已進場的模擬持倉。紀錄僅存在本瀏覽器／本網站，清除網站資料會遺失；可定期匯出。</p>
+        <div id="signalCards" class="signal-cards" aria-live="polite"></div><div class="paper-table-wrap" hidden><table class="paper-table"><thead><tr><th>幣種／訊號時間</th><th>方向</th><th>模擬進場</th><th>停損</th><th>TP1／TP2／TP3／TP4</th><th>數量</th><th>出場價</th><th>狀態</th><th>淨損益 USDT</th><th>說明／成交時間</th></tr></thead><tbody id="paperRows"></tbody></table></div>
+
       </section>
 
-      <section id="backtest" data-desk-panel="backtest" class="signals-dashboard" aria-labelledby="backtestTitle" hidden>
-        <div class="list-head"><div><p class="strategy-kicker">2026 · EMA＋區域破結構＋FIB · 共用帳戶</p><h2 id="backtestTitle">歷史回測</h2></div><div class="quarter-tabs" role="group" aria-label="回測季度"><button type="button" data-quarter="1" aria-pressed="true">Q1</button><button type="button" data-quarter="2" aria-pressed="false">Q2</button><button type="button" data-quarter="3" aria-pressed="false">Q3</button></div></div>
-        <p id="quarterStatus" class="lab-help" role="status">載入2026 Q1回測報告</p>
-        <div class="paper-summary-folds"><details class="paper-summary-fold"><summary>回測範圍與成交假設</summary><div class="paper-fold-content"><p id="quarterScope"></p><ul id="quarterAssumptions"></ul></div></details><details class="paper-summary-fold"><summary>帳戶淨值與詳細績效</summary><div class="paper-fold-content"><div id="quarterAccount" class="account-grid"></div></div></details></div>
-        <div id="quarterSummary" class="paper-summary-grid" aria-label="季度回測績效摘要"></div>
-        <div class="quarter-panel"><h3>兩套週期績效</h3><div class="paper-table-wrap"><table class="quarter-profile-table"><thead><tr><th>週期</th><th>已平倉</th><th>費後勝率</th><th>已實現淨損益</th></tr></thead><tbody id="quarterProfiles"></tbody></table></div><p class="lab-help">兩套週期共同使用同一帳戶；下列淨損益為已平倉交易歸屬，帳戶盈虧另含季末持倉與費用。</p></div>
-        <details class="paper-assumptions"><summary>交易紀錄與目標觸及統計</summary><div id="quarterTargets" class="target-stats"></div><div class="paper-table-wrap"><table class="quarter-trade-table"><thead><tr><th>幣種／週期</th><th>進場時間</th><th>方向</th><th>狀態</th><th>淨損益 USDT</th></tr></thead><tbody id="quarterTrades"></tbody></table></div></details>
-      </section>
-      <footer class="desk-footer"><span>CODEX BOT / STRATEGY DESK</span><span>BINANCE USDT 永續 · EMA＋Fib 雙時間框架 · 瀏覽器本機保存</span></footer>
+
+      <footer class="desk-footer"><span>CODEX BOT / STRATEGY DESK</span><span>BINANCE USDT 永續 · 1H＋5M / 4H＋15M · 瀏覽器本機保存</span></footer>
     </main>
   </div>
-  <script src="strategy-engine.js?v=fib-zone-qtr-1"></script>
-  <script src="account-risk.js?v=fib-zone-qtr-1"></script>
-  <script src="smc-engine.js?v=macd-2"></script>
-  <script src="ema-engine.js?v=1"></script>
-  <script src="fib-engine.js?v=zone-1"></script>
-  <script src="strategy-data.js?v=fib-zone-qtr-1"></script>
-  <script src="price-feed.js?v=recovery-1"></script>
-  <script src="target-engine.js?v=fib-zone-qtr-1"></script>
-  <script src="target-view.js?v=fib-zone-qtr-1"></script>
-  <script src="paper-engine.js?v=fib-zone-qtr-1"></script>
-  <script src="dashboard-ui.js?v=fib-zone-qtr-1"></script>
-  <script src="paper-recovery.js?v=1"></script>
-  <script src="candidate-records.js?v=fib-zone-qtr-1"></script>
-  <script src="paper-panel.js?v=fib-zone-qtr-1"></script>
-  <script src="strategy-scanner.js?v=fib-zone-qtr-1"></script>
-  <script src="quarter-panel.js?v=1"></script>
+  <script src="strategy-engine.js?v=dual-1"></script>
+  <script src="account-risk.js?v=dual-1"></script>
+  <script src="smc-engine.js?v=dual-1"></script>
+  <script src="ema-engine.js?v=dual-1"></script>
+  <script src="bos-legacy.js?v=dual-1"></script><script src="bos-engine.js?v=dual-1"></script><script src="fib-engine.js?v=dual-1"></script>
+  <script src="strategy-data.js?v=dual-1"></script>
+  <script src="price-feed.js?v=dual-1"></script>
+  <script src="target-engine.js?v=dual-1"></script>
+  <script src="target-view.js?v=dual-1"></script>
+  <script src="paper-engine.js?v=dual-1"></script>
+  <script src="single-page.js?v=dual-1"></script>
+  <script src="paper-recovery.js?v=dual-1"></script>
+  <script src="candidate-records.js?v=dual-1"></script>
+  <script src="paper-panel.js?v=dual-1"></script>
+  <script src="strategy-scanner.js?v=dual-1"></script>
+
 </body>
 </html>

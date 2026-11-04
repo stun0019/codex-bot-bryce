@@ -2,7 +2,7 @@
   "use strict";
   const BASE = "https://fapi.binance.com";
   const Engine = root.StrategyEngine || (typeof require === "function" ? require("./strategy-engine.js") : null);
-  const Signal = root.FibEngine || (typeof require === "function" ? require("./fib-engine.js") : null);
+  const Signal = root.BosEngine || (typeof require === "function" ? require("./bos-engine.js") : null);
   function createClient({ fetcher = root.fetch.bind(root), intervalMs = 250, concurrency = 3,
       clock = () => Date.now(), sleep = (ms, signal) => new Promise((resolve, reject) => {
         const abort = () => { clearTimeout(timer); reject(new DOMException("Aborted", "AbortError")); };
@@ -94,14 +94,14 @@
       if (!Number.isFinite(asOf) || asOf <= 0) throw new Error("幣安時間無效");
       const localAt = clock(), universe = await topMarkets(signal), candidates = [], profiles = Object.values(Signal.PROFILES);
       const tasks = universe.flatMap(market => profiles.map(profile => ({ market, profile })));
-      const state = { strategyVersion: Signal.VERSION, filters: {emaPeriods:[20,60,200],fibEntry:.715,entryPolicy:"zone-bos-limit",rsiFilter:!!rsiFilter}, total: tasks.length, completed: 0, trending: 0, errors: 0, candidates, asOf,
+      const state = { strategyVersion: Signal.VERSION, filters: {emaPeriods:[20,60],entryPolicy:"bos-retest-confirm",rsiFilter:!!rsiFilter}, total: tasks.length, completed: 0, trending: 0, errors: 0, candidates, asOf,
         serverOffset: asOf - localAt, symbols: universe.map(m => m.symbol), rankedMarkets: universe.map(m => ({ ...m })), observations: [], failures: [] };
       onProgress({ ...state }); let cursor = 0, fatal = null;
       await Promise.all(Array.from({ length: Math.min(concurrency, tasks.length) }, async () => {
         while (cursor < tasks.length && !fatal) {
           if (signal?.aborted) { fatal = new DOMException("Aborted", "AbortError"); break; }
           const { market, profile } = tasks[cursor++];
-          const observation = { symbol: market.symbol, profileId: profile.id, timeframeLabel: profile.label, quoteVolume24h: market.quoteVolume24h, status: "WAIT_PULLBACK", direction: null, reason: "等待 EMA 排列與 Fib 觸區確認" };
+          const observation = { symbol: market.symbol, profileId: profile.id, timeframeLabel: profile.label, quoteVolume24h: market.quoteVolume24h, status: "WAIT_PULLBACK", direction: null, reason: "等待15M趨勢與5M放量BOS回抽" };
           try {
             const higher = await candles(market.symbol, profile.high, asOf, signal);
             const lower = await candles(market.symbol, profile.low, asOf, signal);

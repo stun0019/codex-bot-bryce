@@ -74,6 +74,12 @@
   function cell(label, value, className = "") {
     const element = node("td", className, value); element.dataset.label = label; return element;
   }
+  function summaryAccount(account,cohort){
+    if(!account)return null;
+    const pnl=cohort.reduce((s,t)=>s+(Engine.CLOSED.has(t.status)?t.netPnl:t.status==='OPEN'&&!t.recovery?.pending&&Number.isFinite(t.lastPrice)?model.netAt(t,t.lastPrice).net:0),0);
+    const unknown=cohort.some(t=>t.recovery?.pending||t.status==='REVIEW'||t.status==='OPEN'&&!Number.isFinite(t.lastPrice));
+    return {...account,periodPnl:pnl,returnPct:unknown?null:100*pnl/account.initialCapital};
+  }
   function render() {
     if (!dirty) return; dirty = false;
     const account = model.accountState(now());
@@ -86,15 +92,15 @@
     $("accountStarted").textContent = account ? "起算 " + time(account.startedAt) + " · 初始餘額 " + money(account.initialCapital) + " · 起算淨值 " + money(account.startingEquity) + " USDT；既有持倉已納入風控。" : "";
     window.dispatchEvent(new Event("paper-account-update"));
     const profileId=$("paperTimeframe").value,fib=window.FibEngine.isVersion;
-    const match=t=>profileId==="all"||(profileId==="fib"?fib(t.strategyVersion):profileId==="pre-fib"?!fib(t.strategyVersion):profileId.startsWith("fib:")&&fib(t.strategyVersion)&&t.profileId===profileId.slice(4));
+    const match=t=>profileId==="current"?t.strategyVersion==="ema20-60-bos-dual-v1":profileId==="all"||(profileId==="fib"?fib(t.strategyVersion):profileId==="pre-fib"?!fib(t.strategyVersion):profileId.startsWith("fib:")&&fib(t.strategyVersion)&&t.profileId===profileId.slice(4));
     const records=window.CandidateRecords.create({getItem:key=>localStorage.getItem(key),setItem:(key,value)=>localStorage.setItem(key,value)}).list();
     const currentKeys=new Set(latest.committed?latest.candidates.map(Engine.key):[]),plans=model.previewCandidates(latest.committed?latest.candidates:[],latest.capital,now());
     const display=window.CandidateRecords.paperRows(records,model.trades,{now:now(),currentKeys,plans});
     const cohort=model.trades.filter(match),displayCohort=display.filter(match);
     const stats = model.stats(profileId);
-    window.DashboardUI?.updateSummary(model.stats("fib"));
+    window.DashboardUI?.updateSummary(model.stats("all"));
     window.TargetView.stats($("paperTargets"), cohort, {targetMode:profileId==="fib"||profileId.startsWith("fib:")?"FIB":undefined});
-    window.TargetView.paperSummary($("paperSummary"), {account,stats,trades:cohort});
+    window.TargetView.paperSummary($("paperSummary"), {account: summaryAccount(account,cohort),stats,trades:cohort});
     $("paperClosed").textContent = String(stats.closed);
     $("paperOpen").textContent = stats.open + " 持倉 · " + stats.waiting + " 待報價 · " + stats.recovering + " 核對中 · " + model.trades.filter(t => window.TargetEngine.pending(t)).length + " 筆目標追蹤";
     $("paperWinRate").textContent = stats.winRate == null ? "—" : stats.winRate.toFixed(1) + "%";
@@ -118,10 +124,11 @@
     status.dataset.state = storageMessage ? "error" : isLeader ? "live" : "pending";
     const expanded = new Set([...table.querySelectorAll("tr[data-key]")].filter(row => row.querySelector("details")?.open).map(row => row.dataset.key));
     table.replaceChildren();
-    const visible = [...displayCohort].reverse().filter(trade => filter.value === "all" || (filter.value === "RECOVERING" && trade.recovery?.pending) || (filter.value === "REVIEW" && trade.targets?.some(t => t.status === "REVIEW")) ||
+    const visible = [...displayCohort].reverse().filter(t=>$("directionFilter").value==="all"||t.direction===$("directionFilter").value).filter(trade => filter.value === "all" || (filter.value === "RECOVERING" && trade.recovery?.pending) || (filter.value === "REVIEW" && trade.targets?.some(t => t.status === "REVIEW")) ||
       (filter.value === "closed" ? Engine.CLOSED.has(trade.status) : filter.value === "active" ?
         trade.status === "OPEN" || trade.status === "WAITING_PRICE" || window.TargetEngine.pending(trade) : trade.status === filter.value));
     $("paperCount").textContent = "(" + visible.length + " / " + display.length + ")";
+    window.SinglePage?.renderCards(visible,model,now());
     if (!visible.length) {
       const row = node("tr", "paper-empty"), td = node("td", "", display.length ? "此篩選下沒有紀錄。" :
         "尚無模擬交易。新候選出現後會自動記錄；累積平倉樣本後才計算勝率。");
@@ -165,6 +172,7 @@
       await navigator.locks.request("codex-paper-tracker-v1", { ifAvailable: true }, async lock => {
         acquiring = false; if (!lock) return;
         load(true); if (storageBlocked) return;
+        for(const t of model.trades)if(t.status==="WAITING_PRICE"&&t.strategyVersion!=="ema20-60-bos-dual-v1")model.cancelOrder(t,"舊策略已停用，取消未成交計畫",now());
         isLeader = true; currentGeneration = null;
         model.suspend("重新開啟頁面，離線期間觸價順序需核對", now()); changed = dirty = true; save(true);
         recoveryController = new AbortController();
@@ -214,6 +222,7 @@
     $("paperSettingsMessage").textContent = "已更新，僅套用於之後新增的訊號。"; changed = dirty = true; save(true);
   }
   feeInput.addEventListener("change", updateAssumptions); slipInput.addEventListener("change", updateAssumptions);
+  $("directionFilter").addEventListener("change",()=>{dirty=true;render();});
   filter.addEventListener("change", () => { dirty = true; render(); });
   $("paperTimeframe").addEventListener("change", () => { dirty = true; render(); });
   $("paperExport").addEventListener("click", () => {

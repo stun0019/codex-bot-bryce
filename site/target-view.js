@@ -27,7 +27,7 @@
       box.append(el("span",label,"paper-summary-label"),amount,el("small",caption,"paper-summary-caption"));container.append(box);
     };
     container.replaceChildren();
-    card("累積盈虧",percent(account?.returnPct,true),account?"帳戶淨變動 "+(account.periodPnl>0?"+":"")+money(account.periodPnl)+" USDT":"等待帳戶初始化",account?.returnPct<0?"negative":"yellow","本期帳戶淨值相對起算淨值的變動，含未實現損益；不隨策略週期篩選改變");
+    card("累積盈虧",percent(account?.returnPct,true),account?"策略淨損益 "+(account.periodPnl>0?"+":"")+money(account.periodPnl)+" USDT":"等待帳戶初始化",account?.returnPct<0?"negative":"yellow","目前所選策略費後損益相對初始資金；包含可確認的未實現損益");
     card("策略勝率",percent(performance.winRate),performance.wins+" 勝 / "+performance.losses+" 敗 · "+performance.closed+" 筆","positive","依目前週期篩選，費後淨獲利的已平倉筆數÷全部已平倉筆數");
     for(const level of data.levels)card(level.label+" 觸及率",percent(level.rate),level.hits+" / "+level.resolved+" 筆已判定","positive",level.label+" 已觸及÷（已觸及＋先出場）；"+(level.label==="TP4"?"新Fib出最後20%；舊策略僅觀察":"未進場、追蹤中與待核對不列入分母"));
   }

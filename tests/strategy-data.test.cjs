@@ -18,22 +18,21 @@ function setup(options={}){
   };
   return {client:createClient({fetcher,intervalMs:0,clock:()=>now,sleep:async()=>{}}),calls,setNow:value=>now=value};
 }
-test('scans both independent EMA timeframe pairs for every Top20 contract',async()=>{
+test('scans only 15M and 5M for every Top20 contract',async()=>{
  const {client,calls}=setup(),states=[];const result=await client.scan({onProgress:state=>states.push(state)});
- assert.equal(result.total,4);assert.equal(result.completed,4);assert.equal(result.candidates.length,0);assert.equal(result.errors,0);
- assert.equal(result.rankedMarkets.length,2);assert.equal(result.observations.length,4);
- assert.deepEqual([...new Set(result.observations.map(o=>o.profileId))].sort(),['1h5m','4h15m']);
- const klines=calls.filter(u=>u.pathname.endsWith('klines'));assert.equal(klines.length,8);
- assert.deepEqual([...new Set(klines.map(u=>u.searchParams.get('interval')))].sort(),['15m','1h','4h','5m'].sort());
- assert.ok(klines.every(u=>Number(u.searchParams.get('endTime'))===NOW-1));assert.ok(states.length>=5);
+ assert.equal(result.total,2);assert.equal(result.completed,2);assert.equal(result.candidates.length,0);assert.equal(result.errors,0);
+ assert.equal(result.rankedMarkets.length,2);assert.equal(result.observations.length,2);
+ assert.deepEqual([...new Set(result.observations.map(o=>o.profileId))].sort(),['15m5m']);
+ const klines=calls.filter(u=>u.pathname.endsWith('klines'));assert.equal(klines.length,4);
+ assert.deepEqual([...new Set(klines.map(u=>u.searchParams.get('interval')))].sort(),['15m','5m'].sort());
+ assert.ok(klines.every(u=>Number(u.searchParams.get('endTime'))===NOW-1));assert.ok(states.length>=3);
 });
 
-test('data client emits Fib-confirmation candidates and applies the optional entry filter using each lower interval',async()=>{
- const {fixture,NOW:time}=require('./fib-fixtures.cjs'),EMA=require('../site/fib-engine.js');
- const pairs={...Object.fromEntries(['4h15m','1h5m'].flatMap(id=>{const f=fixture(id);return [[f.profile.high,f.higher],[f.profile.low,f.lower]];}))};
+test('data client emits the single BOS strategy from closed 15M and 5M candles',async()=>{
+ const {fixture,NOW:time}=require('./bos-fixtures.cjs'),B=require('../site/bos-engine.js'),f=fixture();
+ const pairs={'15m':f.higher,'5m':f.lower};
  const client=createClient({intervalMs:0,clock:()=>time,fetcher:async url=>{const u=new URL(url);return{ok:true,status:200,json:async()=>u.pathname.endsWith('/time')?{serverTime:time}:u.pathname.endsWith('exchangeInfo')?exchange(['BTCUSDT']):u.pathname.endsWith('/ticker/24hr')?[{symbol:'BTCUSDT',quoteVolume:'10000'}]:pairs[u.searchParams.get('interval')]};}});
- const plain=await client.scan();assert.equal(plain.errors,0);assert.equal(plain.candidates.length,2);assert.ok(plain.candidates.every(c=>c.strategyVersion===EMA.VERSION));assert.deepEqual(plain.filters.emaPeriods,[20,60,200]);
- const filtered=await client.scan({rsiFilter:true});assert.equal(filtered.errors,0);assert.equal(filtered.candidates.length,0);assert.ok(filtered.observations.every(o=>o.status==='FILTERED'));
+ const r=await client.scan();assert.equal(r.errors,0);assert.equal(r.candidates.length,1);assert.equal(r.candidates[0].strategyVersion,B.VERSION);assert.equal(r.filters.smaPeriod,83);assert.equal(r.filters.emaPeriod,200);
 });
 
 test('caches each timeframe only until its own next candle boundary',async()=>{
@@ -53,7 +52,7 @@ test('aborted scans and exchange failures do not fabricate candidates',async()=>
   const aborted=new AbortController();aborted.abort();const {client,calls}=setup();
   await assert.rejects(client.scan({signal:aborted.signal}),{name:'AbortError'});assert.equal(calls.length,0);
   const broken=setup({fetch:async parsed=>({ok:true,status:200,json:async()=>parsed.pathname.endsWith('/time')?{serverTime:NOW}:parsed.pathname.endsWith('exchangeInfo')?exchange():parsed.pathname.endsWith('/ticker/24hr')?[{symbol:'BTCUSDT',quoteVolume:'10'},{symbol:'ETHUSDT',quoteVolume:'20'}]:[]})});
-  const result=await broken.client.scan();assert.equal(result.candidates.length,0);assert.equal(result.errors,4);assert.equal(result.observations.length,4);assert.ok(result.observations.every(o=>o.status==="ERROR"&&o.reason));
+  const result=await broken.client.scan();assert.equal(result.candidates.length,0);assert.equal(result.errors,2);assert.equal(result.observations.length,2);assert.ok(result.observations.every(o=>o.status==="ERROR"&&o.reason));
 });
 
 test('only the top 20 by numeric USDT turnover enter strategy scanning',async()=>{
@@ -74,7 +73,7 @@ test('only the top 20 by numeric USDT turnover enter strategy scanning',async()=
       rows(parsed.searchParams.get('interval'),'LONG',NOW)};
   }});
   const result=await client.scan();
-  assert.equal(result.total,40);assert.equal(result.completed,40);assert.equal(result.errors,0);
+  assert.equal(result.total,20);assert.equal(result.completed,20);assert.equal(result.errors,0);
   assert.deepEqual(result.symbols,[...names].reverse().slice(0,20));
   const requested=new Set(calls.filter(url=>url.pathname.endsWith('/klines')).map(url=>url.searchParams.get('symbol')));
   assert.equal(requested.size,20);assert.ok(!requested.has('COIN4USDT'));

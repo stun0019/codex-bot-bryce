@@ -106,11 +106,11 @@
         const trade = { id: key(candidate), symbol: candidate.symbol, direction: candidate.direction,
           confirmedAt: candidate.confirmedAt, detectedAt: now, expiresAt: candidate.expiresAt,
           referenceEntry: candidate.entry, stopLoss: candidate.stopLoss, target: candidate.target,
-          ...(candidate.strategyVersion ? { strategyVersion: candidate.strategyVersion, profileId: candidate.profileId, timeframeLabel: Smc.profile(candidate.profileId).label, setupId: candidate.setupId, entryType: fib(candidate)?"LIMIT_FIB":ema(candidate)?"LIMIT_CONFIRM":"LIMIT_OB", strategyName:fib(candidate)?"EMA＋Fib":ema(candidate)?"EMA":"SMC", ...(fib(candidate)?{targetMode:"FIB",fib:JSON.parse(JSON.stringify(candidate.fib)),exitFractions:[.2,.3,.3,.2]}:{}), emaTrend: candidate.emaTrend || null, pullback: candidate.pullback || null, partialExit: true, targetCount: 4, riskFraction: .05, highZone: candidate.highZone, entryZone: candidate.entryZone, shiftLevel: candidate.shiftLevel, macd: candidate.macd || null, entryFilter: candidate.entryFilter || {enabled:false}, plannedTargets: [...candidate.targets] } : {}),
+          ...(candidate.strategyVersion ? { strategyVersion: candidate.strategyVersion, profileId: candidate.profileId, timeframeLabel: Smc.profile(candidate.profileId).label, setupId: candidate.setupId, entryType: fib(candidate)?"LIMIT_FIB":ema(candidate)?"LIMIT_CONFIRM":"LIMIT_OB", strategyName:candidate.strategyName|| (fib(candidate)?"EMA＋Fib":ema(candidate)?"EMA":"SMC"), ...(fib(candidate)?{targetMode:"FIB",fib:JSON.parse(JSON.stringify(candidate.fib)),exitFractions:[.2,.3,.3,.2]}:{}), emaTrend: candidate.emaTrend || null, pullback: candidate.pullback || null, partialExit: true, targetCount: 4, riskFraction: .05, highZone: candidate.highZone, entryZone: candidate.entryZone, shiftLevel: candidate.shiftLevel, macd: candidate.macd || null, entryFilter: candidate.entryFilter || {enabled:false}, plannedTargets: [...candidate.targets] } : {}),
           ...(reservedPlan ? { accountId: account.id, reservedPlan: { ...reservedPlan } } : {}),
           tickSize: candidate.tickSize, capital: reservedPlan ? reservedPlan.capital : capital, budget: reservedPlan ? reservedPlan.budget : capital * (candidate.strategyVersion ? .05 : 0.03),
           market: { ...candidate.market }, feeRate: config.feeRate, slippage: config.slippage,
-          status: "WAITING_PRICE", reason: fib(candidate)?"區域與收盤破結構已確認，等待Fib 0.715新成交觸價":ema(candidate) ? "EMA確認，等待新成交報價到確認收盤參考價限價成交" : candidate.strategyVersion ? "等待新成交報價回測 OB 中線；不回填歷史成交" : "等待訊號產生後的新成交報價" };
+          status: "WAITING_PRICE", reason: candidate.profileId==="15m5m"?"BOS回抽已確認，等待新成交到確認價；不回填歷史成交":fib(candidate)?"區域與收盤破結構已確認，等待Fib 0.715新成交觸價":ema(candidate) ? "EMA確認，等待新成交報價到確認收盤參考價限價成交" : candidate.strategyVersion ? "等待新成交報價回測 OB 中線；不回填歷史成交" : "等待訊號產生後的新成交報價" };
         trades.push(trade); seen.add(trade.id); added++;
       }
       return added;
@@ -389,7 +389,7 @@
       return changed;
     }
     function stats(profileId = "all") {
-      const cohort = trades.filter(t => profileId === "all" || (profileId === "pre-fib" ? !fib(t) : profileId === "fib" ? fib(t) : profileId.startsWith("fib:") ? fib(t)&&t.profileId===profileId.slice(4) : profileId === "ema" ? ema(t) : profileId === "previous" ? !ema(t)&&!fib(t) : profileId.startsWith("ema:") ? ema(t) && t.profileId === profileId.slice(4) : profileId === "smc" ? smc(t) : profileId === "legacy" ? !smc(t) : smc(t) && t.profileId === profileId));
+      const cohort = trades.filter(t => profileId === "current" ? t.strategyVersion === "ema20-60-bos-dual-v1" : profileId === "all" || (profileId === "pre-fib" ? !fib(t) : profileId === "fib" ? fib(t) : profileId.startsWith("fib:") ? fib(t)&&t.profileId===profileId.slice(4) : profileId === "ema" ? ema(t) : profileId === "previous" ? !ema(t)&&!fib(t) : profileId.startsWith("ema:") ? ema(t) && t.profileId === profileId.slice(4) : profileId === "smc" ? smc(t) : profileId === "legacy" ? !smc(t) : smc(t) && t.profileId === profileId));
       const closed = cohort.filter(trade => CLOSED.has(trade.status)).sort((a,b) => a.closedAt - b.closedAt || a.id.localeCompare(b.id));
       const wins = closed.filter(trade => trade.netPnl > 0).length;
       let pnl = 0, peak = 0, maxDrawdown = 0, streak = 0, maxLossStreak = 0;

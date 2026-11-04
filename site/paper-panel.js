@@ -133,7 +133,17 @@
       let pnl = Engine.CLOSED.has(trade.status) ? trade.netPnl : trade.status === "OPEN" && !trade.recovery?.pending ? model.netAt(trade, trade.lastPrice).net : null;
       const pnlCell = cell("淨損益 USDT", signed(pnl), "paper-pnl"); pnlCell.dataset.tone = pnl == null ? "neutral" : pnl >= 0 ? "positive" : "negative";
       if (trade.status === "OPEN" && !trade.recovery?.pending) pnlCell.append(node("small", "", "未實現估算"));
-      const stateCell = cell("狀態", ""); stateCell.append(node("span", "paper-badge", trade.recovery?.pending && trade.status === "OPEN" ? "核對中" : labels[trade.status]));
+      const stateCell = cell("狀態", ""), statusLine=node("div","paper-status-line");
+      statusLine.append(node("span", "paper-badge", trade.recovery?.pending && trade.status === "OPEN" ? "核對中" : labels[trade.status]));
+      if(trade.status==="WAITING_PRICE"){
+        const quote=trade.checkpoint,age=now()-quote?.at;
+        const fresh=Number.isFinite(quote?.price)&&quote.price>0&&Number.isFinite(age)&&age>=0&&age<=Engine.MAX_GAP_MS;
+        const current=node("span","paper-current-price");current.dataset.state=fresh?"live":"pending";
+        current.append(node("small","","現價"),node("strong","",fresh?price(quote.price):"—"));
+        current.title=fresh?"Binance 最新已接收成交價 · "+time(quote.at):"等待新的 Binance 成交報價";
+        statusLine.append(current);
+      }
+      stateCell.append(statusLine);
       const reason = cell("", ""), explanation = node("details", "card-explanation");
       explanation.append(node("summary", "", "詳細資訊"), node("p", "", (trade.recovery?.pending ? trade.recovery.lastError || trade.recovery.reason : trade.reason) + (trade.recovery?.recovered ? " · 已核對至 " + time(trade.recovery.lastVerifiedAt) : "") + " · TP1 基準 " + price(trade.target)),
         node("small", "", trade.closedAt ? "出場 " + time(trade.closedAt) : trade.openedAt ? "進場 " + time(trade.openedAt) : "發現 " + time(trade.detectedAt)));

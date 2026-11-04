@@ -217,3 +217,5 @@ body[data-view="paper"] .account-grid{grid-template-columns:repeat(2,minmax(0,1f
 #paper .paper-fold-content .paper-stats,#paper .paper-fold-content .target-stats{grid-template-columns:repeat(2,minmax(0,1fr))!important}
 #paper .paper-fold-content .target-help{grid-column:1/-1}
 @media(max-width:480px){#paper .paper-summary-grid{gap:8px}#paper .paper-summary-card{padding:12px 10px;gap:5px}#paper .paper-summary-label{font-size:13px}#paper .paper-summary-caption{font-size:11px}#paper .paper-summary-fold>summary{padding:11px 12px}#paper .paper-fold-content{padding:0 12px 12px}}
+
+.paper-status-line{display:flex;align-items:center;gap:12px;min-width:0}.paper-status-line>.paper-badge{flex-shrink:0}.paper-current-price{display:inline-flex;align-items:baseline;justify-content:flex-end;gap:7px;margin-left:auto;min-width:0}.paper-table .paper-current-price>small{font-size:12px;white-space:nowrap;color:#848e9c}.paper-current-price>strong{font:550 var(--card-number-size)/1.4 "Cascadia Code",Consolas,monospace;font-variant-numeric:tabular-nums;color:#f0b90b;overflow-wrap:anywhere;min-width:0}.paper-current-price[data-state="pending"]>strong{color:#848e9c}

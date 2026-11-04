@@ -5,6 +5,7 @@
   const number=n=>n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
   function navigate(scroll=false){
     const name=routes[location.hash.slice(1)]||'signals';
+    (name==='paper'?$('paperAccountSlot'):$('accountHomeSlot')).append($('sharedAccount'));
     panels.forEach(panel=>{panel.hidden=panel.dataset.deskPanel!==name;});
     $('overviewSummary').hidden=name!=='signals';document.body.dataset.view=name;
     document.querySelectorAll('[data-desk-link]').forEach(link=>{if(link.dataset.deskLink===name)link.setAttribute('aria-current','page');else link.removeAttribute('aria-current');});

@@ -19,5 +19,17 @@
         el("small","已觸及 "+target.hits+" / 已判定 "+target.resolved),el("small","先停損 "+target.stopped+" · 追蹤中 "+target.pending+" · 核對中 "+(target.recovering||0)+" · 待核對 "+target.review+(target.unavailable?" · 無效 "+target.unavailable:"")+(target.untracked?" · 未追蹤 "+target.untracked:"")));container.append(card);}
     const help=el("p","觸及率＝已觸及 ÷（已觸及＋先停損）。以模擬成交價至原停損的距離為 1R，各目標依 tick 朝有利方向取整。分批策略：TP1出原部位30%、TP2出30%、TP3出剩餘；TP4僅觀察。停損不移動，出清後目標觀察持續至原停損或觸及。舊紀錄沿用原出場規則。追蹤中、核對中、待核對及無效價位不列入分母；觸及率不是費後勝率。有效進場 "+data.eligible+" 筆；舊資料未追蹤 "+data.legacy+" 筆。", "target-help");container.append(help);
   }
-  window.TargetView={detail,stats};
+  function paperSummary(container,{account,stats:performance,trades}){
+    const data=window.TargetEngine.stats(trades),money=value=>Number.isFinite(value)?value.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2}):"—";
+    const percent=(value,signed=false)=>Number.isFinite(value)?(signed&&value>0?"+":"")+money(value)+"%":"—";
+    const card=(label,value,caption,tone,title)=>{
+      const box=el("div",null,"paper-summary-card"),amount=el("strong",value,"paper-summary-value");box.dataset.tone=tone;box.title=title||label;
+      box.append(el("span",label,"paper-summary-label"),amount,el("small",caption,"paper-summary-caption"));container.append(box);
+    };
+    container.replaceChildren();
+    card("累積盈虧",percent(account?.returnPct,true),account?"帳戶淨變動 "+(account.periodPnl>0?"+":"")+money(account.periodPnl)+" USDT":"等待帳戶初始化",account?.returnPct<0?"negative":"yellow","本期帳戶淨值相對起算淨值的變動，含未實現損益；不隨策略週期篩選改變");
+    card("策略勝率",percent(performance.winRate),performance.wins+" 勝 / "+performance.losses+" 敗 · "+performance.closed+" 筆","positive","依目前週期篩選，費後淨獲利的已平倉筆數÷全部已平倉筆數");
+    for(const level of data.levels)card(level.label+" 觸及率",percent(level.rate),level.hits+" / "+level.resolved+" 筆已判定","positive",level.label+" 已觸及÷（已觸及＋先停損）；"+(level.label==="TP4"?"只觀察，不再出場":"未進場、追蹤中與待核對不列入分母"));
+  }
+  window.TargetView={detail,stats,paperSummary};
 })();

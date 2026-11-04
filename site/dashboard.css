@@ -196,3 +196,24 @@ body[data-page="strategy"] #paperClear { color:#f47786;border-color:#6e353e; }
 @media(max-width:360px){#strategyList .strategy-card .strategy-prices>.strategy-metric{padding:10px 8px}#strategyList .strategy-card .strategy-prices>.strategy-metric dd{letter-spacing:-.055em}}
 
 #strategyList .strategy-card .strategy-prices>.strategy-metric dd{white-space:normal;overflow-wrap:anywhere;word-break:normal}
+
+/* Paper summary: two columns at every screen width. */
+#paper .paper-summary-folds{display:grid;gap:8px;margin:0 0 16px}
+#paper .paper-summary-fold{border:1px solid #66511f;border-radius:9px;background:#11181f;overflow:hidden}
+#paper .paper-summary-fold>summary{display:flex;align-items:center;justify-content:space-between;gap:12px;list-style:none;cursor:pointer;padding:12px 14px;color:#f0b90b;font-size:13px;font-weight:600}
+#paper .paper-summary-fold>summary::-webkit-details-marker{display:none}
+#paper .paper-summary-fold>summary::after{content:"+";color:#b7bdc6;font-size:17px;line-height:1}
+#paper .paper-summary-fold[open]>summary::after{content:"−"}
+#paper .paper-fold-content{padding:0 14px 14px}
+#paper .paper-fold-content .shared-account{margin:0 0 12px;padding:0;border:0;background:transparent}
+body[data-view="paper"] .account-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+#paper .paper-summary-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:0 0 22px}
+#paper .paper-summary-card{min-width:0;display:flex;flex-direction:column;justify-content:center;gap:6px;padding:15px 14px;background:#101820;border:1px solid #2b3540;border-radius:9px}
+#paper .paper-summary-label{color:#8795a9;font-size:14px;font-weight:550;line-height:1.5}
+#paper .paper-summary-value{font:650 var(--card-number-size)/1.35 "Cascadia Code",Consolas,monospace;letter-spacing:-.025em;font-variant-numeric:tabular-nums;color:#0ecb81;overflow-wrap:anywhere}
+#paper .paper-summary-card[data-tone="yellow"] .paper-summary-value{color:#f0b90b}
+#paper .paper-summary-card[data-tone="negative"] .paper-summary-value{color:#f47786}
+#paper .paper-summary-caption{display:block;color:#7f91a9;font-size:12px;line-height:1.6;text-align:right;overflow-wrap:anywhere}
+#paper .paper-fold-content .paper-stats,#paper .paper-fold-content .target-stats{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+#paper .paper-fold-content .target-help{grid-column:1/-1}
+@media(max-width:480px){#paper .paper-summary-grid{gap:8px}#paper .paper-summary-card{padding:12px 10px;gap:5px}#paper .paper-summary-label{font-size:13px}#paper .paper-summary-caption{font-size:11px}#paper .paper-summary-fold>summary{padding:11px 12px}#paper .paper-fold-content{padding:0 12px 12px}}

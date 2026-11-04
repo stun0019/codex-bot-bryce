@@ -94,6 +94,7 @@
     const stats = model.stats(profileId);
     window.DashboardUI?.updateSummary(model.stats("ema"));
     window.TargetView.stats($("paperTargets"), cohort);
+    window.TargetView.paperSummary($("paperSummary"), {account,stats,trades:cohort});
     $("paperClosed").textContent = String(stats.closed);
     $("paperOpen").textContent = stats.open + " 持倉 · " + stats.waiting + " 待報價 · " + stats.recovering + " 核對中 · " + model.trades.filter(t => window.TargetEngine.pending(t)).length + " 筆目標追蹤";
     $("paperWinRate").textContent = stats.winRate == null ? "—" : stats.winRate.toFixed(1) + "%";

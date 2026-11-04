@@ -5,8 +5,10 @@
   const Smc = root.SmcEngine || (typeof require === "function" ? require("./smc-engine.js") : null);
   const Account = root.AccountRisk || (typeof require === "function" ? require("./account-risk.js") : null);
   const Ema = root.EmaEngine || (typeof require === "function" ? require("./ema-engine.js") : null);
+  const Fib = root.FibEngine || (typeof require === "function" ? require("./fib-engine.js") : null);
+  const fib = trade => Fib?.isVersion(trade.strategyVersion) === true;
   const ema = trade => Ema?.isVersion(trade.strategyVersion) === true;
-  const smc = trade => Smc.isVersion(trade.strategyVersion) || ema(trade);
+  const smc = trade => Smc.isVersion(trade.strategyVersion) || ema(trade) || fib(trade);
   const DEFAULTS = Object.freeze({ enabled: true, feeRate: 0.0005, slippage: 0.0002 });
   const ACTIVE = new Set(["WAITING_PRICE", "OPEN"]), CLOSED = new Set(["TAKE_PROFIT", "STOP_LOSS"]);
   const STATUSES = new Set([...ACTIVE, ...CLOSED, "SKIPPED", "REVIEW"]);
@@ -95,7 +97,7 @@
       let added = 0;
       if (account) enforceAccount(now);
       for (const candidate of (account ? [...candidates].sort(priority) : candidates)) {
-        if (!candidate || (candidate.strategyVersion && (!smc(candidate) || !Smc.PROFILES[candidate.profileId] || !Array.isArray(candidate.targets) || candidate.targets.length !== 4 || typeof candidate.setupId !== "string")) || !/^[A-Z0-9]+USDT$/.test(candidate.symbol) || !["LONG", "SHORT"].includes(candidate.direction) ||
+        if (!candidate || (fib(candidate)&&!Fib.valid(candidate)) || (candidate.strategyVersion && (!smc(candidate) || !Smc.PROFILES[candidate.profileId] || !Array.isArray(candidate.targets) || candidate.targets.length !== 4 || typeof candidate.setupId !== "string")) || !/^[A-Z0-9]+USDT$/.test(candidate.symbol) || !["LONG", "SHORT"].includes(candidate.direction) ||
             !finite(candidate.confirmedAt) || candidate.confirmedAt <= ignoreBefore || !finite(candidate.expiresAt) || candidate.confirmedAt > now || candidate.expiresAt <= now ||
             !(candidate.stopLoss > 0) || !(candidate.target > 0) || !(candidate.tickSize > 0) ||
             !(candidate.market?.stepSize > 0) || seen.has(key(candidate))) continue;
@@ -104,11 +106,11 @@
         const trade = { id: key(candidate), symbol: candidate.symbol, direction: candidate.direction,
           confirmedAt: candidate.confirmedAt, detectedAt: now, expiresAt: candidate.expiresAt,
           referenceEntry: candidate.entry, stopLoss: candidate.stopLoss, target: candidate.target,
-          ...(candidate.strategyVersion ? { strategyVersion: candidate.strategyVersion, profileId: candidate.profileId, timeframeLabel: Smc.profile(candidate.profileId).label, setupId: candidate.setupId, entryType: ema(candidate) ? "LIMIT_CONFIRM" : "LIMIT_OB", strategyName: ema(candidate) ? "EMA" : "SMC", emaTrend: candidate.emaTrend || null, pullback: candidate.pullback || null, partialExit: true, targetCount: 4, riskFraction: .05, highZone: candidate.highZone, entryZone: candidate.entryZone, shiftLevel: candidate.shiftLevel, macd: candidate.macd || null, entryFilter: candidate.entryFilter || {enabled:false}, plannedTargets: [...candidate.targets] } : {}),
+          ...(candidate.strategyVersion ? { strategyVersion: candidate.strategyVersion, profileId: candidate.profileId, timeframeLabel: Smc.profile(candidate.profileId).label, setupId: candidate.setupId, entryType: fib(candidate)?"LIMIT_FIB":ema(candidate)?"LIMIT_CONFIRM":"LIMIT_OB", strategyName:fib(candidate)?"EMA＋Fib":ema(candidate)?"EMA":"SMC", ...(fib(candidate)?{targetMode:"FIB",fib:JSON.parse(JSON.stringify(candidate.fib)),exitFractions:[.2,.3,.3,.2]}:{}), emaTrend: candidate.emaTrend || null, pullback: candidate.pullback || null, partialExit: true, targetCount: 4, riskFraction: .05, highZone: candidate.highZone, entryZone: candidate.entryZone, shiftLevel: candidate.shiftLevel, macd: candidate.macd || null, entryFilter: candidate.entryFilter || {enabled:false}, plannedTargets: [...candidate.targets] } : {}),
           ...(reservedPlan ? { accountId: account.id, reservedPlan: { ...reservedPlan } } : {}),
           tickSize: candidate.tickSize, capital: reservedPlan ? reservedPlan.capital : capital, budget: reservedPlan ? reservedPlan.budget : capital * (candidate.strategyVersion ? .05 : 0.03),
           market: { ...candidate.market }, feeRate: config.feeRate, slippage: config.slippage,
-          status: "WAITING_PRICE", reason: ema(candidate) ? "EMA確認，等待新成交報價到確認收盤參考價限價成交" : candidate.strategyVersion ? "等待新成交報價回測 OB 中線；不回填歷史成交" : "等待訊號產生後的新成交報價" };
+          status: "WAITING_PRICE", reason: fib(candidate)?"區域與收盤破結構已確認，等待Fib 0.715新成交觸價":ema(candidate) ? "EMA確認，等待新成交報價到確認收盤參考價限價成交" : candidate.strategyVersion ? "等待新成交報價回測 OB 中線；不回填歷史成交" : "等待訊號產生後的新成交報價" };
         trades.push(trade); seen.add(trade.id); added++;
       }
       return added;
@@ -133,7 +135,7 @@
         trade.remainingQuantity = quantity; trade.realizedGross = 0; trade.realizedExitFees = 0; trade.exitFills = [];
         trade.exitLegs = plan.exitQuantities.map((quantity, i) => ({ label: "TP" + (i + 1), price: trade.plannedTargets[i], quantity, status: "PENDING" }));
       }
-      trade.targets = Targets.create(entry, trade.stopLoss, trade.direction, trade.tickSize, smc(trade) ? 4 : 3); trade.targetsLastQuoteAt = at;
+      trade.targets = fib(trade)?Targets.createFib(trade):Targets.create(entry, trade.stopLoss, trade.direction, trade.tickSize, smc(trade) ? 4 : 3); trade.targetsLastQuoteAt = at;
       Object.assign(trade, { status: "OPEN", reason: "連續追蹤中", entry, quantity, openedAt: at,
         observedEntry: price, entryFee: entry * quantity * trade.feeRate,
         estimatedStopRisk: plan.risk, entryRewardRisk: rr, lastPrice: price, lastQuoteAt: at });
@@ -151,6 +153,7 @@
         net: gross - trade.entryFee - exit * trade.quantity * trade.feeRate };
     }
     function validSmc(trade) {
+      if(fib(trade))return validFibTrade(trade);
       if (!smc(trade) || !Smc.PROFILES[trade.profileId] || typeof trade.setupId !== "string" || trade.entryType !== (ema(trade)?"LIMIT_CONFIRM":"LIMIT_OB") || trade.targetCount !== 4 || trade.partialExit !== true || trade.riskFraction !== .05 || !Array.isArray(trade.plannedTargets) || trade.plannedTargets.length !== 4 || trade.plannedTargets.some(p => !(p > 0))) return false;
       const expected = Engine.targets(trade.referenceEntry, trade.stopLoss, trade.direction, trade.tickSize);
       if (trade.plannedTargets.some((p, i) => p !== expected[i])) return false;
@@ -170,7 +173,40 @@
       }
       return true;
     }
+    function validFibTrade(t){
+      if(!Fib.valid(t)||t.partialExit!==true||t.targetCount!==4||t.riskFraction!==.05)return false;
+      if(!(t.entry>0))return t.exitGuard===undefined;
+      if(!finite(t.quantity)||t.quantity<=0||!finite(t.remainingQuantity)||t.remainingQuantity<0||t.remainingQuantity>t.quantity||!finite(t.entryFee)||!finite(t.realizedGross)||!finite(t.realizedExitFees)||!Array.isArray(t.exitFills)||!Array.isArray(t.exitLegs)||t.exitLegs.length!==4)return false;
+      const quantities=Engine.partialQuantities(t.quantity,t.market.stepSize,[.2,.3,.3,.2]),near=(a,b)=>finite(a)&&finite(b)&&Math.abs(a-b)<=1e-8*Math.max(1,Math.abs(a),Math.abs(b));
+      let notFilled=false;
+      for(let i=0;i<4;i++){const l=t.exitLegs[i];if(l.label!=="TP"+(i+1)||l.price!==t.plannedTargets[i]||l.quantity!==quantities[i]||!["PENDING","FILLED","CANCELLED"].includes(l.status))return false;if(l.status!=="FILLED")notFilled=true;else if(notFilled||!finite(l.at))return false;}
+      if(t.exitFills.some(f=>!finite(f.quantity)||f.quantity<=0||!finite(f.price)||f.price<=0||!finite(f.at)||!finite(f.fee)||!near(f.fee,f.price*f.quantity*t.feeRate)||!/^TP[1-4]$|^STOP$|^RETRACE_TP[1-3]$/.test(f.label)))return false;
+      for(const l of t.exitLegs){const fills=t.exitFills.filter(f=>f.label===l.label);if(l.status==="FILLED"?(fills.length!==1||fills[0].quantity!==l.quantity||fills[0].at!==l.at):fills.length)return false;}
+      const top=t.exitLegs.filter(l=>l.status==="FILLED").at(-1);
+      if(top?(!t.exitGuard||t.exitGuard.price!==top.price||t.exitGuard.label!==top.label||t.exitGuard.activatedAt!==top.at||!finite(t.exitGuard.bestPrice)||(t.direction==="LONG"?t.exitGuard.bestPrice<t.exitGuard.price:t.exitGuard.bestPrice>t.exitGuard.price)):t.exitGuard!==undefined)return false;
+      const gross=t.exitFills.reduce((s,f)=>s+(f.price-t.entry)*f.quantity*(t.direction==="LONG"?1:-1),0),fees=t.exitFills.reduce((s,f)=>s+f.fee,0),out=t.exitFills.reduce((s,f)=>s+f.quantity,0);
+      if(!near(out+t.remainingQuantity,t.quantity)||!near(gross,t.realizedGross)||!near(fees,t.realizedExitFees))return false;
+      if(CLOSED.has(t.status)&&(!near(t.netPnl,gross-t.entryFee-fees)||t.remainingQuantity!==0||t.exitLegs.some(l=>l.status==="PENDING")))return false;
+      if(t.status==="OPEN"&&t.exitLegs.some(l=>l.status==="CANCELLED"))return false;
+      return true;
+    }
+    function executeFib(trade,price,at,source){
+      if(trade.status!=="OPEN")return false;
+      const long=trade.direction==="LONG",guard=trade.exitGuard,stop=Targets.hitStop(trade,price);
+      const reduce=(quantity,label)=>{const exit=fill(trade,price,false),fee=exit*quantity*trade.feeRate;trade.realizedGross+=(exit-trade.entry)*quantity*(long?1:-1);trade.realizedExitFees+=fee;
+        trade.remainingQuantity=Number(Math.max(0,trade.remainingQuantity-quantity).toFixed(Math.min(14,Engine.decimals(trade.market.stepSize))));trade.exitFills.push({label,quantity,price:exit,fee,at,source});};
+      // Check the previously armed protection before processing this new quote's target hits.
+      if(stop){const label=guard?"RETRACE_"+guard.label:"STOP";reduce(trade.remainingQuantity,label);trade.exitReason=label;for(const leg of trade.exitLegs)if(leg.status==="PENDING")leg.status="CANCELLED";}
+      else for(const leg of trade.exitLegs)if(leg.status==="PENDING"&&(long?price>=leg.price:price<=leg.price)){reduce(leg.quantity,leg.label);leg.status="FILLED";leg.at=at;trade.exitGuard={price:leg.price,label:leg.label,activatedAt:at,bestPrice:price};}
+      if(!stop&&trade.exitGuard)trade.exitGuard.bestPrice=long?Math.max(trade.exitGuard.bestPrice,price):Math.min(trade.exitGuard.bestPrice,price);
+      trade.lastPrice=price;trade.lastQuoteAt=at;
+      if(trade.remainingQuantity===0){const result=netAt(trade,price);Object.assign(trade,{status:stop?"STOP_LOSS":"TAKE_PROFIT",closedAt:at,exit:result.exit,observedExit:price,grossPnl:result.gross,exitFee:result.exitFee,netPnl:result.net,exitSource:source,
+        reason:stop?(guard?"回撤至"+guard.label+"，剩餘部位全部出場":"觸及原停損，剩餘部位全部出場"):"TP1 20%／TP2 30%／TP3 30%／TP4剩餘20%已完成"});}
+      else trade.reason="Fib分批持倉中 · 剩餘 "+trade.remainingQuantity+(trade.exitGuard?" · 保護價 "+trade.exitGuard.label+" "+trade.exitGuard.price:"");
+      return true;
+    }
     function executeSmc(trade, price, at, source = "live") {
+      if(fib(trade))return executeFib(trade,price,at,source);
       if (trade.status !== "OPEN") return false;
       const long = trade.direction === "LONG", stop = long ? price <= trade.stopLoss : price >= trade.stopLoss;
       const reduce = (quantity, label) => {
@@ -200,7 +236,7 @@
     function cancelOrder(trade, reason, at) { if (trade.status === "WAITING_PRICE") { skip(trade, reason, at); return true; } return false; }
     function reconcileCandidates(candidates, observations, at) {
       const ids = new Set(candidates.map(key)), checked = new Set(observations.filter(o => o.status !== "ERROR").map(o => o.symbol + ":" + o.profileId)); let changed = false;
-      for (const trade of trades) if (smc(trade) && trade.status === "WAITING_PRICE" && checked.has(trade.symbol + ":" + trade.profileId) && !ids.has(trade.id)) { skip(trade, "已收盤 K 線確認候選失效／已回測，不回填成交", at); changed = true; }
+      for (const trade of trades) if (smc(trade) && trade.status === "WAITING_PRICE" && (fib(trade)||checked.has(trade.symbol + ":" + trade.profileId)) && !ids.has(trade.id)) { skip(trade, "已收盤 K 線確認候選失效／已回測，不回填成交", at); changed = true; }
       return changed;
     }
     function hasWork(trade) { return trade.status === "OPEN" || Targets.pending(trade); }
@@ -353,7 +389,7 @@
       return changed;
     }
     function stats(profileId = "all") {
-      const cohort = trades.filter(t => profileId === "all" || (profileId === "ema" ? ema(t) : profileId === "previous" ? !ema(t) : profileId.startsWith("ema:") ? ema(t) && t.profileId === profileId.slice(4) : profileId === "smc" ? smc(t) : profileId === "legacy" ? !smc(t) : smc(t) && t.profileId === profileId));
+      const cohort = trades.filter(t => profileId === "all" || (profileId === "pre-fib" ? !fib(t) : profileId === "fib" ? fib(t) : profileId.startsWith("fib:") ? fib(t)&&t.profileId===profileId.slice(4) : profileId === "ema" ? ema(t) : profileId === "previous" ? !ema(t)&&!fib(t) : profileId.startsWith("ema:") ? ema(t) && t.profileId === profileId.slice(4) : profileId === "smc" ? smc(t) : profileId === "legacy" ? !smc(t) : smc(t) && t.profileId === profileId));
       const closed = cohort.filter(trade => CLOSED.has(trade.status)).sort((a,b) => a.closedAt - b.closedAt || a.id.localeCompare(b.id));
       const wins = closed.filter(trade => trade.netPnl > 0).length;
       let pnl = 0, peak = 0, maxDrawdown = 0, streak = 0, maxLossStreak = 0;
@@ -363,7 +399,7 @@
       }
       const byDirection = direction => { const rows = closed.filter(t => t.direction === direction); return { count: rows.length,
         winRate: rows.length ? rows.filter(t => t.netPnl > 0).length / rows.length * 100 : null }; };
-      return { recovering: cohort.filter(t => t.recovery?.pending).length, reconciledClosed: closed.filter(t => t.exitSource === "reconciled").length, continuousClosed: closed.filter(t => t.exitSource !== "reconciled").length, legacyReview: cohort.filter(t => !t.checkpoint && (t.status === "REVIEW" || t.targets?.some(level => level.status === "REVIEW"))).length, targets: Targets.stats(cohort), closed: closed.length, wins, losses: closed.filter(t => t.netPnl < 0).length,
+      return { recovering: cohort.filter(t => t.recovery?.pending).length, reconciledClosed: closed.filter(t => t.exitSource === "reconciled").length, continuousClosed: closed.filter(t => t.exitSource !== "reconciled").length, legacyReview: cohort.filter(t => !t.checkpoint && (t.status === "REVIEW" || t.targets?.some(level => level.status === "REVIEW"))).length, targets: Targets.stats(cohort,{targetMode:profileId==="fib"||profileId.startsWith("fib:")?"FIB":undefined}), closed: closed.length, wins, losses: closed.filter(t => t.netPnl < 0).length,
         winRate: closed.length ? wins / closed.length * 100 : null, netPnl: pnl,
         averagePnl: closed.length ? pnl / closed.length : null, maxDrawdown, maxLossStreak,
         open: cohort.filter(t => t.status === "OPEN" && !t.recovery?.pending).length, waiting: cohort.filter(t => t.status === "WAITING_PRICE").length,

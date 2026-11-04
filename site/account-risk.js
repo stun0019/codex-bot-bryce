@@ -34,10 +34,10 @@
       if(t.status==="WAITING_PRICE"&&t.reservedPlan){const p=t.reservedPlan;risk=p.risk;nom=p.notional;orderMargin+=p.initialMargin;feeReserve+=p.feeReserve;pendingCount++;}
       const q=remaining(t);
       if(q){
-        const long=t.direction==="LONG",mark=Number(t.lastPrice),stop=E.quantize(t.stopLoss*(long?1-t.slippage:1+t.slippage),t.tickSize,long?"floor":"ceil");
+        const long=t.direction==="LONG",mark=Number(t.lastPrice),stop=E.quantize((t.targetMode==="FIB"&&t.exitGuard?t.exitGuard.price:t.stopLoss)*(long?1-t.slippage:1+t.slippage),t.tickSize,long?"floor":"ceil");
         if(!(mark>0)||!finite(mark)||!(stop>0)){uncertain.push(t.symbol+" 價格無效");continue;}
         nom=q*Math.max(t.entry,mark);const exitFee=q*Math.max(t.entry,mark,stop)*t.feeRate;
-        risk=q*Math.abs(t.entry-stop)+q*stop*t.feeRate;positionMargin+=nom/account.limits.leverage;feeReserve+=exitFee;openCount++;
+        risk=t.targetMode==="FIB"?Math.max(0,q*(t.entry-stop)*(long?1:-1)+q*stop*t.feeRate):q*Math.abs(t.entry-stop)+q*stop*t.feeRate;positionMargin+=nom/account.limits.leverage;feeReserve+=exitFee;openCount++;
         const verifiedAt=Math.max(t.lastQuoteAt||0,t.recovery?.lastCheckedAt||0,t.checkpoint?.at||0);
         if(t.status==="REVIEW"||t.recovery?.pending||at-verifiedAt>30000)uncertain.push(t.symbol+" 持倉行情待核對");
       }

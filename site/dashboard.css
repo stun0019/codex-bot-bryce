@@ -219,3 +219,31 @@ body[data-view="paper"] .account-grid{grid-template-columns:repeat(2,minmax(0,1f
 @media(max-width:480px){#paper .paper-summary-grid{gap:8px}#paper .paper-summary-card{padding:12px 10px;gap:5px}#paper .paper-summary-label{font-size:13px}#paper .paper-summary-caption{font-size:11px}#paper .paper-summary-fold>summary{padding:11px 12px}#paper .paper-fold-content{padding:0 12px 12px}}
 
 .paper-status-line{display:flex;align-items:center;gap:12px;min-width:0}.paper-status-line>.paper-badge{flex-shrink:0}.paper-current-price{display:inline-flex;align-items:baseline;justify-content:flex-end;gap:7px;margin-left:auto;min-width:0}.paper-table .paper-current-price>small{font-size:12px;white-space:nowrap;color:#848e9c}.paper-current-price>strong{font:550 var(--card-number-size)/1.4 "Cascadia Code",Consolas,monospace;font-variant-numeric:tabular-nums;color:#f0b90b;overflow-wrap:anywhere;min-width:0}.paper-current-price[data-state="pending"]>strong{color:#848e9c}
+
+.paper-table tr[data-exit^="RETRACE_"] .paper-badge{color:#f0b90b;background:#f0b90b13}
+
+.paper-table tr[data-target-mode="FIB"] .target-value{grid-template-columns:78px minmax(0,1fr)}
+
+/* Historical quarters share the paper dashboard two-column metrics. */
+#backtest .paper-summary-folds{display:grid;gap:8px;margin:0 0 16px}
+#backtest .paper-summary-fold{border:1px solid #66511f;border-radius:9px;background:#11181f;overflow:hidden}
+#backtest .paper-summary-fold>summary{display:flex;align-items:center;justify-content:space-between;gap:12px;list-style:none;cursor:pointer;padding:12px 14px;color:#f0b90b;font-size:13px;font-weight:600}
+#backtest .paper-summary-fold>summary::-webkit-details-marker{display:none}
+#backtest .paper-summary-fold>summary::after{content:"+";color:#b7bdc6;font-size:17px;line-height:1}
+#backtest .paper-summary-fold[open]>summary::after{content:"−"}
+#backtest .paper-fold-content{padding:0 14px 14px}
+#backtest .paper-fold-content .shared-account{margin:0 0 12px;padding:0;border:0;background:transparent}
+body[data-view="paper"] .account-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+#backtest .paper-summary-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:0 0 22px}
+#backtest .paper-summary-card{min-width:0;display:flex;flex-direction:column;justify-content:center;gap:6px;padding:15px 14px;background:#101820;border:1px solid #2b3540;border-radius:9px}
+#backtest .paper-summary-label{color:#8795a9;font-size:14px;font-weight:550;line-height:1.5}
+#backtest .paper-summary-value{font:650 var(--card-number-size)/1.35 "Cascadia Code",Consolas,monospace;letter-spacing:-.025em;font-variant-numeric:tabular-nums;color:#0ecb81;overflow-wrap:anywhere}
+#backtest .paper-summary-card[data-tone="yellow"] .paper-summary-value{color:#f0b90b}
+#backtest .paper-summary-card[data-tone="negative"] .paper-summary-value{color:#f47786}
+#backtest .paper-summary-caption{display:block;color:#7f91a9;font-size:12px;line-height:1.6;text-align:right;overflow-wrap:anywhere}
+#backtest .paper-fold-content .paper-stats,#backtest .paper-fold-content .target-stats{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+#backtest .paper-fold-content .target-help{grid-column:1/-1}
+@media(max-width:480px){#backtest .paper-summary-grid{gap:8px}#backtest .paper-summary-card{padding:12px 10px;gap:5px}#backtest .paper-summary-label{font-size:13px}#backtest .paper-summary-caption{font-size:11px}#backtest .paper-summary-fold>summary{padding:11px 12px}#backtest .paper-fold-content{padding:0 12px 12px}}
+
+
+.quarter-tabs{display:flex;gap:8px}.quarter-tabs button{min-width:64px;padding:10px 18px;font:600 15px inherit;border:1px solid #474d57;background:#181a20;color:#b7bdc6;border-radius:8px;cursor:pointer}.quarter-tabs button[aria-pressed="true"]{color:#f0b90b;border-color:#f0b90b;background:#292515}#backtest table{width:100%;border-collapse:collapse}#backtest th,#backtest td{text-align:left;padding:12px 10px;border-bottom:1px solid #2b3139;white-space:nowrap}#backtest th{color:#848e9c;font-size:12px}#backtest td{font-size:14px}#quarterStatus{margin:0 0 18px}#backtest .paper-fold-content{color:#848e9c;font-size:13px;line-height:1.9}#backtest .target-stats{margin-top:16px;grid-template-columns:repeat(2,minmax(0,1fr))}#backtest .target-help{grid-column:1/-1}#backtest .quarter-panel h3{font-size:17px}#backtest .account-grid{grid-template-columns:repeat(2,minmax(0,1fr))}#backtest [data-tone="negative"]{color:#f47786}#backtest [data-tone="positive"]{color:#0ecb81}

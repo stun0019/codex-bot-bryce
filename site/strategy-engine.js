@@ -53,6 +53,11 @@
     });
   }
 
+  function partialQuantities(quantity,step,fractions=[.3,.3,.4]) {
+    if(!Array.isArray(fractions)||![3,4].includes(fractions.length)||fractions.some(f=>!Number.isFinite(f)||f<=0)||Math.abs(fractions.reduce((s,f)=>s+f,0)-1)>1e-10||!(quantity>0)||!(step>0))return [];
+    const result=fractions.slice(0,-1).map(f=>quantize(quantity*f,step,"floor"));
+    result.push(Number((quantity-result.reduce((sum,q)=>sum+q,0)).toFixed(Math.min(14,decimals(step)))));return result;
+  }
   function position(candidate, market, capital = SETTINGS.capital, options = {}) {
     const feeRate = options.feeRate ?? .0005, slippage = options.slippage ?? .0002;
     const fraction = options.riskFraction ?? candidate.riskFraction ?? SETTINGS.riskFraction;
@@ -70,6 +75,10 @@
     const stopFill = quantize(stop * (long ? 1 - slippage : 1 + slippage), tick, long ? "floor" : "ceil");
     if (!(stopFill > 0)) return blocked("估算停損成交價無效");
     const riskPerUnit = Math.abs(entry - stopFill) + (entry + stopFill) * feeRate;
+    if(candidate.targetMode==="FIB"){
+      const targetFill=quantize(target*(long?1-slippage:1+slippage),tick,long?"floor":"ceil"),netReward=(targetFill-entry)*(long?1:-1)-(entry+targetFill)*feeRate;
+      if(netReward/riskPerUnit<2)return blocked("TP1含估算費用與滑價的盈虧比不足1:2");
+    }
     const cap = Math.min(maxQty, options.maxQuantity ?? Infinity);
     let quantity = options.quantity ?? quantize(Math.min(budget / riskPerUnit, cap), step, "floor");
     if (options.quantity === undefined && quantity * riskPerUnit > budget) quantity = Number((quantity - step).toFixed(Math.min(14, decimals(step))));
@@ -79,9 +88,9 @@
     const partial = options.partialExit ?? !!candidate.partialExit;
     let exitQuantities = [quantity], exitPrices = [target];
     if (partial) {
-      const first = quantize(quantity * .3, step, "floor"), last = Number((quantity - first * 2).toFixed(Math.min(14, decimals(step))));
-      exitQuantities = [first, first, last]; exitPrices = [...(candidate.targets || candidate.plannedTargets || targets(entry, stop, long ? "LONG" : "SHORT", tick))].slice(0, 3);
-      if (exitQuantities.some(q => !(q > 0) || q < minQty) || exitPrices.length !== 3 || exitPrices.some(p => !Number.isFinite(p) || !(p > 0) || (long ? p <= entry : p >= entry))) return blocked("部位不足以依 30%／30%／剩餘分批出場");
+      const fractions=candidate.exitFractions||[.3,.3,.4];
+      exitQuantities=partialQuantities(quantity,step,fractions); exitPrices=[...(candidate.targets||candidate.plannedTargets||targets(entry,stop,long?"LONG":"SHORT",tick))].slice(0,fractions.length);
+      if (!exitQuantities.length || exitQuantities.some(q => !(q > 0) || q < minQty) || exitPrices.length !== exitQuantities.length || exitPrices.some(p => !Number.isFinite(p) || !(p > 0) || (long ? p <= entry : p >= entry))) return blocked("部位不足以依設定比例分批出場");
     }
     const entryFee = notional * feeRate, stopExitFee = quantity * stopFill * feeRate, initialMargin = notional / leverage;
     const grossProfit = exitQuantities.reduce((sum, q, i) => {const price = quantize(exitPrices[i] * (long ? 1 - slippage : 1 + slippage), tick, long ? "floor" : "ceil");return sum + (price - entry) * q * (long ? 1 : -1) - price * q * feeRate;}, 0);
@@ -90,7 +99,7 @@
       profit: grossProfit - entryFee, exitQuantities, exitPrices, feeRate, slippage, leverage, partialExit: partial };
   }
 
-  const api = { INTERVALS, SETTINGS, closedBars, ma, position, decimals, quantize, targets };
+  const api = { INTERVALS, SETTINGS, closedBars, ma, position, partialQuantities, decimals, quantize, targets };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   root.StrategyEngine = api;
 })(typeof window !== "undefined" ? window : globalThis);

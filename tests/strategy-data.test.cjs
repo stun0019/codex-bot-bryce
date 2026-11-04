@@ -28,8 +28,8 @@ test('scans both independent EMA timeframe pairs for every Top20 contract',async
  assert.ok(klines.every(u=>Number(u.searchParams.get('endTime'))===NOW-1));assert.ok(states.length>=5);
 });
 
-test('data client emits EMA candidates and applies the optional entry filter using each lower interval',async()=>{
- const {fixture,NOW:time}=require('./ema-fixtures.cjs'),EMA=require('../site/ema-engine.js');
+test('data client emits Fib-confirmation candidates and applies the optional entry filter using each lower interval',async()=>{
+ const {fixture,NOW:time}=require('./fib-fixtures.cjs'),EMA=require('../site/fib-engine.js');
  const pairs={...Object.fromEntries(['4h15m','1h5m'].flatMap(id=>{const f=fixture(id);return [[f.profile.high,f.higher],[f.profile.low,f.lower]];}))};
  const client=createClient({intervalMs:0,clock:()=>time,fetcher:async url=>{const u=new URL(url);return{ok:true,status:200,json:async()=>u.pathname.endsWith('/time')?{serverTime:time}:u.pathname.endsWith('exchangeInfo')?exchange(['BTCUSDT']):u.pathname.endsWith('/ticker/24hr')?[{symbol:'BTCUSDT',quoteVolume:'10000'}]:pairs[u.searchParams.get('interval')]};}});
  const plain=await client.scan();assert.equal(plain.errors,0);assert.equal(plain.candidates.length,2);assert.ok(plain.candidates.every(c=>c.strategyVersion===EMA.VERSION));assert.deepEqual(plain.filters.emaPeriods,[20,60,200]);

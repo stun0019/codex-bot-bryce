@@ -1,29 +1,29 @@
 (function(){
   "use strict";
-  const $=id=>document.getElementById(id),body=$("quarterRows"),status=$("quarterStatus");
-  const fmt=n=>Number.isFinite(n)?n.toLocaleString("en-US",{maximumFractionDigits:2,minimumFractionDigits:2}):"—";
-  function node(tag,text){const n=document.createElement(tag);if(text!=null)n.textContent=text;return n;}
-  const picker=$("quarterFilter");let index=null,request=0;
-  async function open(row){
-    const ticket=++request;
-    status.textContent="讀取 "+row.quarter+" · "+row.timeframeLabel+" 完整報告…";
-    try{const response=await fetch(row.url,{cache:"no-cache"});if(!response.ok)throw new Error("HTTP "+response.status);const report=await response.json();if(ticket!==request)return;
-      if(report.strategyVersion!==row.strategyVersion||report.config.rsiFilter!==(row.variant==="macd-rsi"))throw new Error("報告條件不一致");
-      window.BacktestView.show(report);document.getElementById("btStatus").textContent="已載入預先完成的季度歷史回測";document.getElementById("btProgress").value=1;status.textContent="已載入 "+row.quarter+" · "+row.timeframeLabel+"；季度統計已預先完成，不需重新掃描。";
-    }catch(error){if(ticket===request)status.textContent="季度報告讀取失敗："+error.message;}
+  const $=id=>document.getElementById(id),cache=new Map(),money=n=>Number.isFinite(n)?n.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2}):"—";
+  let requested=0;
+  const el=(tag,text)=>{const node=document.createElement(tag);if(text!=null)node.textContent=text;return node;};
+  const time=at=>at?new Date(at).toLocaleString("zh-TW",{timeZone:"Asia/Taipei",hour12:false}):"—";
+  const tone=(node,value)=>node.dataset.tone=value>0?"positive":value<0?"negative":"neutral";
+  async function load(q){
+    const token=++requested;$('quarterStatus').textContent="載入2026 Q"+q+"回測報告…";
+    document.querySelectorAll('[data-quarter]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.quarter===String(q))));
+    for(const id of ['quarterSummary','quarterAssumptions','quarterAccount','quarterProfiles','quarterTargets','quarterTrades'])$(id).replaceChildren();$('quarterScope').textContent='';
+    try{
+      if(!cache.has(q)){const response=await fetch("research/fib-2026-q"+q+".json");if(!response.ok)throw Error("HTTP "+response.status);const value=await response.json();if(value.strategyVersion!==window.FibEngine.VERSION||value.quarter!=="2026 Q"+q||!Array.isArray(value.trades))throw Error("報告版本不符");cache.set(q,value);}
+      if(token!==requested)return;const r=cache.get(q);
+      $('quarterStatus').textContent=r.quarter+" · "+time(r.start)+" 至 "+time(r.end-1)+" · 每季獨立200 USDT";
+      window.TargetView.paperSummary($('quarterSummary'),{account:r.account,stats:r.stats,trades:r.trades});
+      $('quarterScope').textContent=r.scope+" 樣本排名時間："+time(r.rankingAsOf)+"。RSI＋放量額外過濾：關閉。";
+      $('quarterAssumptions').replaceChildren(...r.assumptions.map(a=>el('li',a)),el('li',"OHLC路徑有歧義的執行K："+r.ambiguousBars+"；因風控／成本未取得預留的候選："+r.blockedCandidates+"。"),el('li',"各幣執行行情覆蓋："+r.coverage.map(c=>c.symbol+" "+c.percent.toFixed(1)+"%").join('、')));
+      const values=[["期末餘額",money(r.account.balance)+" USDT"],["期末淨值",money(r.account.equity)+" USDT"],["淨值最大回撤",money(r.maxDrawdownPct)+"%"],["季末持倉／待成交",r.stats.open+" / "+r.stats.waiting],["已平倉淨損益",money(r.stats.netPnl)+" USDT"],["結構候選",r.signals+" 筆"]];
+      $('quarterAccount').replaceChildren(...values.map(([label,value])=>{const box=el('div');box.append(el('span',label),el('strong',value));return box;}));
+      $('quarterProfiles').replaceChildren(...Object.entries(r.profiles).map(([id,s])=>{const row=el('tr');for(const v of [window.FibEngine.PROFILES[id].label,s.closed,s.winRate==null?'—':money(s.winRate)+'%',money(s.netPnl)+' USDT'])row.append(el('td',v));tone(row.lastChild,s.netPnl);return row;}));
+      window.TargetView.stats($('quarterTargets'),r.trades,{targetMode:'FIB'});
+      const labels={TAKE_PROFIT:'四段止盈',STOP_LOSS:'停損',OPEN:'季末持倉',WAITING_PRICE:'季末待成交',SKIPPED:'取消／略過',REVIEW:'行情待核對'};
+      const rows=r.trades.filter(t=>t.entry>0).sort((a,b)=>b.openedAt-a.openedAt).map(t=>{const row=el('tr');for(const v of [t.symbol+' · '+t.timeframeLabel,time(t.openedAt),t.direction==='LONG'?'多':'空',t.exitReason?.startsWith('RETRACE_')?'回撤 '+t.exitReason.slice(8)+' 出場':labels[t.status]||t.status,money(t.netPnl)])row.append(el('td',v));tone(row.lastChild,t.netPnl);return row;});
+      if(!rows.length){const row=el('tr'),cell=el('td','此季沒有符合條件且成交的交易');cell.colSpan=5;row.append(cell);rows.push(row);}$('quarterTrades').replaceChildren(...rows);
+    }catch(error){if(token===requested)$('quarterStatus').textContent="回測報告暫時無法載入："+error.message;}
   }
-  function render(){
-    if(!index)return;body.replaceChildren();const rows=index.reports.filter(r=>r.variant===picker.value);
-    for(const row of rows){const tr=node("tr"),s=row.stats;for(const value of [row.quarter,row.timeframeLabel,s.closed,s.winRate==null?"—":fmt(s.winRate)+"%",fmt(s.netPnl),fmt(s.averageR),fmt(row.coverage)+"%"]){tr.append(node("td",value));}
-      const cell=node("td"),button=node("button","查看");button.type="button";button.setAttribute("aria-label","查看 "+row.quarter+" "+row.timeframeLabel);button.addEventListener("click",()=>void open(row));cell.append(button);tr.append(cell);body.append(tr);}
-    void open(rows.find(r=>r.quarter==="2026 Q3"&&r.profileId==="4h15m")||rows[0]);
-  }
-  picker.addEventListener("change",render);
-  window.addEventListener("entry-filter-change",event=>{picker.value=event.detail.enabled?"macd-rsi":"macd";render();});
-  (async()=>{
-    try{const response=await fetch("research/index.json?v=macd-2",{cache:"no-cache"});if(!response.ok)throw new Error("HTTP "+response.status);index=await response.json();
-      if(index.strategyVersion!==window.SmcEngine.VERSION||!Array.isArray(index.reports)||index.reports.length!==18)throw new Error("季度報告版本或數量不符");
-      try{picker.value=localStorage.getItem("codex-smc-rsi-filter")==="true"?"macd-rsi":"macd";}catch{}render();
-    }catch(error){status.textContent="季度統計尚無法讀取："+error.message;}
-  })();
+  document.querySelectorAll('[data-quarter]').forEach(button=>button.addEventListener('click',()=>load(Number(button.dataset.quarter))));load(1);
 })();

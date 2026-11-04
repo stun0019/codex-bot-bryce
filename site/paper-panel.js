@@ -7,6 +7,8 @@
   let model = Engine.createModel(), isLeader = false, acquiring = false, releaseLock = null;
   let storageBlocked = false, storageMessage = "", dirty = true, changed = false, lastSave = 0;
   let currentGeneration = null, symbolsKey = "", latest = { candidates: [], capital: 70, now: Date.now() }, serverOffset = 0;
+  let coordinator = null, recoveryController = null, recoveryProgress = "";
+  const recoveryClient = window.PaperRecovery.createClient({ clock: () => now() });
   const labels = { WAITING_PRICE: "待報價", OPEN: "持倉中", TAKE_PROFIT: "止盈", STOP_LOSS: "止損", SKIPPED: "略過", REVIEW: "待核對" };
   const money = value => Number.isFinite(value) ? value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "—";
   const signed = value => Number.isFinite(value) ? (value > 0 ? "+" : "") + money(value) : "—";
@@ -14,8 +16,12 @@
   const time = value => value ? new Date(value).toLocaleString("zh-TW", { timeZone: "Asia/Taipei", hour12: false }) : "—";
   const now = () => Date.now() + serverOffset;
   function load() {
+    recoveryController?.abort(); recoveryController = null;
     try { const raw = localStorage.getItem(ledgerKey); model = Engine.createModel(raw ? JSON.parse(raw) : null); }
     catch (error) { storageBlocked = true; storageMessage = "既有紀錄無法讀取，已暫停新增與覆寫；請先匯出保存。"; model = Engine.createModel(); }
+    coordinator = window.PaperRecovery.createCoordinator({ model, client: recoveryClient, clock: now,
+      onChange(force) { changed = dirty = true; if (force) save(true); },
+      onProgress(progress) { recoveryProgress = "核對 " + progress.symbol + " · " + progress.rows + " 筆成交"; dirty = true; } });
     feeInput.value = String(model.settings.feeRate * 100); slipInput.value = String(model.settings.slippage * 100); dirty = true;
   }
   function save(force = false) {
@@ -31,9 +37,16 @@
   function checkConnection() {
     const generation = feed.status().connections.filter(c => c.route === "market").map(c => c.openedAt).join(",");
     if (currentGeneration && generation !== currentGeneration && model.trades.some(t => t.status === "OPEN" || window.TargetEngine.pending(t))) {
-      model.interrupt("行情連線已重建，期間觸價順序需核對", now()); changed = dirty = true;
+      model.suspend("行情連線已重建，期間觸價順序需核對", now()); changed = dirty = true;
     }
     currentGeneration = generation;
+  }
+  async function pumpRecovery() {
+    if (!isLeader || storageBlocked || navigator.onLine === false || coordinator?.running || !model.recoveryTasks(now()).length) return;
+    if (!recoveryController || recoveryController.signal.aborted) recoveryController = new AbortController();
+    try { await coordinator.recover(recoveryController.signal); }
+    catch (error) { if (error.name !== "AbortError") { recoveryProgress = "核對暫停：" + error.message; dirty = true; } }
+    finally { recoveryProgress = ""; dirty = true; }
   }
   function ingest() {
     if (!isLeader || storageBlocked) return;
@@ -55,7 +68,7 @@
     window.DashboardUI?.updateSummary(stats);
     window.TargetView.stats($("paperTargets"), model.trades);
     $("paperClosed").textContent = String(stats.closed);
-    $("paperOpen").textContent = stats.open + " 持倉 · " + stats.waiting + " 待報價 · " + model.trades.filter(t => window.TargetEngine.pending(t)).length + " 筆三段追蹤";
+    $("paperOpen").textContent = stats.open + " 持倉 · " + stats.waiting + " 待報價 · " + stats.recovering + " 核對中 · " + model.trades.filter(t => window.TargetEngine.pending(t)).length + " 筆三段追蹤";
     $("paperWinRate").textContent = stats.winRate == null ? "—" : stats.winRate.toFixed(1) + "%";
     $("paperNet").textContent = signed(stats.netPnl); $("paperNet").dataset.tone = stats.netPnl >= 0 ? "positive" : "negative";
     $("paperAverage").textContent = signed(stats.averagePnl);
@@ -65,16 +78,18 @@
       " · 略過 " + stats.skipped + " · 待核對 " + stats.review + "｜做多 " + stats.long.count + " 筆／" +
       (stats.long.winRate == null ? "—" : stats.long.winRate.toFixed(1) + "%") + " · 做空 " + stats.short.count + " 筆／" +
       (stats.short.winRate == null ? "—" : stats.short.winRate.toFixed(1) + "%");
+    $("paperRecoverySummary").textContent = "連續追蹤平倉 " + stats.continuousClosed + " · 補查確認平倉 " + stats.reconciledClosed + " · 核對中 " + stats.recovering + (stats.legacyReview ? " · 舊版缺少成交編號 " + stats.legacyReview + " 筆保留待核對" : "");
+    $("paperRecover").disabled = !isLeader || storageBlocked || coordinator?.running || !model.trades.some(t => t.recovery?.pending || (t.recovery?.state === "REVIEW" && t.checkpoint));
     pause.disabled = !isLeader || storageBlocked; feeInput.disabled = slipInput.disabled = !isLeader || storageBlocked;
     pause.textContent = model.settings.enabled ? "暫停新增" : "恢復新增";
     const connection = feed.status().connections.some(c => c.route === "market" && c.state === WebSocket.OPEN);
-    status.textContent = storageMessage || (!isLeader ? "唯讀檢視 · 由另一個分頁追蹤，或等待取得追蹤鎖" :
+    status.textContent = storageMessage || (isLeader && stats.recovering ? (recoveryProgress || "等待補查中斷行情，確認後自動恢復") : "") || (!isLeader ? "唯讀檢視 · 由另一個分頁追蹤，或等待取得追蹤鎖" :
       model.activeSymbols().length ? connection ? "成交報價追蹤中 · 本機保存" : "連接成交報價中" :
       model.settings.enabled ? "等待新的策略候選 · 本機保存" : "已暫停新增 · 原持倉繼續追蹤");
     status.dataset.state = storageMessage ? "error" : isLeader ? "live" : "pending";
     const expanded = new Set([...table.querySelectorAll("tr[data-key]")].filter(row => row.querySelector("details")?.open).map(row => row.dataset.key));
     table.replaceChildren();
-    const visible = [...model.trades].reverse().filter(trade => filter.value === "all" ||
+    const visible = [...model.trades].reverse().filter(trade => filter.value === "all" || (filter.value === "RECOVERING" && trade.recovery?.pending) || (filter.value === "REVIEW" && trade.targets?.some(t => t.status === "REVIEW")) ||
       (filter.value === "closed" ? Engine.CLOSED.has(trade.status) : filter.value === "active" ?
         trade.status === "OPEN" || trade.status === "WAITING_PRICE" || window.TargetEngine.pending(trade) : trade.status === filter.value));
     $("paperCount").textContent = "(" + visible.length + " / " + model.trades.length + ")";
@@ -86,16 +101,17 @@
     for (const trade of visible) {
       const row = node("tr", ""); row.dataset.status = trade.status; row.dataset.key = trade.id;
       const identity = cell("幣種／訊號", ""); identity.append(node("strong", "", trade.symbol), node("small", "", time(trade.confirmedAt)));
-      let pnl = Engine.CLOSED.has(trade.status) ? trade.netPnl : trade.status === "OPEN" ? model.netAt(trade, trade.lastPrice).net : null;
+      let pnl = Engine.CLOSED.has(trade.status) ? trade.netPnl : trade.status === "OPEN" && !trade.recovery?.pending ? model.netAt(trade, trade.lastPrice).net : null;
       const pnlCell = cell("淨損益 USDT", signed(pnl), "paper-pnl"); pnlCell.dataset.tone = pnl == null ? "neutral" : pnl >= 0 ? "positive" : "negative";
-      if (trade.status === "OPEN") pnlCell.append(node("small", "", "未實現估算"));
-      const stateCell = cell("狀態", ""); stateCell.append(node("span", "paper-badge", labels[trade.status]));
+      if (trade.status === "OPEN" && !trade.recovery?.pending) pnlCell.append(node("small", "", "未實現估算"));
+      const stateCell = cell("狀態", ""); stateCell.append(node("span", "paper-badge", trade.recovery?.pending && trade.status === "OPEN" ? "核對中" : labels[trade.status]));
       const reason = cell("", ""), explanation = node("details", "card-explanation");
-      explanation.append(node("summary", "", "詳細資訊"), node("p", "", trade.reason + " · 原出場目標 " + price(trade.target)),
+      explanation.append(node("summary", "", "詳細資訊"), node("p", "", (trade.recovery?.pending ? trade.recovery.lastError || trade.recovery.reason : trade.reason) + (trade.recovery?.recovered ? " · 已核對至 " + time(trade.recovery.lastVerifiedAt) : "") + " · 原出場目標 " + price(trade.target)),
         node("small", "", trade.closedAt ? "出場 " + time(trade.closedAt) : trade.openedAt ? "進場 " + time(trade.openedAt) : "發現 " + time(trade.detectedAt)));
       explanation.open = expanded.has(trade.id); reason.append(explanation);
       const targetCell = cell("TP1／TP2／TP3", ""); targetCell.append(window.TargetView.detail(trade));
-      if (window.TargetEngine.pending(trade)) stateCell.append(node("small", "", "三段目標繼續追蹤"));
+      if (trade.recovery?.recovered && !trade.recovery.pending && trade.status === "OPEN") stateCell.append(node("small", "", "已核對恢復"));
+      if (window.TargetEngine.pending(trade)) stateCell.append(node("small", "", trade.recovery?.pending ? "三段目標核對中" : "三段目標繼續追蹤"));
       row.append(identity, cell("方向", trade.direction === "LONG" ? "做多" : "做空"), cell("模擬進場", price(trade.entry)),
         cell("停損", price(trade.stopLoss)), targetCell, cell("數量", price(trade.quantity)),
         cell("出場價", price(trade.exit)), stateCell, pnlCell, reason); table.append(row);
@@ -110,8 +126,9 @@
         acquiring = false; if (!lock) return;
         load(); if (storageBlocked) return;
         isLeader = true; currentGeneration = null;
-        model.interrupt("重新開啟頁面，離線期間觸價順序需核對", now()); changed = dirty = true; save(true);
-        ingest(); syncSymbols(); render();
+        model.suspend("重新開啟頁面，離線期間觸價順序需核對", now()); changed = dirty = true; save(true);
+        recoveryController = new AbortController();
+        ingest(); syncSymbols(); render(); void pumpRecovery();
         await new Promise(resolve => { releaseLock = resolve; });
         releaseLock = null; isLeader = false;
       });
@@ -119,13 +136,17 @@
   }
   load();
   feed.subscribeTicks(quote => {
-    if (!isLeader || quote.source !== "ws") return;
+    if (!isLeader || storageBlocked || quote.source !== "ws") return;
     checkConnection();
-    const symbol = quote.pair.replace("-USDT", "USDT");
-    if (model.tick(symbol, quote.price, quote.timestamp)) {
+    if (coordinator.accept(quote)) {
       changed = dirty = true;
-      if (model.trades.some(t => t.openedAt === quote.timestamp || t.closedAt === quote.timestamp)) save(true);
+      if (model.trades.some(t => t.openedAt === quote.timestamp || t.closedAt === quote.timestamp || t.targets?.some(target => target.at === quote.timestamp))) save(true);
+      if (model.recoveryTasks(now()).length) { save(true); void pumpRecovery(); }
     }
+  });
+  $("paperRecover").addEventListener("click", () => {
+    if (!isLeader || storageBlocked) return;
+    if (model.retryRecovery(now())) { changed = dirty = true; save(true); syncSymbols(); render(); void pumpRecovery(); }
   });
   pause.addEventListener("click", () => {
     if (!isLeader || storageBlocked) return;
@@ -151,18 +172,21 @@
       new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Taipei" }) + ".json"; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
   });
   window.addEventListener("storage", event => { if (event.key === ledgerKey && !isLeader) { load(); render(); } });
+  window.addEventListener("online", () => { if (isLeader) void pumpRecovery(); });
   window.addEventListener("offline", () => {
-    if (isLeader && model.interrupt("網路中斷，期間觸價順序需核對", now())) { changed = dirty = true; save(true); syncSymbols(); render(); }
+    recoveryController?.abort();
+    if (isLeader && model.suspend("網路中斷，期間觸價順序需核對", now())) { changed = dirty = true; save(true); syncSymbols(); render(); }
   });
   window.addEventListener("pagehide", () => {
-    if (isLeader) { model.interrupt("頁面已離開，離線期間需核對", now()); changed = true; save(true); }
+    recoveryController?.abort();
+    if (isLeader) { model.suspend("頁面已離開，離線期間需核對", now()); changed = true; save(true); }
     releaseLock?.();
   });
   setInterval(() => {
     if (!isLeader) { void acquire(); render(); return; }
     checkConnection();
     if (model.expire(now())) changed = dirty = true;
-    syncSymbols(); save(); render();
+    syncSymbols(); save(); render(); void pumpRecovery();
   }, 1000);
   render(); void acquire();
 })();

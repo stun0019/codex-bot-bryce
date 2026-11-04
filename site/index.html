@@ -9,7 +9,7 @@
   <title>策略掃描 · Codex Bot</title>
   <link rel="icon" type="image/svg+xml" href="favicon.svg?v=yellow-1">
   <link rel="stylesheet" href="styles.css?v=tp-1">
-  <link rel="stylesheet" href="dashboard.css?v=type-1">
+  <link rel="stylesheet" href="dashboard.css?v=recovery-1">
 </head>
 <body data-page="strategy">
   <div id="appShell">
@@ -72,7 +72,7 @@
       <section id="paper" data-desk-panel="paper" class="paper-panel signals-dashboard" aria-labelledby="paperTitle">
         <div class="list-head">
           <div><p class="strategy-kicker">前向測試 · 訊號獨立模擬 · 本機紀錄</p><h2 id="paperTitle">模擬交易 <span id="paperCount">(0 / 0)</span></h2></div>
-          <div class="list-actions"><button id="paperPause" type="button" disabled>暫停新增</button><button id="paperExport" type="button">匯出紀錄</button></div>
+          <div class="list-actions"><button id="paperPause" type="button" disabled>暫停新增</button><button id="paperRecover" type="button" disabled>重新核對</button><button id="paperExport" type="button">匯出紀錄</button></div>
         </div>
         <p class="paper-intro">新候選以產生後的新成交報價模擬進場。每筆按當時總資金的 3% 獨立計算，並納入估算進出場費用與停損滑價；數量可能與策略卡片的參考部位不同。本版不共用保證金，也不代表 70 USDT 帳戶資金曲線。</p>
         <div class="paper-stats" aria-label="模擬交易績效">
@@ -90,10 +90,11 @@
           <p id="paperSettingsMessage">預設值為模擬假設，並非你的帳戶實際費率；調整只影響新訊號。</p>
           <p>進場沿用當次停損與目標，依模擬成交價檢查價差盈虧比至少 1:2。止盈／止損依後續成交報價觸及判定，採觸發時報價加不利滑價模擬市價出場。費後盈虧比可能低於 2R；跳價也可能使實際模擬損失高於原預算。未計資金費率與委託簿深度。</p>
         </details>
-        <div class="paper-toolbar"><span id="paperStatus" role="status">準備本機紀錄</span><select id="paperFilter" aria-label="模擬交易篩選"><option value="all">全部紀錄</option><option value="active">持倉／待報價</option><option value="closed">已平倉</option><option value="SKIPPED">略過</option><option value="REVIEW">待核對</option></select></div>
+        <div class="paper-toolbar"><span id="paperStatus" role="status">準備本機紀錄</span><select id="paperFilter" aria-label="模擬交易篩選"><option value="all">全部紀錄</option><option value="active">持倉／待報價</option><option value="closed">已平倉</option><option value="SKIPPED">略過</option><option value="RECOVERING">核對中</option><option value="REVIEW">待核對</option></select></div>
+        <p id="paperRecoverySummary" class="paper-breakdown" role="status"></p>
         <p id="paperBreakdown" class="paper-breakdown" role="status">尚無平倉樣本</p>
         <div class="paper-table-wrap"><table class="paper-table"><thead><tr><th>幣種／訊號時間</th><th>方向</th><th>模擬進場</th><th>停損</th><th>TP1／TP2／TP3</th><th>數量</th><th>出場價</th><th>狀態</th><th>淨損益 USDT</th><th>說明／成交時間</th></tr></thead><tbody id="paperRows"></tbody></table></div>
-        <p class="strategy-note">此為啟用後累積的前向模擬，未重播歷史行情。關閉／重新開啟頁面、斷線或成交報價中斷超過 30 秒時，未完成交易會標成「待核對」，不計入勝率。候選到期不會結束已進場的模擬持倉。紀錄僅存在本瀏覽器／本網站，清除網站資料會遺失；可定期匯出。</p>
+        <p class="strategy-note">此為啟用後累積的前向模擬，補查僅用於核對已存在的持倉。新版持倉在刷新、斷線或超過 30 秒無報價後，會保存檢查點並自動補查聚合成交，確認後恢復追蹤或補記出場。資料缺漏、超過補查範圍或舊版未保存成交編號者才列為待核對。候選到期不會結束已進場的模擬持倉。紀錄僅存在本瀏覽器／本網站，清除網站資料會遺失；可定期匯出。</p>
       </section>
 
       <section class="lab-panel signals-dashboard" aria-labelledby="backtestTitle" id="backtest" data-desk-panel="backtest">
@@ -143,17 +144,18 @@
   </div>
   <script src="strategy-engine.js?v=tp-1"></script>
   <script src="strategy-data.js?v=tp-1"></script>
-  <script src="price-feed.js?v=paper-1"></script>
-  <script src="target-engine.js?v=1"></script>
-  <script src="target-view.js?v=type-1"></script>
-  <script src="paper-engine.js?v=tp-1"></script>
-  <script src="dashboard-ui.js?v=1"></script>
-  <script src="paper-panel.js?v=type-1"></script>
+  <script src="price-feed.js?v=recovery-1"></script>
+  <script src="target-engine.js?v=recovery-1"></script>
+  <script src="target-view.js?v=recovery-1"></script>
+  <script src="paper-engine.js?v=recovery-1"></script>
+  <script src="dashboard-ui.js?v=recovery-1"></script>
+  <script src="paper-recovery.js?v=1"></script>
+  <script src="paper-panel.js?v=recovery-1"></script>
   <script src="bt-store.js?v=1"></script>
   <script src="bt-engine.js?v=tp-1"></script>
   <script src="bt-data.js?v=1"></script>
   <script src="bt-charts.js?v=tp-1"></script>
-  <script src="bt-panel.js?v=tp-1"></script>
+  <script src="bt-panel.js?v=recovery-1"></script>
   <script src="strategy-scanner.js?v=type-1"></script>
 </body>
 </html>

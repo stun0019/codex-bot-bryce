@@ -96,7 +96,7 @@
       if(signal.aborted){reject(new DOMException("Aborted","AbortError"));return;}
       if(!window.Worker){reject(new Error("此瀏覽器無法使用背景回測 Worker，請改用較新版本瀏覽器"));return;}
       const abort=()=>{worker?.terminate();worker=null;reject(new DOMException("Aborted","AbortError"));};
-      worker=new Worker("bt-worker.js?v=tp-1");signal.addEventListener("abort",abort,{once:true});
+      worker=new Worker("bt-worker.js?v=recovery-1");signal.addEventListener("abort",abort,{once:true});
       const finish=()=>{signal.removeEventListener("abort",abort);worker?.terminate();worker=null;};
       worker.onmessage=event=>{const response=event.data;
         if(response.type==="progress"){message("重播策略 "+response.progress.completed+" / "+response.progress.total+" · "+response.progress.symbol);meter.value=.6+.4*response.progress.completed/response.progress.total;}

@@ -170,3 +170,6 @@ body[data-page="strategy"] { --card-number-size:23px; }
 .paper-stats>div>small:not(#paperOpen) { display:none; }
 .paper-table .target-level .target-caption { font-size:14px; }
 body[data-page="strategy"] { min-width:0; } @media(max-width:360px){ .paper-table .target-level { flex-wrap:wrap; } .paper-table .target-value { flex:1 1 100%;display:flex;justify-content:space-between; } .paper-table .target-level small { margin-left:auto!important; } }
+
+.target-level[data-state="RECOVERING"] small { color:var(--yellow); }
+#paperRecoverySummary { color:#b8a45e;line-height:1.9; }

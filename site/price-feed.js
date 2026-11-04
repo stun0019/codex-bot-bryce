@@ -93,13 +93,14 @@
     listeners.forEach(fn => { try { fn(out); } catch (_) { /* isolate listeners */ } });
   }
 
-  function acceptTick(pair, raw, source, timestamp = Date.now()) {
+  function acceptTick(pair, raw, source, timestamp = Date.now(), metadata = {}) {
     const price = number(raw), now = Date.now(), prev = prices.get(pair);
     if (!(price > 0) || !Number.isFinite(timestamp) || timestamp <= 0 ||
         timestamp > now + 30000 || now - timestamp > STALE_MS ||
-        (prev && timestamp < prev.timestamp)) return false;
+        (prev && timestamp < prev.timestamp && metadata.kind !== "aggTrade")) return false;
     // Paper execution observes each valid exchange quote before UI jump filtering or batching.
-    tickListeners.forEach(fn => { try { fn({ pair, price, at: now, timestamp, source }); } catch (_) { /* isolate */ } });
+    tickListeners.forEach(fn => { try { fn({ pair, price, at: now, timestamp, source, ...metadata }); } catch (_) { /* isolate */ } });
+    if (prev && timestamp < prev.timestamp) return false;
     if (prev && now - prev.at < 60000 && Math.abs(price / prev.price - 1) > 0.25) {
       const candidate = pendingJump.get(pair);
       if (!candidate || (Math.abs(price / candidate.price - 1) >= 0.1 && now - candidate.at <= 10000)) {
@@ -124,7 +125,7 @@
     for (const ref of refs.get(symbol) || []) {
       const { pair, multiplier } = ref;
       if (data.e === "aggTrade" && route === "market") {
-        acceptTick(pair, number(data.p) / multiplier, "ws", timestamp);
+        acceptTick(pair, number(data.p) / multiplier, "ws", number(data.T ?? data.E), { kind: "aggTrade", aggregateId: number(data.a), nativeSymbol: symbol });
       } else if (data.e === "24hrTicker" && route === "market") {
         const previous = tickers.get(pair);
         if (previous && timestamp < previous.timestamp) continue;

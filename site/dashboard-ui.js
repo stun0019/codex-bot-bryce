@@ -16,8 +16,8 @@
       $('deskClosed').textContent=stats.closed+' 筆已平倉';$('deskWin').textContent=stats.winRate==null?'—':stats.winRate.toFixed(1)+'%';
       $('deskWins').textContent=stats.wins+' 勝 / '+stats.losses+' 敗';
       stats.targets.levels.forEach((level,index)=>{$('deskTP'+(index+1)).textContent=level.rate==null?'—':level.rate.toFixed(1)+'%';$('deskTPCount'+(index+1)).textContent=level.hits+' / '+level.resolved+' 筆已判定';});
-      $('deskTracking').textContent=String(stats.open);$('deskWaiting').textContent=stats.waiting+' 待報價 · '+stats.review+' 待核對';
-      $('deskPaperCount').textContent=String(stats.open+stats.waiting);
+      $('deskTracking').textContent=String(stats.open);$('deskWaiting').textContent=stats.waiting+' 待報價 · '+(stats.recovering||0)+' 核對中 · '+stats.review+' 待核對';
+      $('deskPaperCount').textContent=String(stats.open+stats.waiting+(stats.recovering||0));
     },
     setCandidates(total){$('deskCandidateCount').textContent=String(total);}
   };

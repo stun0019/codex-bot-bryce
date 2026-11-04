@@ -208,3 +208,10 @@ test('paper observers see each valid quote before UI batching and jump filtering
   off();emit('102');assert.equal(quotes.length,3);
   assert.ok(h.feed.status().connections[0].openedAt>0);
 });
+
+test('aggregate observers retain native trade IDs and trade time even when ticker UI time is newer', async () => {
+  const h = harness();await h.start();const observed=[];h.feed.subscribeTicks(q=>observed.push(q));
+  h.emit('market',{e:'24hrTicker',s:'BTCUSDT',E:h.now,c:'100'});
+  h.emit('market',{e:'aggTrade',s:'BTCUSDT',E:h.now,T:h.now-10,a:123,p:'101'});
+  const q=observed.at(-1);assert.equal(q.aggregateId,123);assert.equal(q.timestamp,h.now-10);assert.equal(q.nativeSymbol,'BTCUSDT');assert.equal(q.kind,'aggTrade');assert.equal(q.price,101);
+});

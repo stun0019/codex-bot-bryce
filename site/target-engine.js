@@ -43,9 +43,9 @@
   function stats(trades){
     const entered=trades.filter(t=>t.entry>0&&t.quantity>0),eligible=entered.filter(t=>Array.isArray(t.targets));
     return {eligible:eligible.length,legacy:entered.length-eligible.length,levels:[2,3,4].map((rr,i)=>{
-      const rows=eligible.map(t=>t.targets[i]),hits=rows.filter(t=>t.status==="HIT").length,stopped=rows.filter(t=>t.status==="STOPPED").length;
+      const rows=eligible.map(t=>({...t.targets[i],recovering:!!t.recovery?.pending})),hits=rows.filter(t=>t.status==="HIT").length,stopped=rows.filter(t=>t.status==="STOPPED").length;
       return {label:"TP"+(i+1),rr,hits,stopped,resolved:hits+stopped,rate:hits+stopped?100*hits/(hits+stopped):null,
-        pending:rows.filter(t=>t.status==="PENDING").length,review:rows.filter(t=>t.status==="REVIEW").length,
+        recovering:rows.filter(t=>t.status==="PENDING"&&t.recovering).length,pending:rows.filter(t=>t.status==="PENDING"&&!t.recovering).length,review:rows.filter(t=>t.status==="REVIEW").length,
         unavailable:rows.filter(t=>t.status==="UNAVAILABLE").length};
     })};
   }

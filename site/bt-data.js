@@ -53,15 +53,16 @@
       const result={id,symbol,interval,start,end,rows,createdAt:clock()};await store.put("series",result);return result;
     }
     async function load(markets,config,signal,onProgress=()=>{}){
-      const datasets={},refs={},warmupStart=Math.floor((config.start-4*86400000)/E.INTERVALS["4h"])*E.INTERVALS["4h"];
+      const profiles=config.profileId&&config.profileId!=="both"?[config.profileId]:["4h15m","1h5m"],intervals=[...new Set(profiles.flatMap(id=>id==="4h15m"?["4h","15m"]:["1h","5m"]))];
+      const datasets={},refs={},warmupStart=Math.floor((config.start-20*86400000)/E.INTERVALS["4h"])*E.INTERVALS["4h"];
       let completed=0;
       // Serial, rate-controlled retrieval also limits memory and network pressure on mobile.
       for(const market of markets){
         datasets[market.symbol]={};refs[market.symbol]={};
-        for(const interval of ["4h","15m"]){
-          const series=await range(market.symbol,interval,warmupStart,config.end,signal,page=>onProgress({...page,completed,total:markets.length*2}));
+        for(const interval of intervals){
+          const series=await range(market.symbol,interval,warmupStart,config.end,signal,page=>onProgress({...page,completed,total:markets.length*intervals.length}));
           datasets[market.symbol][interval]=series.rows;refs[market.symbol][interval]=series.id;
-          completed++;onProgress({symbol:market.symbol,interval,completed,total:markets.length*2});
+          completed++;onProgress({symbol:market.symbol,interval,completed,total:markets.length*intervals.length});
         }
       }
       return{datasets,refs};

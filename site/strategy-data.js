@@ -2,6 +2,7 @@
   "use strict";
   const BASE = "https://fapi.binance.com";
   const Engine = root.StrategyEngine || (typeof require === "function" ? require("./strategy-engine.js") : null);
+  const Smc = root.SmcEngine || (typeof require === "function" ? require("./smc-engine.js") : null);
   function createClient({ fetcher = root.fetch.bind(root), intervalMs = 250, concurrency = 3,
       clock = () => Date.now(), sleep = (ms, signal) => new Promise((resolve, reject) => {
         const abort = () => { clearTimeout(timer); reject(new DOMException("Aborted", "AbortError")); };
@@ -77,7 +78,7 @@
     }
 
     async function candles(symbol, interval, asOf, signal) {
-      if (!Object.hasOwn(Engine.INTERVALS, interval)) throw new Error("只允許 4H 與 15M K 線");
+      if (!Object.hasOwn(Engine.INTERVALS, interval)) throw new Error("只允許 SMC 的 4H／15M、1H／5M K 線");
       const bucket = Math.floor(asOf / Engine.INTERVALS[interval]), key = symbol + ":" + interval;
       const previous = cache.get(key);
       if (previous?.bucket === bucket) return previous.bars;
@@ -91,40 +92,34 @@
     async function scan({ capital = Engine.SETTINGS.capital, signal, onProgress = () => {} } = {}) {
       const time = await json("/fapi/v1/time", signal), asOf = Number(time.serverTime);
       if (!Number.isFinite(asOf) || asOf <= 0) throw new Error("幣安時間無效");
-      const localAt = clock(), universe = await topMarkets(signal), candidates = [];
-      const state = { total: universe.length, completed: 0, trending: 0, errors: 0, candidates, asOf,
-        serverOffset: asOf - localAt, symbols: universe.map(market => market.symbol), rankedMarkets: universe.map(market => ({ ...market })), observations: [], failures: [] };
-      onProgress({ ...state });
-      let cursor = 0, fatal = null;
-      await Promise.all(Array.from({ length: Math.min(concurrency, universe.length) }, async () => {
-        while (cursor < universe.length && !fatal) {
+      const localAt = clock(), universe = await topMarkets(signal), candidates = [], profiles = Object.values(Smc.PROFILES);
+      const tasks = universe.flatMap(market => profiles.map(profile => ({ market, profile })));
+      const state = { strategyVersion: Smc.VERSION, total: tasks.length, completed: 0, trending: 0, errors: 0, candidates, asOf,
+        serverOffset: asOf - localAt, symbols: universe.map(m => m.symbol), rankedMarkets: universe.map(m => ({ ...m })), observations: [], failures: [] };
+      onProgress({ ...state }); let cursor = 0, fatal = null;
+      await Promise.all(Array.from({ length: Math.min(concurrency, tasks.length) }, async () => {
+        while (cursor < tasks.length && !fatal) {
           if (signal?.aborted) { fatal = new DOMException("Aborted", "AbortError"); break; }
-          const market = universe[cursor++];
-          const observation = { symbol: market.symbol, quoteVolume24h: market.quoteVolume24h, status: "NO_TREND", direction: null, reason: "4H 價格與 MA20 方向未同向" };
+          const { market, profile } = tasks[cursor++];
+          const observation = { symbol: market.symbol, profileId: profile.id, timeframeLabel: profile.label, quoteVolume24h: market.quoteVolume24h, status: "WAIT_ZONE", direction: null, reason: "等待 SMC 區域" };
           try {
-            const fourHour = await candles(market.symbol, "4h", asOf, signal);
-            observation.price4h = fourHour.at(-1).close; observation.ma4h20 = Engine.ma(fourHour, 20);
-            observation.direction = Engine.trend(fourHour);
-            if (observation.direction) {
-              state.trending++;
-              const fifteen = await candles(market.symbol, "15m", asOf, signal);
-              observation.price15m = fifteen.at(-1).close; observation.ma15m5 = Engine.ma(fifteen, 5); observation.ma15m10 = Engine.ma(fifteen, 10); observation.ma15m20 = Engine.ma(fifteen, 20);
-              observation.status = "NO_ENTRY"; observation.reason = "15M 回踩／反彈或 MA5 收盤穿越未同時成立";
-              const result = Engine.evaluate(market, fourHour, fifteen, asOf, capital);
-              if (result) { result.market = market; candidates.push(result); observation.status = "CANDIDATE"; observation.reason = "4H 趨勢與 15M 進場條件成立"; }
-            }
+            const higher = await candles(market.symbol, profile.high, asOf, signal);
+            const lower = await candles(market.symbol, profile.low, asOf, signal);
+            const result = Smc.analyze(market, higher, lower, asOf, capital, profile.id);
+            Object.assign(observation, { status: result.status, reason: result.reason, direction: result.direction || result.pending?.direction || null, highZone: result.highZone || null, zones: result.zones.length });
+            if (result.status === "WAIT_SHIFT" || result.status === "WAIT_RETEST") state.trending++;
+            if (result.pending) { candidates.push(result.pending); observation.status = "CANDIDATE"; }
           } catch (error) {
             observation.status = "ERROR"; observation.reason = error.message;
             if (error.name === "AbortError" || error.retryAt) fatal = error;
-            else { state.errors++; if (state.failures.length < 10) state.failures.push({ symbol: market.symbol, message: error.message }); }
+            else { state.errors++; state.failures.push({ symbol: market.symbol, profileId: profile.id, message: error.message }); }
           }
-          state.observations.push(observation);
-          state.completed++;
+          state.observations.push(observation); state.completed++;
           onProgress({ ...state, candidates: [...candidates] });
         }
       }));
       if (fatal) throw fatal;
-      return { ...state, candidates: [...candidates].sort((a,b) => a.symbol.localeCompare(b.symbol)) };
+      return { ...state, candidates: [...candidates].sort((a,b) => a.symbol.localeCompare(b.symbol) || a.profileId.localeCompare(b.profileId)) };
     }
     return { scan, markets, topMarkets, candles, getBackoffUntil: () => backoffUntil };
   }

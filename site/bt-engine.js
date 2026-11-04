@@ -3,13 +3,14 @@
   const E = root.StrategyEngine || (typeof require === "function" ? require("./strategy-engine.js") : null);
   const P = root.PaperEngine || (typeof require === "function" ? require("./paper-engine.js") : null);
   const Targets = root.TargetEngine || (typeof require === "function" ? require("./target-engine.js") : null);
+  const Smc=root.SmcEngine||(typeof require==="function"?require("./smc-engine.js"):null);
   const STEP = E.INTERVALS["15m"], CLOSED = P.CLOSED;
   function validate(config) {
     if (!config || !Number.isFinite(config.start) || !Number.isFinite(config.end) || config.end <= config.start ||
-        config.end - config.start > 90 * 86400000 || !(config.capital > 0) || !Number.isFinite(config.capital) ||
+        config.end - config.start > 100 * 86400000 || !(config.capital > 0) || !Number.isFinite(config.capital) ||
         ![config.feeRate,config.slippage].every(n => Number.isFinite(n) && n >= 0 && n <= .01) ||
         !["fixed","recorded"].includes(config.mode) || !["stop-first","review"].includes(config.ambiguous) ||
-        !["signal","entry2r"].includes(config.targetPolicy||"signal")) throw new Error("回測參數無效：期間最多 90 天，請檢查日期、資金及費用");
+        (config.targetPolicy && config.targetPolicy !== "smc") || (config.profileId && config.profileId !== "both" && !Smc.PROFILES[config.profileId])) throw new Error("回測參數無效：期間最多 100 天，請檢查日期、資金及費用");
   }
   function parse(rows, interval) {
     const duration = E.INTERVALS[interval];
@@ -51,6 +52,7 @@
     const grouped=new Map();
     for(const t of trades) {
       let key=kind==="direction"?t.direction:t.symbol;
+      if(kind==="timeframe") key=Smc.PROFILES[t.profileId]?.label||"舊策略／未標示";
       if(kind==="month") { const parts=format.formatToParts(new Date(t.closedAt||t.openedAt||t.confirmedAt));
         key=parts.find(p=>p.type==="year").value+"-"+parts.find(p=>p.type==="month").value; }
       if(!grouped.has(key))grouped.set(key,[]);grouped.get(key).push(t);
@@ -60,83 +62,74 @@
   function run({config,markets,datasets,snapshots=[]},onProgress=()=>{}) {
     validate(config);
     if(!Array.isArray(markets)||!markets.length||markets.length>100)throw new Error("請選擇 1～100 個回測合約");
+    const profiles=config.profileId&&config.profileId!=="both"?[Smc.profile(config.profileId)]:Object.values(Smc.PROFILES);
     const history=snapshots.filter(s=>Number.isFinite(s.finishedAt)&&Array.isArray(s.rankedMarkets)).sort((a,b)=>a.finishedAt-b.finishedAt);
-    let windows=0,covered=0;
-    for(let at=Math.ceil(config.start/STEP)*STEP;at<config.end;at+=STEP){windows++;if(config.mode==="fixed"||snapshotAt(history,at))covered++;}
-    if(config.mode==="recorded"&&!covered)throw new Error("此期間沒有可用的已保存 Top20 快照；請選固定幣種或先累積掃描紀錄");
-    const trades=[],warnings=[],pricing=P.createModel();
-    for(let m=0;m<markets.length;m++) {
-      const market=markets[m], source=datasets[market.symbol];
-      if(!source)throw new Error("缺少 "+market.symbol+" 歷史資料");
-      const fifteen=parse(source["15m"],"15m"),four=parse(source["4h"],"4h");
-      if(fifteen.at(-1).closeTime<config.end-STEP||four.at(-1).closeTime<Math.floor(config.end/E.INTERVALS["4h"])*E.INTERVALS["4h"]-1)throw new Error(market.symbol+" 歷史尾端資料不足");
-      let fourIndex=-1,pending=null,active=[];
-      const firstDecision=fifteen[20]?.closeTime+1;
-      if(fifteen.length<21||four.length<21||firstDecision>config.start||four[20]?.closeTime+1>config.start)warnings.push(market.symbol+" 部分起始時段缺乏均線暖機資料");
-      for(let i=0;i<fifteen.length;i++) {
-        const bar=fifteen[i],decision=bar.closeTime+1;
-        if(bar.openTime>=config.end)break;
-        if(pending) {
-          if(bar.openTime===pending.confirmedAt) {
-            const originalTarget=pending.target;
-            if(config.targetPolicy==="entry2r") {
-              const long=pending.direction==="LONG",tick=pending.tickSize;
-              const fill=E.quantize(bar.open*(long?1+config.slippage:1-config.slippage),tick,long?"ceil":"floor");
-              const distance=Math.abs(fill-pending.stopLoss);
-              let target=E.quantize(fill+(long?1:-1)*2*distance,tick,long?"ceil":"floor");
-              if(distance>0&&Math.abs(target-fill)/distance<2)target=Number((target+(long?tick:-tick)).toFixed(Math.min(14,E.decimals(tick))));
-              pending={...pending,target};
+    const trades=[],warnings=[],dataCoverage=[];let windows=0,covered=0,completed=0;
+    for(const market of markets)for(const profile of profiles){
+      const source=datasets[market.symbol],step=E.INTERVALS[profile.low];
+      if(!source||!source[profile.high]?.length||!source[profile.low]?.length){warnings.push(market.symbol+" "+profile.label+" 無可用歷史資料");dataCoverage.push({symbol:market.symbol,profileId:profile.id,percent:0});onProgress({completed:++completed,total:markets.length*profiles.length,symbol:market.symbol+" "+profile.label});continue;}
+      const lower=parse(source[profile.low],profile.low),higher=parse(source[profile.high],profile.high);
+      if(lower.at(-1).closeTime<config.end-step||higher.at(-1).closeTime<Math.floor(config.end/E.INTERVALS[profile.high])*E.INTERVALS[profile.high]-1)throw new Error(market.symbol+" 歷史尾端資料不足");
+      const analyzer=Smc.createAnalyzer(profile.id),model=P.createModel({version:1,settings:{enabled:true,feeRate:config.feeRate,slippage:config.slippage},trades:[]});
+      let h=0,state=null,available=0;
+      const add=(candidate,at)=>{
+        if(!candidate||at<config.start||at>=config.end)return;
+        if(config.mode==="recorded"&&!snapshotAt(history,candidate.confirmedAt)?.rankedMarkets.some(m=>m.symbol===market.symbol))return;
+        model.addCandidates([candidate],config.capital,at);
+      };
+      for(const bar of lower){
+        if(bar.openTime>=config.end)break;const at=bar.openTime,decision=bar.closeTime+1;
+        if(at>=config.start){
+          windows++;if(config.mode==="fixed"||snapshotAt(history,at))covered++;
+          if(h>=20)available++;
+          if(state?.pending)add(state.pending,at);
+          for(const trade of model.trades){
+            let entryInRange=false;
+            if(trade.status==="WAITING_PRICE"){
+              if(at>=trade.expiresAt){model.cancelOrder(trade,"等待 OB 回測逾時",at);continue;}
+              const long=trade.direction==="LONG",marketable=long?bar.open<=trade.referenceEntry:bar.open>=trade.referenceEntry;
+              if(marketable)model.tryLimitFill(trade,bar.open,at);
+              else if(long?bar.open>=trade.target:bar.open<=trade.target)model.cancelOrder(trade,"進場前已到 TP1",at);
+              else if(long?bar.low<=trade.referenceEntry:bar.high>=trade.referenceEntry){model.tryLimitFill(trade,trade.referenceEntry,at);entryInRange=trade.status==="OPEN";}
+              if(trade.status==="OPEN")trade.entryBarTime=at;
             }
-            const execution=P.createModel({version:1,settings:{enabled:true,feeRate:config.feeRate,slippage:config.slippage},trades:[]});
-            execution.addCandidates([pending],config.capital,pending.confirmedAt);
-            execution.tick(market.symbol,bar.open,pending.confirmedAt);
-            const trade=execution.trades[0];
-            if(trade) {trade.entryBarTime=bar.openTime;trade.originalTarget=originalTarget;trades.push(trade);if(trade.status==="OPEN"){trade.reason="下一根 15M 開盤價加模擬滑價";active.push(trade);}}
+            if(trade.status!=="OPEN"&&!Targets.pending(trade))continue;
+            const long=trade.direction==="LONG",hitStop=long?bar.low<=trade.stopLoss:bar.high>=trade.stopLoss;
+            if(entryInRange){
+              if(hitStop){Targets.quote(trade,trade.stopLoss,decision);model.executeSmc(trade,trade.stopLoss,decision,"historical");trade.exitBarTime=at;}
+              trade.lastPrice=bar.close;trade.lastQuoteAt=decision;continue;
+            }
+            Targets.quote(trade,bar.open,at);model.executeSmc(trade,bar.open,at,"historical");
+            const hitNext=trade.exitLegs?.some(l=>l.status==="PENDING"&&(long?bar.high>=l.price:bar.low<=l.price));
+            const ambiguous=trade.status==="OPEN"&&hitStop&&hitNext;
+            if(ambiguous&&config.ambiguous==="review"){
+              Object.assign(trade,{status:"REVIEW",reviewAt:decision,ambiguous:true,reason:"同根止損與分批目標雙觸價，剩餘部位出場順序不確定"});
+            }else if(trade.status==="OPEN"){
+              if(hitStop)model.executeSmc(trade,trade.stopLoss,decision,"historical");
+              else for(const leg of trade.exitLegs)if(leg.status==="PENDING"&&(long?bar.high>=leg.price:bar.low<=leg.price))model.executeSmc(trade,leg.price,decision,"historical");
+              if(ambiguous)trade.ambiguous=true;
+            }
+            Targets.bar(trade,bar,config.ambiguous);
+            if(CLOSED.has(trade.status)&&trade.exitBarTime===undefined)trade.exitBarTime=at;
+            trade.lastPrice=bar.close;trade.lastQuoteAt=decision;
           }
-          pending=null;
         }
-        for(const trade of active) {
-          Targets.bar(trade,bar,config.ambiguous);
-          if(trade.status!=="OPEN")continue;
-          const long=trade.direction==="LONG",gapStop=long?bar.open<=trade.stopLoss:bar.open>=trade.stopLoss;
-          const gapTarget=long?bar.open>=trade.target:bar.open<=trade.target;
-          const hitStop=long?bar.low<=trade.stopLoss:bar.high>=trade.stopLoss;
-          const hitTarget=long?bar.high>=trade.target:bar.low<=trade.target;
-          if(!hitStop&&!hitTarget){trade.lastPrice=bar.close;trade.lastQuoteAt=decision;continue;}
-          const ambiguous=!gapStop&&!gapTarget&&hitStop&&hitTarget;
-          if(ambiguous&&config.ambiguous==="review") {Object.assign(trade,{status:"REVIEW",ambiguous:true,reviewAt:decision,
-            reason:"同根 K 同時觸及停損與目標，無法確認先後"});continue;}
-          const stop=gapStop||(!gapTarget&&hitStop);
-          const observed=gapStop||gapTarget?bar.open:stop?trade.stopLoss:trade.target;
-          const pnl=pricing.netAt(trade,observed);
-          Object.assign(trade,{status:stop?"STOP_LOSS":"TAKE_PROFIT",closedAt:gapStop||gapTarget?bar.openTime:decision,
-            exitBarTime:bar.openTime,exit:pnl.exit,observedExit:observed,grossPnl:pnl.gross,exitFee:pnl.exitFee,netPnl:pnl.net,
-            ambiguous,reason:ambiguous?"同根雙觸價，採保守停損優先":gapStop||gapTarget?"跳空，以開盤報價模擬市價出場":"15M 高低價觸及價位；精確盤中時間未知"});
-        }
-        active=active.filter(t=>t.status==="OPEN"||Targets.pending(t));
-        while(fourIndex+1<four.length&&four[fourIndex+1].closeTime<decision)fourIndex++;
-        if(decision<config.start||decision>=config.end||i<20||fourIndex<20)continue;
-        if(four[fourIndex].closeTime!==Math.floor(decision/E.INTERVALS["4h"])*E.INTERVALS["4h"]-1)continue;
-        let metadata=market;
-        if(config.mode==="recorded") {
-          const snapshot=snapshotAt(history,decision),found=snapshot?.rankedMarkets.find(row=>row.symbol===market.symbol);
-          if(!found)continue;metadata=found;
-        }
-        pending=E.evaluate(metadata,four.slice(Math.max(0,fourIndex-79),fourIndex+1),
-          fifteen.slice(Math.max(0,i-79),i+1),decision,config.capital);
-        if(pending)pending.market={...metadata};
+        while(h<higher.length&&higher[h].closeTime<=bar.closeTime)analyzer.pushHigh(higher[h++]);
+        if(h){state=analyzer.pushLow(bar,market,config.capital);if(decision>=config.start&&decision<config.end){
+          for(const trade of model.trades)if(trade.status==="WAITING_PRICE"&&trade.setupId!==state.pending?.setupId)model.cancelOrder(trade,"區域失效／歷史已回測或等待逾時",decision);
+          add(state.candidate,decision);
+        }}
       }
-      for(const trade of active.filter(t=>t.status==="OPEN")) {trade.unrealizedPnl=pricing.netAt(trade,trade.lastPrice).net;trade.reason="回測期末仍持倉，不列入勝率";}
-      onProgress({completed:m+1,total:markets.length,symbol:market.symbol});
+      for(const trade of model.trades){if(trade.status==="OPEN")trade.unrealizedPnl=model.netAt(trade,trade.lastPrice).net;if(trade.status==="WAITING_PRICE")trade.reason="期末尚未回測 OB，不列入勝率";trades.push(trade);}
+      const expected=Math.ceil((config.end-config.start)/step),percent=Math.min(100,available/expected*100);
+      dataCoverage.push({symbol:market.symbol,profileId:profile.id,percent});if(percent<99.99)warnings.push(market.symbol+" "+profile.label+" 行情與高週期暖機覆蓋 "+percent.toFixed(1)+"%，可能為新上市合約");
+      onProgress({completed:++completed,total:markets.length*profiles.length,symbol:market.symbol+" "+profile.label});
     }
+    if(config.mode==="recorded"&&!covered)throw new Error("此期間沒有可用的已保存 Top20 快照；不推測歷史排名");
     trades.sort((a,b)=>a.detectedAt-b.detectedAt||a.id.localeCompare(b.id));
-    return {version:1,targetTrackingVersion:1,config:{...config},symbols:markets.map(m=>m.symbol),trades,stats:summarize(trades),
+    return {version:2,strategyVersion:Smc.VERSION,targetTrackingVersion:2,config:{...config,targetPolicy:"smc"},symbols:markets.map(m=>m.symbol),trades,stats:summarize(trades),dataCoverage,
       coverage:{windows,covered,percent:windows?covered/windows*100:0},warnings,
-      assumptions:["每筆訊號獨立使用固定參考資金，不共用保證金", "下一根 15M 開盤模擬成交；未還原逐筆成交順序", "只以已收盤 4H／15M 判斷，不使用未來 K 線",
-        config.mode==="fixed"?"固定選定合約，並非當時成交額 Top20；存在選樣與生存者偏差":"僅限快照完成時間起 15 分鐘內的已保存 Top20 時段，不回填缺失排名",
-        config.mode==="fixed"?"交易精度與最小下單門檻使用目前資料，未還原歷史規則變動":"交易精度採選用快照的已保存規則",
-        config.targetPolicy==="entry2r"?"研究變體：依實際模擬成交價重算至少 2R 目標，與前向模擬的固定訊號目標不同":"沿用原訊號目標；成交後價差盈虧比不足 2R 即略過",
-        "未計資金費率、槓桿限制與委託簿深度"]};
+      assumptions:["SMC 高週期 OB／FVG＋低週期 CHoCH 後等待 OB 中線限價回測；兩套時間框架獨立", "確認轉折左右各2根；ATR14前值×1.2位移，回找6根內最後反向K；高週期區域80根後失效", "觸區等結構、結構後等回測各最多1根高週期時間；高週期收盤越過OB遠端取消未成交候選", "TP1 2R出原部位30%、TP2 3R出30%、TP3 4R出剩餘；TP4 5R僅觀察；原停損不移動", "每筆獨立固定參考資金、風險5%含估算成本，不共用保證金，累計損益不是帳戶報酬率", "限價以OB中線模擬、不計進場滑價；單邊費率與出場不利滑價依設定；分批數量按step向下取整", "OHLC根內回測進場只計可能停損，不計同根止盈；已在開盤成交者可正常追蹤該根", "同根雙觸價依保守停損優先／不確定模式；跳空可能超出5%預算",config.mode==="fixed"?"固定目前合約與交易精度，不是當時Top20，有選樣及生存者偏差":"僅使用當時已完成保存的Top20排名快照，不回填缺漏", "未計資金費率、強制平倉、槓桿級距與委託簿深度；不保證績效"]};
   }
   const api={run,parse,summarize,groups,snapshotAt,validate};
   if(typeof module!=="undefined"&&module.exports)module.exports=api;root.BacktestEngine=api;

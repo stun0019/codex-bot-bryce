@@ -1,7 +1,7 @@
 (function (root) {
   "use strict";
-  const INTERVALS = Object.freeze({ "4h": 14400000, "15m": 900000 });
-  const SETTINGS = Object.freeze({ capital: 70, riskFraction: 0.03, rewardRisk: 2, klineLimit: 80 });
+  const INTERVALS = Object.freeze({ "4h": 14400000, "1h": 3600000, "15m": 900000, "5m": 300000 });
+  const SETTINGS = Object.freeze({ capital: 200, riskFraction: 0.05, rewardRisk: 2, klineLimit: 499 });
 
   function closedBars(rows, interval, now) {
     const duration = INTERVALS[interval];
@@ -30,16 +30,6 @@
     return sum / period;
   }
 
-  function trend(bars) {
-    if (!Array.isArray(bars) || bars.some(bar => bar.closeTime - bar.openTime + 1 !== INTERVALS["4h"])) throw new Error("Trend requires 4H candles");
-    if (bars.length < 21) return null;
-    const current = ma(bars, 20), previous = ma(bars, 20, bars.length - 2);
-    const price = bars[bars.length - 1].close;
-    if (price > current && current > previous) return "LONG";
-    if (price < current && current < previous) return "SHORT";
-    return null;
-  }
-
   function decimals(step) {
     const [coefficient, exponent = "0"] = String(step).toLowerCase().split("e");
     return Math.max(0, (coefficient.split(".")[1] || "").length - Number(exponent));
@@ -53,9 +43,9 @@
     return Number((Math[direction](normalized) * step).toFixed(Math.min(14, decimals(step))));
   }
 
-  function targets(entry, stopLoss, direction, tick) {
+  function targets(entry, stopLoss, direction, tick, count = 4) {
     const long = direction === "LONG", distance = Math.abs(entry - stopLoss);
-    return [2, 3, 4].map(rr => {
+    return [2, 3, 4, 5].slice(0, count).map(rr => {
       let value = quantize(entry + (long ? 1 : -1) * distance * rr, tick, long ? "ceil" : "floor");
       if (Math.abs(value - entry) / distance < rr) value = Number((value + (long ? tick : -tick)).toFixed(Math.min(14, decimals(tick))));
       return value > 0 ? value : null;
@@ -80,47 +70,7 @@
       rewardRisk: Math.abs(candidate.target - candidate.entry) / distance };
   }
 
-  function evaluate(market, fourHour, fifteenMinute, now, capital = SETTINGS.capital) {
-    if (!Array.isArray(fifteenMinute) || fifteenMinute.some(bar => bar.closeTime - bar.openTime + 1 !== INTERVALS["15m"])) throw new Error("Entry requires 15M candles");
-    if (!Number.isFinite(now) || !fourHour.length || !fifteenMinute.length ||
-        fourHour[fourHour.length - 1].closeTime !== Math.floor(now / INTERVALS["4h"]) * INTERVALS["4h"] - 1 ||
-        fifteenMinute[fifteenMinute.length - 1].closeTime !== Math.floor(now / INTERVALS["15m"]) * INTERVALS["15m"] - 1) throw new Error("Strategy requires the latest closed 4H and 15M candles");
-    const direction = trend(fourHour);
-    if (!direction || fifteenMinute.length < 21) return null;
-    const last = fifteenMinute.length - 1, previous = fifteenMinute[last - 1], confirmation = fifteenMinute[last];
-    const oldMa5 = ma(fifteenMinute, 5, last - 1), ma5 = ma(fifteenMinute, 5, last);
-    const long = direction === "LONG";
-    const reclaimed = long ? previous.close <= oldMa5 && confirmation.close > ma5 :
-      previous.close >= oldMa5 && confirmation.close < ma5;
-    if (!reclaimed) return null;
-    const touches = index => [10, 20].some(period => {
-      const average = ma(fifteenMinute, period, index), bar = fifteenMinute[index];
-      return average != null && bar.low <= average && bar.high >= average;
-    });
-    // A single-bar retest or the immediately preceding retest may confirm the entry.
-    const previousTouch = touches(last - 1), currentTouch = touches(last);
-    if (!previousTouch && !currentTouch) return null;
-    const tick = Number(market.tickSize);
-    if (!(tick > 0)) throw new Error("Missing market tick size");
-    const entry = confirmation.close;
-    const retest = previousTouch ? [previous, confirmation] : [confirmation];
-    const extreme = long ? Math.min(...retest.map(bar => bar.low)) : Math.max(...retest.map(bar => bar.high));
-    const stopLoss = Number((quantize(extreme, tick, long ? "floor" : "ceil") + (long ? -tick : tick)).toFixed(Math.min(14, decimals(tick))));
-    if (!(stopLoss > 0) || (long ? stopLoss >= entry : stopLoss <= entry)) return null;
-    const distance = Math.abs(entry - stopLoss);
-    let target = quantize(entry + (long ? 1 : -1) * distance * SETTINGS.rewardRisk, tick, long ? "ceil" : "floor");
-    if (Math.abs(target - entry) / distance < SETTINGS.rewardRisk) target = Number((target + (long ? tick : -tick)).toFixed(Math.min(14, decimals(tick))));
-    if (!(target > 0)) return null;
-    const candidate = { symbol: market.symbol, direction, entry, stopLoss, target, targets: targets(entry, stopLoss, direction, tick),
-      tickSize: tick, stepSize: Number(market.stepSize), confirmedAt: confirmation.closeTime + 1,
-      expiresAt: confirmation.closeTime + 1 + INTERVALS["15m"], trendAt: fourHour[fourHour.length - 1].closeTime + 1,
-      ma4h20: ma(fourHour, 20), ma15m5: ma5, ma15m10: ma(fifteenMinute, 10), ma15m20: ma(fifteenMinute, 20) };
-    if (candidate.expiresAt <= now) return null;
-    candidate.plan = position(candidate, market, capital);
-    return candidate;
-  }
-
-  const api = { INTERVALS, SETTINGS, closedBars, ma, trend, evaluate, position, decimals, quantize, targets };
+  const api = { INTERVALS, SETTINGS, closedBars, ma, position, decimals, quantize, targets };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   root.StrategyEngine = api;
 })(typeof window !== "undefined" ? window : globalThis);

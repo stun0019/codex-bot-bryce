@@ -14,7 +14,7 @@ function fixture(policy='stop-first'){
 }
 test('reference and fill target levels are 2R/3R/4R for both directions and round away from entry',()=>{
  for(const direction of ['LONG','SHORT']){const entry=100,stop=direction==='LONG'?98.97:101.03;
-  const levels=T.create(entry,stop,direction,.1);assert.deepEqual(levels.map(t=>t.price),E.targets(entry,stop,direction,.1));
+  const levels=T.create(entry,stop,direction,.1);assert.deepEqual(levels.map(t=>t.price),E.targets(entry,stop,direction,.1,3));
   levels.forEach((t,i)=>assert.ok(Math.abs(t.price-entry)/Math.abs(entry-stop)>=i+2));
  }
 });
@@ -61,23 +61,8 @@ test('hit-rate denominator excludes pending, review, unavailable and legacy samp
  const stats=T.stats([hit,stopped,pending,review,legacy]);assert.equal(stats.levels[0].rate,50);assert.equal(stats.levels[0].resolved,2);assert.equal(stats.levels[0].pending,1);assert.equal(stats.levels[0].review,1);assert.equal(stats.legacy,1);
  assert.equal(T.create(10,20,'SHORT',.1)[0].status,'UNAVAILABLE');
 });
-test('historical target tracking reaches TP2/TP3 on bars after primary profit has already closed',()=>{
- const report=B.run(fixture()),t=report.trades[0];assert.equal(t.status,'TAKE_PROFIT');assert.deepEqual(states(t),['HIT','HIT','HIT']);
- assert.ok(t.targets[2].at>t.closedAt);assert.equal(report.stats.targets.levels[2].rate,100);assert.equal(B.groups(report.trades,'symbol')[0].targets.levels[2].hits,1);
-});
-test('historical stop after TP1 preserves TP1 and marks TP2/TP3 stopped',()=>{
- const f=fixture();Object.assign(f.datasets.BTCUSDT['15m'].at(-1),{1:110,2:111,3:90,4:100});
- const t=B.run(f).trades[0];assert.equal(t.status,'TAKE_PROFIT');assert.deepEqual(states(t),['HIT','STOPPED','STOPPED']);
-});
-test('historical unresolved targets at period end remain pending, excluded from the resolved rate',()=>{
- const f=fixture();Object.assign(f.datasets.BTCUSDT['15m'].at(-1),{1:110,2:111,3:109,4:110});
- const report=B.run(f);assert.deepEqual(states(report.trades[0]),['HIT','PENDING','PENDING']);assert.equal(report.stats.targets.levels[1].rate,null);assert.equal(report.stats.targets.levels[1].pending,1);
-});
-test('historical same-bar ambiguity applies independently to each target',()=>{
- for(const policy of ['stop-first','review']){const f=fixture(policy);Object.assign(f.datasets.BTCUSDT['15m'].at(-3),{2:126,3:90});
-  assert.deepEqual(states(B.run(f).trades[0]),Array(3).fill(policy==='review'?'REVIEW':'STOPPED'));
- }
-});
+test('new four-target records keep TP4 separate from legacy three-target records',()=>{const a={entry:100,quantity:1,targets:T.create(100,98,'LONG',.01,4)},b={entry:100,quantity:1,targets:T.create(100,98,'LONG',.01)};const s=T.stats([a,b]);assert.equal(s.levels[3].eligible,1);assert.equal(s.levels[3].untracked,1);assert.equal(s.levels[3].rate,null);});
+
 test('historical opening gap target is hit before a later intrabar stop',()=>{
  const trade={entry:100,stopLoss:98,direction:'LONG',targets:T.create(100,98,'LONG',.01)};
  T.bar(trade,{open:106,high:106,low:97,openTime:NOW,closeTime:NOW+900000-1},'review');

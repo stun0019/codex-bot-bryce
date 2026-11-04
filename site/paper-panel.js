@@ -52,7 +52,7 @@
     if (!isLeader || storageBlocked) return;
     if (model.addCandidates(latest.candidates, latest.capital, now())) { changed = dirty = true; syncSymbols(); save(true); }
   }
-  window.PaperTrading = { acceptCandidates(candidates, capital, serverNow) {
+  window.PaperTrading = { reconcileCandidates(candidates, observations, at) { if (isLeader && !storageBlocked && model.reconcileCandidates(candidates, observations, at)) { changed = dirty = true; syncSymbols(); save(true); render(); } }, acceptCandidates(candidates, capital, serverNow) {
     serverOffset = serverNow - Date.now(); latest = { candidates, capital, now: serverNow }; ingest();
   } };
   function node(tag, className, text) {
@@ -64,11 +64,12 @@
   }
   function render() {
     if (!dirty) return; dirty = false;
-    const stats = model.stats();
-    window.DashboardUI?.updateSummary(stats);
-    window.TargetView.stats($("paperTargets"), model.trades);
+    const profileId = $("paperTimeframe").value, cohort = model.trades.filter(t => profileId === "all" || (profileId === "smc" ? !!t.strategyVersion : profileId === "legacy" ? !t.strategyVersion : t.profileId === profileId));
+    const stats = model.stats(profileId);
+    window.DashboardUI?.updateSummary(model.stats("smc"));
+    window.TargetView.stats($("paperTargets"), cohort);
     $("paperClosed").textContent = String(stats.closed);
-    $("paperOpen").textContent = stats.open + " 持倉 · " + stats.waiting + " 待報價 · " + stats.recovering + " 核對中 · " + model.trades.filter(t => window.TargetEngine.pending(t)).length + " 筆三段追蹤";
+    $("paperOpen").textContent = stats.open + " 持倉 · " + stats.waiting + " 待報價 · " + stats.recovering + " 核對中 · " + model.trades.filter(t => window.TargetEngine.pending(t)).length + " 筆目標追蹤";
     $("paperWinRate").textContent = stats.winRate == null ? "—" : stats.winRate.toFixed(1) + "%";
     $("paperNet").textContent = signed(stats.netPnl); $("paperNet").dataset.tone = stats.netPnl >= 0 ? "positive" : "negative";
     $("paperAverage").textContent = signed(stats.averagePnl);
@@ -90,7 +91,7 @@
     status.dataset.state = storageMessage ? "error" : isLeader ? "live" : "pending";
     const expanded = new Set([...table.querySelectorAll("tr[data-key]")].filter(row => row.querySelector("details")?.open).map(row => row.dataset.key));
     table.replaceChildren();
-    const visible = [...model.trades].reverse().filter(trade => filter.value === "all" || (filter.value === "RECOVERING" && trade.recovery?.pending) || (filter.value === "REVIEW" && trade.targets?.some(t => t.status === "REVIEW")) ||
+    const visible = [...cohort].reverse().filter(trade => filter.value === "all" || (filter.value === "RECOVERING" && trade.recovery?.pending) || (filter.value === "REVIEW" && trade.targets?.some(t => t.status === "REVIEW")) ||
       (filter.value === "closed" ? Engine.CLOSED.has(trade.status) : filter.value === "active" ?
         trade.status === "OPEN" || trade.status === "WAITING_PRICE" || window.TargetEngine.pending(trade) : trade.status === filter.value));
     $("paperCount").textContent = "(" + visible.length + " / " + model.trades.length + ")";
@@ -101,20 +102,21 @@
     }
     for (const trade of visible) {
       const row = node("tr", ""); row.dataset.status = trade.status; row.dataset.key = trade.id;
-      const identity = cell("幣種／訊號", ""); identity.append(node("strong", "", trade.symbol), node("small", "", time(trade.confirmedAt)));
+      const identity = cell("幣種／訊號", ""); identity.append(node("strong", "", trade.symbol), node("span", "strategy-timeframe", trade.timeframeLabel ? "SMC · " + trade.timeframeLabel : "舊策略／未標示週期"), node("small", "", time(trade.confirmedAt)));
       let pnl = Engine.CLOSED.has(trade.status) ? trade.netPnl : trade.status === "OPEN" && !trade.recovery?.pending ? model.netAt(trade, trade.lastPrice).net : null;
       const pnlCell = cell("淨損益 USDT", signed(pnl), "paper-pnl"); pnlCell.dataset.tone = pnl == null ? "neutral" : pnl >= 0 ? "positive" : "negative";
       if (trade.status === "OPEN" && !trade.recovery?.pending) pnlCell.append(node("small", "", "未實現估算"));
       const stateCell = cell("狀態", ""); stateCell.append(node("span", "paper-badge", trade.recovery?.pending && trade.status === "OPEN" ? "核對中" : labels[trade.status]));
       const reason = cell("", ""), explanation = node("details", "card-explanation");
-      explanation.append(node("summary", "", "詳細資訊"), node("p", "", (trade.recovery?.pending ? trade.recovery.lastError || trade.recovery.reason : trade.reason) + (trade.recovery?.recovered ? " · 已核對至 " + time(trade.recovery.lastVerifiedAt) : "") + " · 原出場目標 " + price(trade.target)),
+      explanation.append(node("summary", "", "詳細資訊"), node("p", "", (trade.recovery?.pending ? trade.recovery.lastError || trade.recovery.reason : trade.reason) + (trade.recovery?.recovered ? " · 已核對至 " + time(trade.recovery.lastVerifiedAt) : "") + " · TP1 基準 " + price(trade.target)),
         node("small", "", trade.closedAt ? "出場 " + time(trade.closedAt) : trade.openedAt ? "進場 " + time(trade.openedAt) : "發現 " + time(trade.detectedAt)));
+      if (trade.exitFills) explanation.append(node("p", "", "已出場：" + (trade.exitFills.map(f => f.label + " " + price(f.quantity) + " @ " + price(f.price)).join("；") || "尚無") + " · 初始部位 " + price(trade.quantity)));
       explanation.open = expanded.has(trade.id); reason.append(explanation);
       const targetCell = cell("TP1／TP2／TP3", ""); targetCell.append(window.TargetView.detail(trade));
       if (trade.recovery?.recovered && !trade.recovery.pending && trade.status === "OPEN") stateCell.append(node("small", "", "已核對恢復"));
-      if (window.TargetEngine.pending(trade)) stateCell.append(node("small", "", trade.recovery?.pending ? "三段目標核對中" : "三段目標繼續追蹤"));
+      if (window.TargetEngine.pending(trade)) stateCell.append(node("small", "", trade.recovery?.pending ? "目標核對中" : "目標繼續追蹤"));
       row.append(identity, cell("方向", trade.direction === "LONG" ? "做多" : "做空"), cell("模擬進場", price(trade.entry)),
-        cell("停損", price(trade.stopLoss)), targetCell, cell("數量", price(trade.quantity)),
+        cell("停損", price(trade.stopLoss)), targetCell, cell(trade.partialExit ? "剩餘／初始數量" : "數量", trade.partialExit && trade.quantity ? price(trade.remainingQuantity) + " / " + price(trade.quantity) : price(trade.quantity)),
         cell("出場價", price(trade.exit)), stateCell, pnlCell, reason); table.append(row);
     }
   }
@@ -174,6 +176,7 @@
   }
   feeInput.addEventListener("change", updateAssumptions); slipInput.addEventListener("change", updateAssumptions);
   filter.addEventListener("change", () => { dirty = true; render(); });
+  $("paperTimeframe").addEventListener("change", () => { dirty = true; render(); });
   $("paperExport").addEventListener("click", () => {
     const payload = storageBlocked ? localStorage.getItem(ledgerKey) : JSON.stringify({ ...model.snapshot(),
       exportedAt: new Date().toISOString(), mode: "independent-forward-paper-trades", stats: model.stats() }, null, 2);

@@ -17,7 +17,7 @@
   function candles(container,{rows,interval,trade,shift=0},readout){
     container.replaceChildren();const width=1000,height=390,left=22,right=100,top=20,bottom=42;
     if(!rows?.length)return;
-    const duration=interval==="4h"?14400000:900000;
+    const duration=root.StrategyEngine.INTERVALS[interval];
     const focusAt=trade.openedAt||trade.confirmedAt;
     const anchor=rows.findIndex(row=>row[0]<=focusAt&&row[6]>=focusAt);
     const center=Math.max(0,anchor<0?rows.length-40:anchor),start=Math.max(0,Math.min(rows.length-1,center-30+shift));
@@ -27,14 +27,21 @@
     const y=v=>top+(maximum-v)/(maximum-minimum)*(height-top-bottom),step=(width-left-right)/shown.length,x=i=>left+(i+.5)*step;
     const chart=svg("svg",{viewBox:`0 0 ${width} ${height}`,role:"img","aria-label":trade.symbol+" "+interval+" 歷史交易圖"});container.append(chart);
     for(let i=0;i<5;i++){const value=minimum+(maximum-minimum)*i/4,at=y(value);chart.append(svg("line",{x1:left,y1:at,x2:width-right,y2:at,stroke:"#15232b"}));text(chart,width-right+8,at+4,money(value));}
+    if(trade.strategyVersion){
+      const profile=root.SmcEngine.PROFILES[trade.profileId],zone=interval===profile.high?trade.highZone:trade.entryZone;
+      for(const [label,z,color]of[["OB",zone,trade.direction==="SHORT"?"#f6465d":"#0ecb81"],["FVG",interval===profile.high?trade.highZone?.fvg:null,"#f0b90b"]])if(z){
+        const knownAt=z.createdAt||trade.confirmedAt,index=shown.findIndex(r=>r[6]>=knownAt),begin=index<0?0:Math.max(0,index),leftX=left+begin*step;
+        chart.append(svg("rect",{x:leftX,y:y(z.high),width:width-right-leftX,height:Math.max(1,y(z.low)-y(z.high)),fill:color,"fill-opacity":.09,stroke:color,"stroke-opacity":.5}));text(chart,leftX+5,y(z.high)+12,label,color,10);
+      }
+    }
     shown.forEach((row,i)=>{const color=row[4]>=row[1]?"#00bf91":"#e67990";
       chart.append(svg("line",{x1:x(i),x2:x(i),y1:y(row[2]),y2:y(row[3]),stroke:color}));
       chart.append(svg("rect",{x:x(i)-step*.3,y:Math.min(y(row[1]),y(row[4])),width:step*.6,height:Math.max(1,Math.abs(y(row[1])-y(row[4]))),fill:color}));});
-    for(const[period,color]of(interval==="4h"?[[20,"#e2b864"]]:[[5,"#83bfff"],[10,"#c58bff"],[20,"#e2b864"]])){
+    if(!trade.strategyVersion)for(const[period,color]of(interval==="4h"?[[20,"#e2b864"]]:[[5,"#83bfff"],[10,"#c58bff"],[20,"#e2b864"]])){
       const points=[];for(let i=0;i<shown.length;i++){const index=start+i;if(index<period-1)continue;let sum=0;for(let j=index-period+1;j<=index;j++)sum+=rows[j][4];points.push(`${x(i)},${y(sum/period)}`);}
       chart.append(svg("polyline",{points:points.join(" "),fill:"none",stroke:color,"stroke-width":1.4}));
     }
-    const tags=[["進場",trade.entry,"#85bfff"],["停損",trade.stopLoss,"#e67990"],...(trade.targets?trade.targets.map((t,i)=>[t.label,t.price,["#f0b90b","#f8d33a","#ffe69a"][i]]):[["原目標",trade.target,"#00bf91"]])].filter(([,value])=>Number.isFinite(value)).sort((a,b)=>y(a[1])-y(b[1]));
+    const tags=[["進場",trade.entry,"#85bfff"],["停損",trade.stopLoss,"#e67990"],...(trade.targets?trade.targets.map((t,i)=>[t.label,t.price,["#f0b90b","#f8d33a","#ffe69a","#fff2c9"][i]]):[["原目標",trade.target,"#00bf91"]])].filter(([,value])=>Number.isFinite(value)).sort((a,b)=>y(a[1])-y(b[1]));
     const positions=[];
     for(let i=0;i<tags.length;i++)positions[i]=Math.max(y(tags[i][1])-5,i?positions[i-1]+18:top+10);
     for(let i=positions.length-1;i>=0;i--)positions[i]=Math.min(positions[i],i===positions.length-1?height-bottom-5:positions[i+1]-18);

@@ -18,26 +18,23 @@ function setup(options={}){
   };
   return {client:createClient({fetcher,intervalMs:0,clock:()=>now,sleep:async()=>{}}),calls,setNow:value=>now=value};
 }
-test('scans active USDT perpetuals with only 4H and 15M, fetching entries only after trend passes',async()=>{
-  const {client,calls}=setup(),states=[];const result=await client.scan({onProgress:state=>states.push(state)});
-  assert.equal(result.total,2);assert.equal(result.completed,2);assert.equal(result.trending,1);assert.equal(result.candidates.length,1);assert.equal(result.candidates[0].symbol,'BTCUSDT');
-  assert.equal(result.rankedMarkets.length,2);assert.equal(result.rankedMarkets[0].symbol,'ETHUSDT');
-  assert.equal(result.observations.length,2);
-  assert.equal(result.observations.find(o=>o.symbol==='BTCUSDT').status,'CANDIDATE');
-  assert.equal(result.observations.find(o=>o.symbol==='ETHUSDT').status,'NO_TREND');
-  assert.ok(Number.isFinite(result.observations.find(o=>o.symbol==='BTCUSDT').ma15m5));
-  const klines=calls.filter(url=>url.pathname.endsWith('klines'));
-  assert.equal(klines.length,3);assert.ok(klines.every(url=>['4h','15m'].includes(url.searchParams.get('interval'))));
-  assert.ok(!klines.some(url=>url.searchParams.get('symbol')==='ETHUSDT'&&url.searchParams.get('interval')==='15m'));
-  assert.ok(klines.every(url=>Number(url.searchParams.get('endTime'))===NOW-1));assert.ok(states.length>=3);
+test('scans both independent SMC timeframe pairs for every Top20 contract',async()=>{
+ const {client,calls}=setup(),states=[];const result=await client.scan({onProgress:state=>states.push(state)});
+ assert.equal(result.total,4);assert.equal(result.completed,4);assert.equal(result.candidates.length,0);assert.equal(result.errors,0);
+ assert.equal(result.rankedMarkets.length,2);assert.equal(result.observations.length,4);
+ assert.deepEqual([...new Set(result.observations.map(o=>o.profileId))].sort(),['1h5m','4h15m']);
+ const klines=calls.filter(u=>u.pathname.endsWith('klines'));assert.equal(klines.length,8);
+ assert.deepEqual([...new Set(klines.map(u=>u.searchParams.get('interval')))].sort(),['15m','1h','4h','5m'].sort());
+ assert.ok(klines.every(u=>Number(u.searchParams.get('endTime'))===NOW-1));assert.ok(states.length>=5);
 });
+
 test('caches each timeframe only until its own next candle boundary',async()=>{
   const {client,calls,setNow}=setup();await client.scan();const before=calls.filter(u=>u.pathname.endsWith('klines')).length;
   await client.scan();assert.equal(calls.filter(u=>u.pathname.endsWith('klines')).length,before);
   setNow(NOW+900000);await client.scan();const newCalls=calls.filter(u=>u.pathname.endsWith('klines')).slice(before);
-  assert.equal(newCalls.length,1);assert.equal(newCalls[0].searchParams.get('interval'),'15m');
-  await assert.rejects(client.candles('BTCUSDT','1h',NOW),/只允許/);
-  await assert.rejects(client.candles('BTCUSDT','5m',NOW),/只允許/);
+  assert.equal(newCalls.length,4);assert.ok(newCalls.every(u=>['15m','5m'].includes(u.searchParams.get('interval'))));
+  await assert.rejects(client.candles('BTCUSDT','1m',NOW),/只允許/);
+  await assert.rejects(client.candles('BTCUSDT','30m',NOW),/只允許/);
 });
 test('rate limits stop further requests and honor Retry-After',async()=>{
   const {client,calls}=setup({fetch:async()=>({status:429,ok:false,headers:{get:()=> '120'},json:async()=>({})})});
@@ -48,7 +45,7 @@ test('aborted scans and exchange failures do not fabricate candidates',async()=>
   const aborted=new AbortController();aborted.abort();const {client,calls}=setup();
   await assert.rejects(client.scan({signal:aborted.signal}),{name:'AbortError'});assert.equal(calls.length,0);
   const broken=setup({fetch:async parsed=>({ok:true,status:200,json:async()=>parsed.pathname.endsWith('/time')?{serverTime:NOW}:parsed.pathname.endsWith('exchangeInfo')?exchange():parsed.pathname.endsWith('/ticker/24hr')?[{symbol:'BTCUSDT',quoteVolume:'10'},{symbol:'ETHUSDT',quoteVolume:'20'}]:[]})});
-  const result=await broken.client.scan();assert.equal(result.candidates.length,0);assert.equal(result.errors,2);assert.equal(result.observations.length,2);assert.ok(result.observations.every(o=>o.status==="ERROR"&&o.reason));
+  const result=await broken.client.scan();assert.equal(result.candidates.length,0);assert.equal(result.errors,4);assert.equal(result.observations.length,4);assert.ok(result.observations.every(o=>o.status==="ERROR"&&o.reason));
 });
 
 test('only the top 20 by numeric USDT turnover enter strategy scanning',async()=>{
@@ -69,7 +66,7 @@ test('only the top 20 by numeric USDT turnover enter strategy scanning',async()=
       rows(parsed.searchParams.get('interval'),'LONG',NOW)};
   }});
   const result=await client.scan();
-  assert.equal(result.total,20);assert.equal(result.completed,20);assert.equal(result.errors,0);
+  assert.equal(result.total,40);assert.equal(result.completed,40);assert.equal(result.errors,0);
   assert.deepEqual(result.symbols,[...names].reverse().slice(0,20));
   const requested=new Set(calls.filter(url=>url.pathname.endsWith('/klines')).map(url=>url.searchParams.get('symbol')));
   assert.equal(requested.size,20);assert.ok(!requested.has('COIN4USDT'));

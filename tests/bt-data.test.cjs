@@ -23,8 +23,8 @@ test('cancellation does not cache unfinished history',async()=>{
   await assert.rejects(client.range('BTCUSDT','15m',START,START+STEP,controller.signal),{name:'AbortError'});
   assert.equal(calls.length,0);assert.equal(cache.size,0);
 });
-test('only 4H and 15M are allowed and rate limits stop requests',async()=>{
+test('unsupported intervals fail and exchange rate limits stop requests',async()=>{
   const {client}=setup({fetch:async()=>({ok:false,status:429})});
-  await assert.rejects(client.range('BTCUSDT','5m',START,START+STEP),/不支援/);
+  await assert.rejects(client.range('BTCUSDT','1m',START,START+STEP),/不支援/);
   await assert.rejects(client.range('BTCUSDT','15m',START,START+STEP),/限流/);
 });

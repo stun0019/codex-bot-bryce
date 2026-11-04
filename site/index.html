@@ -9,7 +9,7 @@
   <title>策略掃描 · Codex Bot</title>
   <link rel="icon" type="image/svg+xml" href="favicon.svg?v=yellow-1">
   <link rel="stylesheet" href="styles.css?v=tp-1">
-  <link rel="stylesheet" href="dashboard.css?v=smc-1">
+  <link rel="stylesheet" href="dashboard.css?v=account-1">
 </head>
 <body data-page="strategy">
   <div id="appShell">
@@ -19,8 +19,18 @@
     </header>
     <main id="overview" class="terminal-shell">
       <div class="desk-intro"><div><p class="desk-eyebrow">BINANCE FUTURES · STRATEGY DESK</p><h2>交易策略工作台<span class="desk-version">SMC · 4H＋15M / 1H＋5M</span></h2><p>順勢掃描，讓每一筆決策都有依據。</p></div><span class="desk-local"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="3"/><path d="M10 17h4"/></svg>瀏覽器本機紀錄</span></div>
+      <section id="sharedAccount" class="shared-account" aria-labelledby="accountTitle">
+        <div class="account-heading"><h3 id="accountTitle">共用模擬帳戶</h3><span id="accountStatus" role="status">準備共用帳戶</span></div>
+        <div class="account-grid">
+          <div><span>帳戶餘額 USDT</span><strong id="accountBalance">—</strong></div><div><span>帳戶淨值 USDT</span><strong id="accountEquity">—</strong></div>
+          <div><span>可用保證金 USDT</span><strong id="accountAvailable">—</strong></div><div><span>總停損風險 USDT</span><strong id="accountRisk">—</strong><small id="accountRiskCap">總風險上限5%</small></div>
+          <div><span>多／空風險 USDT</span><strong><span id="accountLongRisk">—</span> / <span id="accountShortRisk">—</span></strong></div><div><span>保證金＋費用預留</span><strong id="accountMargin">—</strong></div>
+          <div><span>本期淨值變動 USDT</span><strong id="accountPeriodPnl">—</strong></div>
+        </div>
+        <details class="account-details"><summary>風控及帳戶起算方式</summary><p>單筆、全部持倉與待成交、同方向停損風險上限均為5%，名目部位上限50x；不對沖抵銷風險。未實現獲利不增加可開倉資金，未實現虧損會扣除可用額度。這是本機模擬估算，不是幣安帳戶實際可用保證金。</p><p id="accountMarginDetail"></p><p id="accountStarted"></p><p>舊已平倉損益不回加初始餘額；既有持倉保留原計畫並納入風險。持倉核對中或超限時停止新增；超限先取消待成交計畫，不自動改寫既有持倉。清空會重設帳戶至初始資金。</p></details>
+      </section>
       <section id="overviewSummary" class="desk-overview" aria-label="前向模擬績效總覽">
-        <div class="desk-overview-head"><span><i></i> SMC 前向模擬績效</span><span>僅計本機累積 · 獨立訊號</span></div>
+        <div class="desk-overview-head"><span><i></i> SMC 訊號歷史績效</span><span>歷史訊號統計 · 帳戶淨值另列</span></div>
         <div class="desk-stats">
           <div class="desk-stat"><span>累計淨損益 <small>USDT</small></span><strong id="deskNet">0.00</strong><small id="deskClosed">0 筆已平倉</small></div>
           <div class="desk-stat"><span>費後勝率</span><strong id="deskWin">—</strong><small id="deskWins">0 勝 / 0 敗</small></div>
@@ -46,30 +56,33 @@
             <div class="list-actions">
               <select id="timeframeFilter" aria-label="SMC時間框架"><option value="all">全部週期</option><option value="4h15m">4H＋15M</option><option value="1h5m">1H＋5M</option></select><select id="directionFilter" aria-label="策略方向"><option value="all">全部方向</option><option value="LONG">做多候選</option><option value="SHORT">做空候選</option></select>
               <button class="refresh-button" id="refreshBtn" type="button">更新</button>
+              <label class="entry-filter-toggle"><input id="rsiEntryFilter" type="checkbox"><span>RSI＋放量過濾</span></label>
             </div>
           </div>
+          <p id="entryFilterStatus" class="lab-help" role="status"></p>
           <div class="strategy-capital">
-            <label for="capitalInput">總資金 <span class="capital-control"><input id="capitalInput" type="number" inputmode="decimal" min="0.01" step="0.01" value="200"><span>USDT</span></span></label>
+            <label for="capitalInput">帳戶初始資金 <span class="capital-control"><input id="capitalInput" type="number" inputmode="decimal" min="0.01" step="0.01" value="200"><span>USDT</span></span></label>
             <div><span>每筆風險 5%</span><strong id="riskBudget">10.00 USDT</strong></div>
             <div><span>最低盈虧比</span><strong>1 : 2</strong></div>
           </div>
           <div class="strategy-scan-state"><span id="scannerStatus" role="status" data-state="pending">準備掃描</span><time id="lastUpdate"></time></div>
           <progress id="scanMeter" max="1" value="0" aria-label="合約掃描進度"></progress>
           <p id="scanProgress" class="strategy-progress" role="status">等待幣安資料</p>
+          <p id="candidateRecordStatus" class="lab-help" role="status"></p>
           <div id="strategyList" class="strategy-list" aria-live="off"></div>
-          <p class="strategy-note">每輪依 24H USDT 成交額選取前 20 個合約。僅使用兩套各自已收盤的K線；每5分鐘更新。卡片是等待OB中線回測的限價計畫，未回測不算成交。風險與獲利為價格差估算，未含手續費、滑價與資金費率。候選不會自動下單。</p>
+          <p class="strategy-note">每輪依 24H USDT 成交額選取前 20 個合約。僅使用兩套各自已收盤的K線；每5分鐘更新。卡片是等待OB中線回測的限價計畫，未回測不算成交。卡片與模擬共用含費用、停損滑價及分批限制的預留計畫；未計資金費率與強平。候選不會自動下單。</p>
           <details class="strategy-rules">
             <summary>策略條件與資金管理</summary>
-            <ul><li>兩套獨立策略：4H區域＋15M結構，及1H區域＋5M結構；不混用週期。</li><li>高週期先以已確認轉折結構突破與ATR14前值×1.2位移形成OB，取前6根內最後反向K全高低範圍；FVG獨立標示，不作必要條件。</li><li>進區前低週期須有反向HH/HL或LH/LL；收盤突破保護結構且有位移才確認CHoCH。轉折左右各2根，確認後才可使用。</li><li>等待低週期OB的50%中線回測；停損在OB與進區後轉折極值外1tick。觸區等待結構及結構後等待回測各最多1根高週期時間。</li><li>TP1=2R出30%、TP2=3R出30%、TP3=4R出剩餘，TP4=5R僅觀察；停損不移動。</li><li>高週期收盤突破OB遠端或區域超過80根取消未成交候選。每筆風險預算5%，部位按交易精度取整；實際虧損可能因跳價超出預算。</li></ul>
+            <ul><li>高週期 MACD(12,26,9) 主線 DIF＞0 只多、＜0 只空、＝0 觀望。僅使用已收盤資料。</li><li>勾選 RSI＋放量過濾時，4H＋15M 看15M、1H＋5M看5M：多 RSI14＜30、空＞70，且成交量≥前一根3倍（增加200%）；只影響候選及未成交計畫。</li><li>兩套獨立策略：4H區域＋15M結構，及1H區域＋5M結構；不混用週期。</li><li>高週期先以已確認轉折結構突破與ATR14前值×1.2位移形成OB，取前6根內最後反向K全高低範圍；FVG獨立標示，不作必要條件。</li><li>進區前低週期須有反向HH/HL或LH/LL；收盤突破保護結構且有位移才確認CHoCH。轉折左右各2根，確認後才可使用。</li><li>等待低週期OB的50%中線回測；停損在OB與進區後轉折極值外1tick。觸區等待結構及結構後等待回測各最多1根高週期時間。</li><li>TP1=2R出30%、TP2=3R出30%、TP3=4R出剩餘，TP4=5R僅觀察；停損不移動。</li><li>高週期收盤突破OB遠端或區域超過80根取消未成交候選。每筆風險預算5%，部位按交易精度取整；實際虧損可能因跳價超出預算。</li></ul>
           </details>
         </div>
       </section>
       <section id="paper" data-desk-panel="paper" class="paper-panel signals-dashboard" aria-labelledby="paperTitle">
         <div class="list-head">
-          <div><p class="strategy-kicker">前向測試 · 訊號獨立模擬 · 本機紀錄</p><h2 id="paperTitle">模擬交易 <span id="paperCount">(0 / 0)</span></h2></div>
+          <div><p class="strategy-kicker">前向測試 · 共用帳戶風控 · 本機紀錄</p><h2 id="paperTitle">模擬交易 <span id="paperCount">(0 / 0)</span></h2></div>
           <div class="list-actions"><button id="paperPause" type="button" disabled>暫停新增</button><button id="paperClear" type="button" disabled>清空</button><button id="paperRecover" type="button" disabled>重新核對</button><button id="paperExport" type="button">匯出紀錄</button></div>
         </div>
-        <p class="paper-intro">新SMC候選等待產生後的新成交報價回測OB中線才模擬限價進場。每筆按當時總資金的 5% 獨立計算，並納入估算進出場費用與停損滑價；數量可能與策略卡片的參考部位不同。本版不共用保證金，也不代表 200 USDT 帳戶資金曲線。</p>
+        <p class="paper-intro">新SMC候選等待產生後的新成交報價回測OB中線才模擬限價進場。兩套週期共用帳戶，合計停損風險與同方向風險上限均為5%；待成交先預留保證金與費用，卡片顯示同一份預留數量。成交前會因帳戶狀態改變重新核驗，失敗顯示原因。上方帳戶資訊是本期淨值，下面保留歷史訊號統計。</p>
         <div class="paper-stats" aria-label="模擬交易績效">
           <div><span>已平倉</span><strong id="paperClosed">0</strong><small id="paperOpen">0 持倉 · 0 待報價</small></div>
           <div><span>平倉淨獲利勝率</span><strong id="paperWinRate">—</strong><small>僅計連續追蹤的已平倉樣本</small></div>
@@ -95,7 +108,7 @@
       <section class="lab-panel signals-dashboard" aria-labelledby="backtestTitle" id="backtest" data-desk-panel="backtest">
         <div class="list-head"><div><p class="strategy-kicker">歷史重播 · 每筆獨立測試 · 瀏覽器本機保存</p><h2 id="backtestTitle">策略回測</h2></div><button id="btExport" type="button" disabled>匯出報告 JSON</button></div>
         <p class="lab-intro">選擇日期與合約，重播兩套獨立的已收盤SMC策略。累積淨損益曲線代表獨立訊號結果，並非共用 200 USDT 保證金的帳戶資金曲線。回測不會建立前向模擬持倉。</p>
-        <section id="quarterPanel" class="quarter-panel"><h3>2026 Q1／Q2／Q3 · 自動統計</h3><p id="quarterStatus" role="status">讀取預先計算的季度報告…</p><div class="lab-table-wrap"><table class="lab-table"><thead><tr><th>季度</th><th>SMC週期</th><th>平倉</th><th>勝率</th><th>獨立訊號淨損益 USDT</th><th>平均淨R</th><th>資料覆蓋</th><th>報告</th></tr></thead><tbody id="quarterRows"></tbody></table></div><p class="lab-help">固定目前Top20，非歷史排名。每筆獨立200USDT、5%風險，不代表共用帳戶報酬；包含估算費用與滑價，未計資金費率及強平。開啟此頁即可查看，不需手動掃描。</p></section>
+        <section id="quarterPanel" class="quarter-panel"><h3>2026 Q1／Q2／Q3 · 自動統計</h3><label>季度報告條件 <select id="quarterFilter"><option value="macd">MACD方向過濾</option><option value="macd-rsi">MACD＋RSI／放量過濾</option><option value="baseline">舊SMC對照（無MACD）</option></select></label><p id="quarterStatus" role="status">讀取預先計算的季度報告…</p><div class="lab-table-wrap"><table class="lab-table"><thead><tr><th>季度</th><th>SMC週期</th><th>平倉</th><th>勝率</th><th>獨立訊號淨損益 USDT</th><th>平均淨R</th><th>資料覆蓋</th><th>報告</th></tr></thead><tbody id="quarterRows"></tbody></table></div><p class="lab-help">固定目前Top20，非歷史排名。每筆獨立200USDT、5%風險，不代表共用帳戶報酬；包含估算費用與滑價，未計資金費率及強平。開啟此頁即可查看，不需手動掃描。</p></section>
         <details class="paper-assumptions"><summary>進階：自訂歷史回測</summary><form id="btForm" class="lab-form">
           <label>開始日期（台北）<input id="btStart" type="date" required></label><label>結束日期（含當日）<input id="btEnd" type="date" required></label>
           <label class="lab-wide">回測範圍<select id="btMode"><option value="fixed">固定選定合約（非歷史 Top20）</option><option value="recorded">已保存的當時 Top20（僅有快照時段）</option></select></label>
@@ -105,7 +118,7 @@
           <label>單邊手續費 %<input id="btFee" type="number" min="0" max="1" step="0.001" value="0.05" required></label>
           <label>單邊不利滑價 %<input id="btSlip" type="number" min="0" max="1" step="0.001" value="0.02" required></label>
           <label class="lab-wide">同根 K 雙觸價<select id="btAmbiguous"><option value="stop-first">保守：停損優先，計入績效</option><option value="review">標記不確定，不列入勝率</option></select></label>
-          <input id="btTargetPolicy" type="hidden" value="smc">
+          <label class="entry-filter-toggle"><input id="btRsiFilter" type="checkbox"><span>RSI＋放量過濾</span></label><input id="btTargetPolicy" type="hidden" value="smc">
           <div class="lab-form-actions"><button id="btRun" type="submit">執行歷史回測</button><button id="btCancel" type="button" disabled>取消</button></div>
         </form></details>
         <p class="lab-help">最多 100 天；費率為模擬假設。固定幣種模式使用目前交易精度，可能有選樣與生存者偏差。Top20 模式只使用在決策時間前已完成保存、且未超過 15 分鐘的快照，不推測缺失排名。</p>
@@ -135,37 +148,28 @@
         <p class="lab-help">自新版啟用起，保存每輪排名、符合／不符合條件與資料錯誤。關閉頁面不會繼續掃描；舊版本未曾記錄的歷史時段無法自動補回。資料只存在本裝置／瀏覽器，清除網站資料會遺失。</p>
       </section>
 
-      <section id="rsi-volume" data-desk-panel="rsi-volume" class="signals-dashboard" aria-labelledby="rsiVolumeTitle" hidden>
-        <div class="list-head"><div><p class="strategy-kicker">全 USDT 永續 · 15M 已收盤 · 背景同步掃描</p><h2 id="rsiVolumeTitle">RSI＋爆量 <span id="rsiVolumeCount">(0)</span></h2></div><div class="list-actions"><button id="rsiVolumeRun" type="button">更新</button><button id="rsiVolumeCancel" type="button" disabled>取消</button><button id="rsiVolumeClose" type="button">隱藏</button></div></div>
-        <div class="rsi-volume-rule"><span>RSI (14) <strong>&lt; 30</strong></span><span>成交量 <strong>≥ 前根 3 倍</strong></span></div>
-        <p id="rsiVolumeStatus" role="status">等待策略掃描啟動</p><p id="rsiVolumeTime" class="strategy-confirmed"></p>
-        <progress id="rsiVolumeMeter" max="1" value="0" aria-label="RSI爆量掃描進度"></progress><p id="rsiVolumeProgress" class="strategy-progress" role="status"></p>
-        <div id="rsiVolumeList" class="strategy-list"></div>
-        <details id="rsiVolumeErrors" class="strategy-rules" hidden><summary>無法檢查的合約</summary><ul id="rsiVolumeFailures"></ul></details>
-        <details class="strategy-rules"><summary>詳細資訊</summary><p>每次策略掃描時背景同步執行，名單獨立於原策略 Top20，不會自動建立模擬持倉。最新已收盤 15M 的 RSI(14) 必須嚴格低於 30，且同一根基礎資產成交量至少為前一根的 3 倍，亦即增加 200%；前根成交量為 0 則略過。</p><p>RSI 使用 Wilder 平滑，從最多 250 根已收盤 K 線的前 14 個漲跌幅平均值起算。整輪固定同一個收盤時間；全合約需分批抓取，可能耗時數分鐘。切換頁籤不會中止背景掃描，關閉網站則停止。</p></details>
-      </section>
-
       <footer class="desk-footer"><span>CODEX BOT / STRATEGY DESK</span><span>BINANCE USDT 永續 · SMC 雙時間框架 · 瀏覽器本機保存</span></footer>
     </main>
   </div>
-  <script src="strategy-engine.js?v=smc-1"></script>
-  <script src="smc-engine.js?v=1"></script>
-  <script src="strategy-data.js?v=smc-1"></script>
+  <script src="strategy-engine.js?v=account-1"></script>
+  <script src="account-risk.js?v=1"></script>
+  <script src="smc-engine.js?v=macd-2"></script>
+  <script src="strategy-data.js?v=macd-2"></script>
   <script src="price-feed.js?v=recovery-1"></script>
-  <script src="target-engine.js?v=smc-1"></script>
-  <script src="target-view.js?v=smc-1"></script>
-  <script src="paper-engine.js?v=smc-1"></script>
-  <script src="dashboard-ui.js?v=smc-1"></script>
+  <script src="target-engine.js?v=macd-2"></script>
+  <script src="target-view.js?v=macd-2"></script>
+  <script src="paper-engine.js?v=account-1"></script>
+  <script src="dashboard-ui.js?v=macd-2"></script>
   <script src="paper-recovery.js?v=1"></script>
-  <script src="paper-panel.js?v=smc-1"></script>
+  <script src="paper-panel.js?v=account-1"></script>
   <script src="bt-store.js?v=1"></script>
-  <script src="bt-engine.js?v=smc-1"></script>
-  <script src="bt-data.js?v=smc-1"></script>
-  <script src="bt-charts.js?v=smc-1"></script>
-  <script src="bt-panel.js?v=smc-1"></script>
-  <script src="rsi-volume.js?v=1"></script>
-  <script src="rsi-volume-panel.js?v=1"></script>
-  <script src="quarter-panel.js?v=1"></script>
-  <script src="strategy-scanner.js?v=smc-1"></script>
+  <script src="bt-engine.js?v=macd-2"></script>
+  <script src="bt-data.js?v=macd-2"></script>
+  <script src="bt-charts.js?v=macd-2"></script>
+  <script src="bt-panel.js?v=macd-2"></script>
+
+  <script src="quarter-panel.js?v=macd-2"></script>
+  <script src="candidate-records.js?v=1"></script>
+  <script src="strategy-scanner.js?v=account-1"></script>
 </body>
 </html>

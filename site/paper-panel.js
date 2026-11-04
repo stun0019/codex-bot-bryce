@@ -6,7 +6,7 @@
   const feeInput = $("paperFee"), slipInput = $("paperSlippage");
   let model = Engine.createModel(), isLeader = false, acquiring = false, releaseLock = null;
   let storageBlocked = false, storageMessage = "", dirty = true, changed = false, lastSave = 0;
-  let currentGeneration = null, symbolsKey = "", latest = { candidates: [], capital: 70, now: Date.now() }, serverOffset = 0;
+  let currentGeneration = null, symbolsKey = "", latest = { candidates: [], capital: 200, now: Date.now(), committed: false }, serverOffset = 0;
   let coordinator = null, recoveryController = null, recoveryProgress = "";
   const recoveryClient = window.PaperRecovery.createClient({ clock: () => now() });
   const labels = { WAITING_PRICE: "待報價", OPEN: "持倉中", TAKE_PROFIT: "止盈", STOP_LOSS: "止損", SKIPPED: "略過", REVIEW: "待核對" };
@@ -15,10 +15,11 @@
   const price = value => Number.isFinite(value) ? value.toLocaleString("en-US", { maximumSignificantDigits: 10 }) : "—";
   const time = value => value ? new Date(value).toLocaleString("zh-TW", { timeZone: "Asia/Taipei", hour12: false }) : "—";
   const now = () => Date.now() + serverOffset;
-  function load() {
+  function load(activateAccount = false) {
     recoveryController?.abort(); recoveryController = null;
     try { const raw = localStorage.getItem(ledgerKey); model = Engine.createModel(raw ? JSON.parse(raw) : null); }
     catch (error) { storageBlocked = true; storageMessage = "既有紀錄無法讀取，已暫停新增與覆寫；請先匯出保存。"; model = Engine.createModel(); }
+    if (activateAccount && !storageBlocked) model.enableAccount(200, now());
     coordinator = window.PaperRecovery.createCoordinator({ model, client: recoveryClient, clock: now,
       onChange(force) { changed = dirty = true; if (force) save(true); },
       onProgress(progress) { recoveryProgress = "核對 " + progress.symbol + " · " + progress.rows + " 筆成交"; dirty = true; } });
@@ -49,11 +50,22 @@
     finally { recoveryProgress = ""; dirty = true; }
   }
   function ingest() {
-    if (!isLeader || storageBlocked) return;
+    if (!isLeader || storageBlocked || !latest.committed) return;
     if (model.addCandidates(latest.candidates, latest.capital, now())) { changed = dirty = true; syncSymbols(); save(true); }
   }
-  window.PaperTrading = { reconcileCandidates(candidates, observations, at) { if (isLeader && !storageBlocked && model.reconcileCandidates(candidates, observations, at)) { changed = dirty = true; syncSymbols(); save(true); render(); } }, acceptCandidates(candidates, capital, serverNow) {
-    serverOffset = serverNow - Date.now(); latest = { candidates, capital, now: serverNow }; ingest();
+  window.PaperTrading = {
+    recordStatus(candidate) { const t=model.trades.find(t=>t.id===Engine.key(candidate)); return t?{status:t.status,entered:!!t.entry,recovering:!!t.recovery?.pending,reason:t.reason,quantity:t.quantity,estimatedStopRisk:t.estimatedStopRisk,remainingQuantity:t.remainingQuantity,netPnl:t.netPnl}:null; },
+    invalidatePending(reason) { latest.committed=false; if (!isLeader || storageBlocked) return; let count=0; for (const trade of model.trades) if (trade.status==="WAITING_PRICE") { model.cancelOrder(trade,reason,now()); count++; } if(count) {changed=dirty=true;syncSymbols();save(true);render();} },
+    accountState() { return model.accountState(now()); },
+    beginScan() { latest = { ...latest, candidates: [], committed: false }; },
+    previewCandidates(candidates, capital) {
+      if (storageBlocked) return new Map(candidates.map(c => [Engine.key(c), { ok: false, reason: storageMessage }]));
+      if (!model.accountSnapshot()) return new Map(candidates.map(c => [Engine.key(c), { ok: false, reason: "等待共用帳戶初始化" }]));
+      const plans = model.previewCandidates(candidates, capital, now());
+      if (!isLeader) for (const [key, plan] of plans) if (!plan.status) plans.set(key, { ...plan, ok: false, reason: "唯讀分頁，等待負責追蹤的分頁預留" });
+      return plans;
+    }, reconcileCandidates(candidates, observations, at) { if (isLeader && !storageBlocked && model.reconcileCandidates(candidates, observations, at)) { changed = dirty = true; syncSymbols(); save(true); render(); } }, acceptCandidates(candidates, capital, serverNow, commit = false) {
+    serverOffset = serverNow - Date.now(); latest = { candidates, capital, now: serverNow, committed: commit }; if (commit) ingest();
   } };
   function node(tag, className, text) {
     const element = document.createElement(tag); if (className) element.className = className;
@@ -64,6 +76,15 @@
   }
   function render() {
     if (!dirty) return; dirty = false;
+    const account = model.accountState(now());
+    const values = { accountBalance: account?.balance, accountEquity: account?.equity, accountAvailable: account?.availableMargin, accountRisk: account?.usedRisk, accountLongRisk: account?.directions.LONG.risk, accountShortRisk: account?.directions.SHORT.risk, accountPeriodPnl: account?.periodPnl, accountMargin: account ? account.positionMargin + account.orderMargin + account.feeReserve : null };
+    for (const [id, value] of Object.entries(values)) $(id).textContent = money(value);
+    $("accountRiskCap").textContent = account ? "上限 " + money(account.totalLimit) + " USDT · 5%" : "總風險上限 5%";
+    $("accountStatus").textContent = storageMessage || (account ? account.blockedReason || (isLeader ? "共用模擬帳戶 · 風控正常" : "共用模擬帳戶 · 另一分頁負責追蹤") : "等待取得追蹤鎖並初始化共用帳戶");
+    $("accountStatus").dataset.state = account?.blockedReason || storageBlocked ? "error" : "live";
+    $("accountMarginDetail").textContent = account ? "持倉保證金 " + money(account.positionMargin) + " · 待成交保證金 " + money(account.orderMargin) + " · 預估費用預留 " + money(account.feeReserve) + " USDT；名目部位上限 " + account.limits.leverage + "x。" : "";
+    $("accountStarted").textContent = account ? "起算 " + time(account.startedAt) + " · 初始餘額 " + money(account.initialCapital) + " · 起算淨值 " + money(account.startingEquity) + " USDT；既有持倉已納入風控。" : "";
+    window.dispatchEvent(new Event("paper-account-update"));
     const profileId = $("paperTimeframe").value, cohort = model.trades.filter(t => profileId === "all" || (profileId === "smc" ? !!t.strategyVersion : profileId === "legacy" ? !t.strategyVersion : t.profileId === profileId));
     const stats = model.stats(profileId);
     window.DashboardUI?.updateSummary(model.stats("smc"));
@@ -127,7 +148,7 @@
     try {
       await navigator.locks.request("codex-paper-tracker-v1", { ifAvailable: true }, async lock => {
         acquiring = false; if (!lock) return;
-        load(); if (storageBlocked) return;
+        load(true); if (storageBlocked) return;
         isLeader = true; currentGeneration = null;
         model.suspend("重新開啟頁面，離線期間觸價順序需核對", now()); changed = dirty = true; save(true);
         recoveryController = new AbortController();
@@ -153,11 +174,13 @@
   });
   $("paperClear").addEventListener("click", () => {
     if (!isLeader || storageBlocked || !model.trades.length) return;
-    if (!window.confirm("清空此瀏覽器全部模擬交易與持倉紀錄？此操作無法還原。費率設定、歷史回測報告與掃描歷史會保留。")) return;
+    if (!window.confirm("清空此瀏覽器全部模擬交易與持倉紀錄，並將共用模擬帳戶重設為初始資金？此操作無法還原。費率設定、歷史回測報告與掃描歷史會保留。")) return;
     const next = Engine.createModel({ version: 1, settings: { ...model.settings }, trades: [], ignoreBefore: now() });
+    const currentAccount = model.accountSnapshot(); next.enableAccount(currentAccount?.initialCapital || 200, now(), currentAccount?.limits || window.AccountRisk.DEFAULTS);
     try { localStorage.setItem(ledgerKey, JSON.stringify(next.snapshot())); }
     catch (_) { storageMessage = "清空失敗，原有紀錄仍保留。"; dirty = true; render(); return; }
-    load(); latest = { candidates: [], capital: latest.capital, now: now() }; currentGeneration = null; recoveryProgress = "";
+    window.dispatchEvent(new Event("paper-records-cleared"));
+    load(); latest = { candidates: [], capital: latest.capital, now: now(), committed: false }; currentGeneration = null; recoveryProgress = "";
     changed = dirty = true; syncSymbols(); save(true); render();
   });
   pause.addEventListener("click", () => {
@@ -179,7 +202,7 @@
   $("paperTimeframe").addEventListener("change", () => { dirty = true; render(); });
   $("paperExport").addEventListener("click", () => {
     const payload = storageBlocked ? localStorage.getItem(ledgerKey) : JSON.stringify({ ...model.snapshot(),
-      exportedAt: new Date().toISOString(), mode: "independent-forward-paper-trades", stats: model.stats() }, null, 2);
+      exportedAt: new Date().toISOString(), mode: "shared-account-forward-paper-trades", stats: model.stats() }, null, 2);
     const url = URL.createObjectURL(new Blob([payload || ""], { type: "application/json" }));
     const link = document.createElement("a"); link.href = url; link.download = "codex-paper-trades-" +
       new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Taipei" }) + ".json"; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
@@ -199,7 +222,7 @@
     if (!isLeader) { void acquire(); render(); return; }
     checkConnection();
     if (model.expire(now())) changed = dirty = true;
-    syncSymbols(); save(); render(); void pumpRecovery();
+    ingest(); syncSymbols(); save(); render(); void pumpRecovery();
   }, 1000);
   render(); void acquire();
 })();

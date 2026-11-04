@@ -21,7 +21,7 @@
     if(!/^\d{4}-\d{2}-\d{2}$/.test(startText)||!/^\d{4}-\d{2}-\d{2}$/.test(endText))throw new Error("請輸入完整日期");
     const start=Date.parse(startText+"T00:00:00+08:00"),end=Date.parse(endText+"T00:00:00+08:00")+86400000;
     const config={start,end,capital:Number($("btCapital").value),feeRate:Number($("btFee").value)/100,
-      slippage:Number($("btSlip").value)/100,mode:$("btMode").value,ambiguous:$("btAmbiguous").value,targetPolicy:"smc",profileId:$("btProfile").value,
+      slippage:Number($("btSlip").value)/100,mode:$("btMode").value,ambiguous:$("btAmbiguous").value,targetPolicy:"smc",profileId:$("btProfile").value,rsiFilter:$("btRsiFilter").checked,
       startDate:startText,endDate:endText};
     B.validate(config);return config;
   }
@@ -70,7 +70,7 @@
     const s=report.stats;$("btClosed").textContent=s.closed+" / "+s.open;$("btWinRate").textContent=s.winRate==null?"—":s.winRate.toFixed(1)+"%";
     $("btNet").textContent=signed(s.netPnl);$("btNet").dataset.tone=s.netPnl>=0?"positive":"negative";
     $("btDrawdown").textContent=money(s.maxDrawdown);$("btFactor").textContent=pf(s);$("btStreak").textContent=String(s.maxLossStreak);
-    $("btCoverage").textContent=titleMode(report.config.mode)+" · "+(report.strategyVersion?"SMC · "+(window.SmcEngine.PROFILES[report.config.profileId]?.label||"兩套週期")+" · 30%／30%／剩餘":"舊策略：原出場規則")+"｜"+date(report.config.start)+" ～ "+date(report.config.end)+
+    $("btCoverage").textContent=titleMode(report.config.mode)+" · "+(report.strategyVersion?"SMC · "+(window.SmcEngine.PROFILES[report.config.profileId]?.label||"兩套週期")+" · 30%／30%／剩餘":"舊策略：原出場規則")+(report.config.rsiFilter?" · RSI＋放量過濾開啟":" · RSI＋放量過濾關閉")+"｜"+date(report.config.start)+" ～ "+date(report.config.end)+
       "｜"+report.symbols.length+" 個合約｜"+(report.config.mode==="recorded"?"排名快照覆蓋 "+report.coverage.percent.toFixed(1)+"%（"+report.coverage.covered+" / "+report.coverage.windows+" 時段）":"此結果不代表歷史成交額 Top20 策略");
     $("btSamples").textContent="平均淨損益 "+signed(s.averagePnl)+" USDT · 平均淨 R "+(s.averageR==null?"—":s.averageR.toFixed(2))+
       " · 略過 "+s.skipped+" · 不確定 "+s.review+" · 雙觸價 "+s.ambiguous+"；勝率只計已平倉、費後淨獲利筆數。";
@@ -102,7 +102,7 @@
       if(signal.aborted){reject(new DOMException("Aborted","AbortError"));return;}
       if(!window.Worker){reject(new Error("此瀏覽器無法使用背景回測 Worker，請改用較新版本瀏覽器"));return;}
       const abort=()=>{worker?.terminate();worker=null;reject(new DOMException("Aborted","AbortError"));};
-      worker=new Worker("bt-worker.js?v=smc-1");signal.addEventListener("abort",abort,{once:true});
+      worker=new Worker("bt-worker.js?v=macd-2");signal.addEventListener("abort",abort,{once:true});
       const finish=()=>{signal.removeEventListener("abort",abort);worker?.terminate();worker=null;};
       worker.onmessage=event=>{const response=event.data;
         if(response.type==="progress"){message("重播策略 "+response.progress.completed+" / "+response.progress.total+" · "+response.progress.symbol);meter.value=.6+.4*response.progress.completed/response.progress.total;}
@@ -158,19 +158,21 @@
     const scan=archive.find(row=>row.id===$("scanArchivePicker").value),body=$("scanArchiveRows");body.replaceChildren();if(!scan)return;
     scan.rankedMarkets.forEach((market,index)=>{const observations=scan.observations.filter(o=>o.symbol===market.symbol);for(const observation of (observations.length?observations:[null])){const row=node("tr");
       row.append(td(index+1),td(market.symbol),td(money(market.quoteVolume24h)),td((observation?.timeframeLabel||"舊策略")+" · "+(observation?.direction==="LONG"?"多":observation?.direction==="SHORT"?"空":"觀望")),
-        td(({WAIT_ZONE:"等待區域",WAIT_SHIFT:"等待結構轉換",WAIT_RETEST:"等待OB回測",RETESTED:"歷史已回測",EXPIRED:"候選逾時",INVALIDATED:"候選失效",CANDIDATE:"等待OB回測",ERROR:"資料錯誤",NO_TREND:"舊策略觀望",NO_ENTRY:"舊策略等待"})[observation?.status]||"未完成"),td(observation?.reason||scan.error||"未取得判定結果"));body.append(row);}});
+        td(({FILTERED:"RSI／量未通過",WAIT_BIAS:"等待MACD方向",WAIT_ZONE:"等待區域",WAIT_SHIFT:"等待結構轉換",WAIT_RETEST:"等待OB回測",RETESTED:"歷史已回測",EXPIRED:"候選逾時",INVALIDATED:"候選失效",CANDIDATE:"等待OB回測",ERROR:"資料錯誤",NO_TREND:"舊策略觀望",NO_ENTRY:"舊策略等待"})[observation?.status]||"未完成"),td(observation?.reason||scan.error||"未取得判定結果"));body.append(row);}});
   }
   $("scanArchivePicker").addEventListener("change",archiveRows);
   window.ScanArchive={async save(state,capital,error=null){
     try{
       await Store.put("scans",{id:crypto.randomUUID(),version:1,strategyVersion:state.strategyVersion||window.SmcEngine.VERSION,asOf:state.asOf||Date.now(),
-        finishedAt:Date.now()+(state.serverOffset||0),status:error?"FAILED":"COMPLETE",error,capital,
+        filters:state.filters||null,finishedAt:Date.now()+(state.serverOffset||0),status:error?"FAILED":"COMPLETE",error,capital,
         rankedMarkets:state.rankedMarkets||[],observations:state.observations||[],candidates:state.candidates||[]});
       $("scanArchiveError").textContent="";await refreshArchive();
     }catch(error){$("scanArchiveError").textContent="本機掃描快照儲存失敗："+error.message;}
   }};
   $("btStart").value=day(Date.now()-7*86400000);$("btEnd").value=day(Date.now()-86400000);
   $("btStart").max=$("btEnd").max=day(Date.now());
+  window.addEventListener("entry-filter-change",event=>{$("btRsiFilter").checked=event.detail.enabled;});
+  try { $("btRsiFilter").checked=localStorage.getItem("codex-smc-rsi-filter")==="true"; } catch {}
   window.addEventListener("pagehide",()=>controller?.abort());
   Promise.all([refreshArchive(),refreshReports()]).catch(error=>message("本機研究資料庫無法讀取："+error.message,"error"));
 })();

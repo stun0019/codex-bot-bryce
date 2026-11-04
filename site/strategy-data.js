@@ -89,12 +89,12 @@
       return bars;
     }
 
-    async function scan({ capital = Engine.SETTINGS.capital, signal, onProgress = () => {} } = {}) {
+    async function scan({ capital = Engine.SETTINGS.capital, rsiFilter = false, signal, onProgress = () => {} } = {}) {
       const time = await json("/fapi/v1/time", signal), asOf = Number(time.serverTime);
       if (!Number.isFinite(asOf) || asOf <= 0) throw new Error("幣安時間無效");
       const localAt = clock(), universe = await topMarkets(signal), candidates = [], profiles = Object.values(Smc.PROFILES);
       const tasks = universe.flatMap(market => profiles.map(profile => ({ market, profile })));
-      const state = { strategyVersion: Smc.VERSION, total: tasks.length, completed: 0, trending: 0, errors: 0, candidates, asOf,
+      const state = { strategyVersion: Smc.VERSION, filters: {macdFilter:true,rsiFilter:!!rsiFilter}, total: tasks.length, completed: 0, trending: 0, errors: 0, candidates, asOf,
         serverOffset: asOf - localAt, symbols: universe.map(m => m.symbol), rankedMarkets: universe.map(m => ({ ...m })), observations: [], failures: [] };
       onProgress({ ...state }); let cursor = 0, fatal = null;
       await Promise.all(Array.from({ length: Math.min(concurrency, tasks.length) }, async () => {
@@ -105,8 +105,8 @@
           try {
             const higher = await candles(market.symbol, profile.high, asOf, signal);
             const lower = await candles(market.symbol, profile.low, asOf, signal);
-            const result = Smc.analyze(market, higher, lower, asOf, capital, profile.id);
-            Object.assign(observation, { status: result.status, reason: result.reason, direction: result.direction || result.pending?.direction || null, highZone: result.highZone || null, zones: result.zones.length });
+            const result = Smc.analyze(market, higher, lower, asOf, capital, profile.id, {rsiFilter});
+            Object.assign(observation, { macd: result.macd, entryFilter: result.entryFilter, status: result.status, reason: result.reason, direction: result.direction || result.pending?.direction || null, highZone: result.highZone || null, zones: result.zones.length });
             if (result.status === "WAIT_SHIFT" || result.status === "WAIT_RETEST") state.trending++;
             if (result.pending) { candidates.push(result.pending); observation.status = "CANDIDATE"; }
           } catch (error) {

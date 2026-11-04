@@ -10,16 +10,17 @@
         config.end - config.start > 100 * 86400000 || !(config.capital > 0) || !Number.isFinite(config.capital) ||
         ![config.feeRate,config.slippage].every(n => Number.isFinite(n) && n >= 0 && n <= .01) ||
         !["fixed","recorded"].includes(config.mode) || !["stop-first","review"].includes(config.ambiguous) ||
+        (config.macdFilter!==undefined&&typeof config.macdFilter!=="boolean") || (config.rsiFilter!==undefined&&typeof config.rsiFilter!=="boolean") ||
         (config.targetPolicy && config.targetPolicy !== "smc") || (config.profileId && config.profileId !== "both" && !Smc.PROFILES[config.profileId])) throw new Error("回測參數無效：期間最多 100 天，請檢查日期、資金及費用");
   }
   function parse(rows, interval) {
     const duration = E.INTERVALS[interval];
     if (!duration || !Array.isArray(rows) || !rows.length) throw new Error("缺少 " + interval + " 歷史資料");
     const result = rows.map(row => {
-      const [openTime,open,high,low,close,,closeTime] = row.map(Number);
-      if (![openTime,open,high,low,close,closeTime].every(Number.isFinite) || !(low > 0) ||
+      const [openTime,open,high,low,close,volume,closeTime] = row.map(Number);
+      if (![openTime,open,high,low,close,volume,closeTime].every(Number.isFinite) || volume < 0 || !(low > 0) ||
           high < Math.max(open,close) || low > Math.min(open,close) || openTime % duration || closeTime !== openTime + duration - 1) throw new Error("歷史 K 線格式無效");
-      return { openTime,open,high,low,close,closeTime };
+      return { openTime,open,high,low,close,volume,closeTime };
     });
     for (let i=1;i<result.length;i++) if (result[i].openTime !== result[i-1].openTime + duration) throw new Error("歷史 K 線缺漏或重複，已停止回測");
     return result;
@@ -70,7 +71,7 @@
       if(!source||!source[profile.high]?.length||!source[profile.low]?.length){warnings.push(market.symbol+" "+profile.label+" 無可用歷史資料");dataCoverage.push({symbol:market.symbol,profileId:profile.id,percent:0});onProgress({completed:++completed,total:markets.length*profiles.length,symbol:market.symbol+" "+profile.label});continue;}
       const lower=parse(source[profile.low],profile.low),higher=parse(source[profile.high],profile.high);
       if(lower.at(-1).closeTime<config.end-step||higher.at(-1).closeTime<Math.floor(config.end/E.INTERVALS[profile.high])*E.INTERVALS[profile.high]-1)throw new Error(market.symbol+" 歷史尾端資料不足");
-      const analyzer=Smc.createAnalyzer(profile.id),model=P.createModel({version:1,settings:{enabled:true,feeRate:config.feeRate,slippage:config.slippage},trades:[]});
+      const analyzer=Smc.createAnalyzer(profile.id,{macdFilter:config.macdFilter!==false,rsiFilter:config.rsiFilter===true}),model=P.createModel({version:1,settings:{enabled:true,feeRate:config.feeRate,slippage:config.slippage},trades:[]});
       let h=0,state=null,available=0;
       const add=(candidate,at)=>{
         if(!candidate||at<config.start||at>=config.end)return;
@@ -81,7 +82,7 @@
         if(bar.openTime>=config.end)break;const at=bar.openTime,decision=bar.closeTime+1;
         if(at>=config.start){
           windows++;if(config.mode==="fixed"||snapshotAt(history,at))covered++;
-          if(h>=20)available++;
+          if(h>=(config.macdFilter===false?20:100))available++;
           if(state?.pending)add(state.pending,at);
           for(const trade of model.trades){
             let entryInRange=false;
@@ -127,9 +128,9 @@
     }
     if(config.mode==="recorded"&&!covered)throw new Error("此期間沒有可用的已保存 Top20 快照；不推測歷史排名");
     trades.sort((a,b)=>a.detectedAt-b.detectedAt||a.id.localeCompare(b.id));
-    return {version:2,strategyVersion:Smc.VERSION,targetTrackingVersion:2,config:{...config,targetPolicy:"smc"},symbols:markets.map(m=>m.symbol),trades,stats:summarize(trades),dataCoverage,
+    return {version:2,strategyVersion:config.macdFilter===false?Smc.LEGACY_VERSION:Smc.VERSION,targetTrackingVersion:2,config:{...config,targetPolicy:"smc"},symbols:markets.map(m=>m.symbol),trades,stats:summarize(trades),dataCoverage,
       coverage:{windows,covered,percent:windows?covered/windows*100:0},warnings,
-      assumptions:["SMC 高週期 OB／FVG＋低週期 CHoCH 後等待 OB 中線限價回測；兩套時間框架獨立", "確認轉折左右各2根；ATR14前值×1.2位移，回找6根內最後反向K；高週期區域80根後失效", "觸區等結構、結構後等回測各最多1根高週期時間；高週期收盤越過OB遠端取消未成交候選", "TP1 2R出原部位30%、TP2 3R出30%、TP3 4R出剩餘；TP4 5R僅觀察；原停損不移動", "每筆獨立固定參考資金、風險5%含估算成本，不共用保證金，累計損益不是帳戶報酬率", "限價以OB中線模擬、不計進場滑價；單邊費率與出場不利滑價依設定；分批數量按step向下取整", "OHLC根內回測進場只計可能停損，不計同根止盈；已在開盤成交者可正常追蹤該根", "同根雙觸價依保守停損優先／不確定模式；跳空可能超出5%預算",config.mode==="fixed"?"固定目前合約與交易精度，不是當時Top20，有選樣及生存者偏差":"僅使用當時已完成保存的Top20排名快照，不回填缺漏", "未計資金費率、強制平倉、槓桿級距與委託簿深度；不保證績效"]};
+      assumptions:[config.macdFilter===false?"舊版對照：不使用MACD方向過濾":"高週期MACD(12,26,9)主線DIF：正值只多、負值只空、0觀望；固定最近100根已收盤K線暖機",config.rsiFilter?"額外過濾：最新已收盤低週期RSI14(最近250根Wilder)多<30／空>70，成交量≥前根3倍；未通過不新增，取消未成交，持倉延續":"RSI＋放量額外過濾關閉","SMC 高週期 OB／FVG＋低週期 CHoCH 後等待 OB 中線限價回測；兩套時間框架獨立", "確認轉折左右各2根；ATR14前值×1.2位移，回找6根內最後反向K；高週期區域80根後失效", "觸區等結構、結構後等回測各最多1根高週期時間；高週期收盤越過OB遠端取消未成交候選", "TP1 2R出原部位30%、TP2 3R出30%、TP3 4R出剩餘；TP4 5R僅觀察；原停損不移動", "每筆獨立固定參考資金、風險5%含估算成本，不共用保證金，累計損益不是帳戶報酬率", "限價以OB中線模擬、不計進場滑價；單邊費率與出場不利滑價依設定；分批數量按step向下取整", "OHLC根內回測進場只計可能停損，不計同根止盈；已在開盤成交者可正常追蹤該根", "同根雙觸價依保守停損優先／不確定模式；跳空可能超出5%預算",config.mode==="fixed"?"固定目前合約與交易精度，不是當時Top20，有選樣及生存者偏差":"僅使用當時已完成保存的Top20排名快照，不回填缺漏", "未計資金費率、強制平倉、槓桿級距與委託簿深度；不保證績效"]};
   }
   const api={run,parse,summarize,groups,snapshotAt,validate};
   if(typeof module!=="undefined"&&module.exports)module.exports=api;root.BacktestEngine=api;

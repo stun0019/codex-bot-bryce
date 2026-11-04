@@ -11,6 +11,7 @@ function fixture(profileId='4h15m',direction='SHORT'){
  lower.push([CT,101,107,100.8,102,100,CT+lo-1],[CT+lo,102,103.2,101.8,103,100,CT+2*lo-1],[CT+2*lo,103,103.1,96.3,96.5,100,CT+3*lo-1]);
  const future=[[96.5,103,96,101],[101,102,93,94],[94,95,88,89],[89,90,83,84],[84,85,78,79]];
  future.forEach(([o,h,l,c],i)=>lower.push([CT+(3+i)*lo,o,h,l,c,100,CT+(4+i)*lo-1]));
+ const prefix=Array.from({length:100},(_,i)=>[higher[0][0]-(100-i)*hi,100,100.2,99.8,100,100,higher[0][0]-(99-i)*hi-1]);higher.unshift(...prefix);
  // Supply candle full range 101.8..103.2; its midpoint is used after CHoCH.
  if(direction==='LONG')for(const rows of [higher,lower])for(const r of rows){const [o,h,l,c]=r.slice(1,5);r[1]=300-o;r[2]=300-l;r[3]=300-h;r[4]=300-c;}
  return {profile:p,market:market(),higher,lower,confirmedAt:CT+3*lo,start:CT+3*lo,end:CT+8*lo,

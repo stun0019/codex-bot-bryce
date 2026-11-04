@@ -91,6 +91,7 @@
 
   async function run() {
     if (busy) return;
+    window.dispatchEvent(new Event("strategy-scan-start"));
     busy = true; completed = false; candidates = [];
     currentController = new AbortController();
     refresh.disabled = true; refresh.textContent = "掃描中…";

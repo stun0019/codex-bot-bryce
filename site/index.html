@@ -9,7 +9,7 @@
   <title>策略掃描 · Codex Bot</title>
   <link rel="icon" type="image/svg+xml" href="favicon.svg?v=yellow-1">
   <link rel="stylesheet" href="styles.css?v=tp-1">
-  <link rel="stylesheet" href="dashboard.css?v=recovery-1">
+  <link rel="stylesheet" href="dashboard.css?v=rsi-volume-1">
 </head>
 <body data-page="strategy">
   <div id="appShell">
@@ -72,7 +72,7 @@
       <section id="paper" data-desk-panel="paper" class="paper-panel signals-dashboard" aria-labelledby="paperTitle">
         <div class="list-head">
           <div><p class="strategy-kicker">前向測試 · 訊號獨立模擬 · 本機紀錄</p><h2 id="paperTitle">模擬交易 <span id="paperCount">(0 / 0)</span></h2></div>
-          <div class="list-actions"><button id="paperPause" type="button" disabled>暫停新增</button><button id="paperRecover" type="button" disabled>重新核對</button><button id="paperExport" type="button">匯出紀錄</button></div>
+          <div class="list-actions"><button id="paperPause" type="button" disabled>暫停新增</button><button id="paperClear" type="button" disabled>清空</button><button id="paperRecover" type="button" disabled>重新核對</button><button id="paperExport" type="button">匯出紀錄</button></div>
         </div>
         <p class="paper-intro">新候選以產生後的新成交報價模擬進場。每筆按當時總資金的 3% 獨立計算，並納入估算進出場費用與停損滑價；數量可能與策略卡片的參考部位不同。本版不共用保證金，也不代表 70 USDT 帳戶資金曲線。</p>
         <div class="paper-stats" aria-label="模擬交易績效">
@@ -139,6 +139,16 @@
         <p class="lab-help">自新版啟用起，保存每輪排名、符合／不符合條件與資料錯誤。關閉頁面不會繼續掃描；舊版本未曾記錄的歷史時段無法自動補回。資料只存在本裝置／瀏覽器，清除網站資料會遺失。</p>
       </section>
 
+      <section id="rsi-volume" data-desk-panel="rsi-volume" class="signals-dashboard" aria-labelledby="rsiVolumeTitle" hidden>
+        <div class="list-head"><div><p class="strategy-kicker">全 USDT 永續 · 15M 已收盤 · 背景同步掃描</p><h2 id="rsiVolumeTitle">RSI＋爆量 <span id="rsiVolumeCount">(0)</span></h2></div><div class="list-actions"><button id="rsiVolumeRun" type="button">更新</button><button id="rsiVolumeCancel" type="button" disabled>取消</button><button id="rsiVolumeClose" type="button">隱藏</button></div></div>
+        <div class="rsi-volume-rule"><span>RSI (14) <strong>&lt; 30</strong></span><span>成交量 <strong>≥ 前根 3 倍</strong></span></div>
+        <p id="rsiVolumeStatus" role="status">等待策略掃描啟動</p><p id="rsiVolumeTime" class="strategy-confirmed"></p>
+        <progress id="rsiVolumeMeter" max="1" value="0" aria-label="RSI爆量掃描進度"></progress><p id="rsiVolumeProgress" class="strategy-progress" role="status"></p>
+        <div id="rsiVolumeList" class="strategy-list"></div>
+        <details id="rsiVolumeErrors" class="strategy-rules" hidden><summary>無法檢查的合約</summary><ul id="rsiVolumeFailures"></ul></details>
+        <details class="strategy-rules"><summary>詳細資訊</summary><p>每次策略掃描時背景同步執行，名單獨立於原策略 Top20，不會自動建立模擬持倉。最新已收盤 15M 的 RSI(14) 必須嚴格低於 30，且同一根基礎資產成交量至少為前一根的 3 倍，亦即增加 200%；前根成交量為 0 則略過。</p><p>RSI 使用 Wilder 平滑，從最多 250 根已收盤 K 線的前 14 個漲跌幅平均值起算。整輪固定同一個收盤時間；全合約需分批抓取，可能耗時數分鐘。切換頁籤不會中止背景掃描，關閉網站則停止。</p></details>
+      </section>
+
       <footer class="desk-footer"><span>CODEX BOT / STRATEGY DESK</span><span>BINANCE USDT 永續 · 4H + 15M · 瀏覽器本機保存</span></footer>
     </main>
   </div>
@@ -147,15 +157,17 @@
   <script src="price-feed.js?v=recovery-1"></script>
   <script src="target-engine.js?v=recovery-1"></script>
   <script src="target-view.js?v=recovery-1"></script>
-  <script src="paper-engine.js?v=recovery-1"></script>
-  <script src="dashboard-ui.js?v=recovery-1"></script>
+  <script src="paper-engine.js?v=clear-1"></script>
+  <script src="dashboard-ui.js?v=rsi-volume-1"></script>
   <script src="paper-recovery.js?v=1"></script>
-  <script src="paper-panel.js?v=recovery-1"></script>
+  <script src="paper-panel.js?v=clear-1"></script>
   <script src="bt-store.js?v=1"></script>
   <script src="bt-engine.js?v=tp-1"></script>
   <script src="bt-data.js?v=1"></script>
   <script src="bt-charts.js?v=tp-1"></script>
   <script src="bt-panel.js?v=recovery-1"></script>
-  <script src="strategy-scanner.js?v=type-1"></script>
+  <script src="rsi-volume.js?v=1"></script>
+  <script src="rsi-volume-panel.js?v=1"></script>
+  <script src="strategy-scanner.js?v=rsi-volume-1"></script>
 </body>
 </html>

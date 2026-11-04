@@ -173,3 +173,10 @@ body[data-page="strategy"] { min-width:0; } @media(max-width:360px){ .paper-tabl
 
 .target-level[data-state="RECOVERING"] small { color:var(--yellow); }
 #paperRecoverySummary { color:#b8a45e;line-height:1.9; }
+
+body[data-page="strategy"] #paperClear { color:#f47786;border-color:#6e353e; }
+
+/* Hidden RSI / volume panel: shares card typography and stays outside the main nav. */
+.rsi-volume-rule{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:20px}.rsi-volume-rule>span{background:#1e2329;border:1px solid #40391f;border-radius:8px;padding:12px 16px;color:#b7bdc6;font-size:14px}.rsi-volume-rule strong{color:var(--yellow);margin-left:8px}
+#rsiVolumeMeter{width:100%;height:3px;accent-color:var(--yellow)}#rsiVolumeStatus{font-size:14px;color:#b7bdc6}#rsiVolumeStatus[data-state="error"]{color:#f47786}.rsi-volume-card .strategy-card-head{margin-bottom:16px}.rsi-volume-card .strategy-prices>.strategy-metric:nth-child(2){background:#0b0e11}.rsi-volume-card .strategy-prices>.strategy-metric:nth-child(2) dd{color:var(--yellow)}#rsi-volume .strategy-rules{margin-top:18px}
+@media(max-width:700px){body[data-page="strategy"] #rsi-volume .list-head{flex-wrap:wrap}#rsi-volume .list-actions{flex-wrap:wrap}.rsi-volume-rule{gap:8px}.rsi-volume-rule>span{padding:10px 12px}}

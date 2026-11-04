@@ -80,6 +80,7 @@
       (stats.short.winRate == null ? "—" : stats.short.winRate.toFixed(1) + "%");
     $("paperRecoverySummary").textContent = "連續追蹤平倉 " + stats.continuousClosed + " · 補查確認平倉 " + stats.reconciledClosed + " · 核對中 " + stats.recovering + (stats.legacyReview ? " · 舊版缺少成交編號 " + stats.legacyReview + " 筆保留待核對" : "");
     $("paperRecover").disabled = !isLeader || storageBlocked || coordinator?.running || !model.trades.some(t => t.recovery?.pending || (t.recovery?.state === "REVIEW" && t.checkpoint));
+    $("paperClear").disabled = !isLeader || storageBlocked || !model.trades.length;
     pause.disabled = !isLeader || storageBlocked; feeInput.disabled = slipInput.disabled = !isLeader || storageBlocked;
     pause.textContent = model.settings.enabled ? "暫停新增" : "恢復新增";
     const connection = feed.status().connections.some(c => c.route === "market" && c.state === WebSocket.OPEN);
@@ -147,6 +148,15 @@
   $("paperRecover").addEventListener("click", () => {
     if (!isLeader || storageBlocked) return;
     if (model.retryRecovery(now())) { changed = dirty = true; save(true); syncSymbols(); render(); void pumpRecovery(); }
+  });
+  $("paperClear").addEventListener("click", () => {
+    if (!isLeader || storageBlocked || !model.trades.length) return;
+    if (!window.confirm("清空此瀏覽器全部模擬交易與持倉紀錄？此操作無法還原。費率設定、歷史回測報告與掃描歷史會保留。")) return;
+    const next = Engine.createModel({ version: 1, settings: { ...model.settings }, trades: [], ignoreBefore: now() });
+    try { localStorage.setItem(ledgerKey, JSON.stringify(next.snapshot())); }
+    catch (_) { storageMessage = "清空失敗，原有紀錄仍保留。"; dirty = true; render(); return; }
+    load(); latest = { candidates: [], capital: latest.capital, now: now() }; currentGeneration = null; recoveryProgress = "";
+    changed = dirty = true; syncSymbols(); save(true); render();
   });
   pause.addEventListener("click", () => {
     if (!isLeader || storageBlocked) return;

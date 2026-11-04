@@ -18,6 +18,8 @@
   function createModel(saved = null) {
     if (saved && (saved.version !== 1 || !Array.isArray(saved.trades))) throw new Error("模擬紀錄格式無法讀取");
     const config = settings(saved?.settings), trades = saved ? JSON.parse(JSON.stringify(saved.trades)) : [];
+    const ignoreBefore = saved?.ignoreBefore ?? 0;
+    if (!finite(ignoreBefore) || ignoreBefore < 0) throw new Error("模擬紀錄清空時間無效");
     const seen = new Set();
     for (const trade of trades) {
       if (!trade || (trade.checkpoint !== undefined && !validCursor(trade.checkpoint)) || (trade.recovery?.pending && (!validCursor(trade.checkpoint) || !hasWork(trade))) || !Targets.valid(trade) || !STATUSES.has(trade.status) || !/^[A-Z0-9]+USDT$/.test(trade.symbol) ||
@@ -46,7 +48,7 @@
       let added = 0;
       for (const candidate of candidates) {
         if (!candidate || !/^[A-Z0-9]+USDT$/.test(candidate.symbol) || !["LONG", "SHORT"].includes(candidate.direction) ||
-            !finite(candidate.confirmedAt) || !finite(candidate.expiresAt) || candidate.confirmedAt > now || candidate.expiresAt <= now ||
+            !finite(candidate.confirmedAt) || candidate.confirmedAt <= ignoreBefore || !finite(candidate.expiresAt) || candidate.confirmedAt > now || candidate.expiresAt <= now ||
             !(candidate.stopLoss > 0) || !(candidate.target > 0) || !(candidate.tickSize > 0) ||
             !(candidate.market?.stepSize > 0) || seen.has(key(candidate))) continue;
         const trade = { id: key(candidate), symbol: candidate.symbol, direction: candidate.direction,
@@ -235,7 +237,7 @@
     }
     return { trades, settings: config, addCandidates, tick, interrupt, expire, stats, netAt, suspend, recoveryTasks, recoveryError, retryRecovery, applyRecovery,
       activeSymbols: () => [...new Set(trades.filter(t => ACTIVE.has(t.status) || Targets.pending(t)).map(t => t.symbol))],
-      snapshot: () => ({ version: 1, settings: { ...config }, trades }) };
+      snapshot: () => ({ version: 1, settings: { ...config }, trades, ...(ignoreBefore > 0 ? { ignoreBefore } : {}) }) };
   }
   const api = { createModel, DEFAULTS, MAX_GAP_MS, CLOSED };
   if (typeof module !== "undefined" && module.exports) module.exports = api;

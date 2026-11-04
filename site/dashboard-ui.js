@@ -1,7 +1,7 @@
 (function(){
   "use strict";
   const $=id=>document.getElementById(id),panels=[...document.querySelectorAll('[data-desk-panel]')];
-  const routes={overview:'signals',signals:'signals',paperTitle:'paper',paper:'paper',backtest:'backtest',scans:'scans',scanArchiveTitle:'scans'};
+  const routes={'rsi-volume':'rsi-volume',overview:'signals',signals:'signals',paperTitle:'paper',paper:'paper',backtest:'backtest',scans:'scans',scanArchiveTitle:'scans'};
   const number=n=>n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
   function navigate(scroll=false){
     const name=routes[location.hash.slice(1)]||'signals';

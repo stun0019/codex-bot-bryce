@@ -18,7 +18,7 @@ function setup(options={}){
   };
   return {client:createClient({fetcher,intervalMs:0,clock:()=>now,sleep:async()=>{}}),calls,setNow:value=>now=value};
 }
-test('scans both independent SMC timeframe pairs for every Top20 contract',async()=>{
+test('scans both independent EMA timeframe pairs for every Top20 contract',async()=>{
  const {client,calls}=setup(),states=[];const result=await client.scan({onProgress:state=>states.push(state)});
  assert.equal(result.total,4);assert.equal(result.completed,4);assert.equal(result.candidates.length,0);assert.equal(result.errors,0);
  assert.equal(result.rankedMarkets.length,2);assert.equal(result.observations.length,4);
@@ -26,6 +26,14 @@ test('scans both independent SMC timeframe pairs for every Top20 contract',async
  const klines=calls.filter(u=>u.pathname.endsWith('klines'));assert.equal(klines.length,8);
  assert.deepEqual([...new Set(klines.map(u=>u.searchParams.get('interval')))].sort(),['15m','1h','4h','5m'].sort());
  assert.ok(klines.every(u=>Number(u.searchParams.get('endTime'))===NOW-1));assert.ok(states.length>=5);
+});
+
+test('data client emits EMA candidates and applies the optional entry filter using each lower interval',async()=>{
+ const {fixture,NOW:time}=require('./ema-fixtures.cjs'),EMA=require('../site/ema-engine.js');
+ const pairs={...Object.fromEntries(['4h15m','1h5m'].flatMap(id=>{const f=fixture(id);return [[f.profile.high,f.higher],[f.profile.low,f.lower]];}))};
+ const client=createClient({intervalMs:0,clock:()=>time,fetcher:async url=>{const u=new URL(url);return{ok:true,status:200,json:async()=>u.pathname.endsWith('/time')?{serverTime:time}:u.pathname.endsWith('exchangeInfo')?exchange(['BTCUSDT']):u.pathname.endsWith('/ticker/24hr')?[{symbol:'BTCUSDT',quoteVolume:'10000'}]:pairs[u.searchParams.get('interval')]};}});
+ const plain=await client.scan();assert.equal(plain.errors,0);assert.equal(plain.candidates.length,2);assert.ok(plain.candidates.every(c=>c.strategyVersion===EMA.VERSION));assert.deepEqual(plain.filters.emaPeriods,[20,60,200]);
+ const filtered=await client.scan({rsiFilter:true});assert.equal(filtered.errors,0);assert.equal(filtered.candidates.length,0);assert.ok(filtered.observations.every(o=>o.status==='FILTERED'));
 });
 
 test('caches each timeframe only until its own next candle boundary',async()=>{

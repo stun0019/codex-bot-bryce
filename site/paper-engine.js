@@ -4,7 +4,9 @@
   const Targets = root.TargetEngine || (typeof require === "function" ? require("./target-engine.js") : null);
   const Smc = root.SmcEngine || (typeof require === "function" ? require("./smc-engine.js") : null);
   const Account = root.AccountRisk || (typeof require === "function" ? require("./account-risk.js") : null);
-  const smc = trade => Smc.isVersion(trade.strategyVersion);
+  const Ema = root.EmaEngine || (typeof require === "function" ? require("./ema-engine.js") : null);
+  const ema = trade => Ema?.isVersion(trade.strategyVersion) === true;
+  const smc = trade => Smc.isVersion(trade.strategyVersion) || ema(trade);
   const DEFAULTS = Object.freeze({ enabled: true, feeRate: 0.0005, slippage: 0.0002 });
   const ACTIVE = new Set(["WAITING_PRICE", "OPEN"]), CLOSED = new Set(["TAKE_PROFIT", "STOP_LOSS"]);
   const STATUSES = new Set([...ACTIVE, ...CLOSED, "SKIPPED", "REVIEW"]);
@@ -102,11 +104,11 @@
         const trade = { id: key(candidate), symbol: candidate.symbol, direction: candidate.direction,
           confirmedAt: candidate.confirmedAt, detectedAt: now, expiresAt: candidate.expiresAt,
           referenceEntry: candidate.entry, stopLoss: candidate.stopLoss, target: candidate.target,
-          ...(candidate.strategyVersion ? { strategyVersion: candidate.strategyVersion, profileId: candidate.profileId, timeframeLabel: Smc.profile(candidate.profileId).label, setupId: candidate.setupId, entryType: "LIMIT_OB", partialExit: true, targetCount: 4, riskFraction: .05, highZone: candidate.highZone, entryZone: candidate.entryZone, shiftLevel: candidate.shiftLevel, macd: candidate.macd || null, entryFilter: candidate.entryFilter || {enabled:false}, plannedTargets: [...candidate.targets] } : {}),
+          ...(candidate.strategyVersion ? { strategyVersion: candidate.strategyVersion, profileId: candidate.profileId, timeframeLabel: Smc.profile(candidate.profileId).label, setupId: candidate.setupId, entryType: ema(candidate) ? "LIMIT_CONFIRM" : "LIMIT_OB", strategyName: ema(candidate) ? "EMA" : "SMC", emaTrend: candidate.emaTrend || null, pullback: candidate.pullback || null, partialExit: true, targetCount: 4, riskFraction: .05, highZone: candidate.highZone, entryZone: candidate.entryZone, shiftLevel: candidate.shiftLevel, macd: candidate.macd || null, entryFilter: candidate.entryFilter || {enabled:false}, plannedTargets: [...candidate.targets] } : {}),
           ...(reservedPlan ? { accountId: account.id, reservedPlan: { ...reservedPlan } } : {}),
           tickSize: candidate.tickSize, capital: reservedPlan ? reservedPlan.capital : capital, budget: reservedPlan ? reservedPlan.budget : capital * (candidate.strategyVersion ? .05 : 0.03),
           market: { ...candidate.market }, feeRate: config.feeRate, slippage: config.slippage,
-          status: "WAITING_PRICE", reason: candidate.strategyVersion ? "等待新成交報價回測 OB 中線；不回填歷史成交" : "等待訊號產生後的新成交報價" };
+          status: "WAITING_PRICE", reason: ema(candidate) ? "EMA確認，等待新成交報價到確認收盤參考價限價成交" : candidate.strategyVersion ? "等待新成交報價回測 OB 中線；不回填歷史成交" : "等待訊號產生後的新成交報價" };
         trades.push(trade); seen.add(trade.id); added++;
       }
       return added;
@@ -149,7 +151,7 @@
         net: gross - trade.entryFee - exit * trade.quantity * trade.feeRate };
     }
     function validSmc(trade) {
-      if (!smc(trade) || !Smc.PROFILES[trade.profileId] || typeof trade.setupId !== "string" || trade.entryType !== "LIMIT_OB" || trade.targetCount !== 4 || trade.partialExit !== true || trade.riskFraction !== .05 || !Array.isArray(trade.plannedTargets) || trade.plannedTargets.length !== 4 || trade.plannedTargets.some(p => !(p > 0))) return false;
+      if (!smc(trade) || !Smc.PROFILES[trade.profileId] || typeof trade.setupId !== "string" || trade.entryType !== (ema(trade)?"LIMIT_CONFIRM":"LIMIT_OB") || trade.targetCount !== 4 || trade.partialExit !== true || trade.riskFraction !== .05 || !Array.isArray(trade.plannedTargets) || trade.plannedTargets.length !== 4 || trade.plannedTargets.some(p => !(p > 0))) return false;
       const expected = Engine.targets(trade.referenceEntry, trade.stopLoss, trade.direction, trade.tickSize);
       if (trade.plannedTargets.some((p, i) => p !== expected[i])) return false;
       if (trade.status === "OPEN" || CLOSED.has(trade.status)) {
@@ -184,7 +186,7 @@
         const result = netAt(trade, price);
         Object.assign(trade, { status: stop ? "STOP_LOSS" : "TAKE_PROFIT", closedAt: at, exit: result.exit, observedExit: price, grossPnl: result.gross, exitFee: result.exitFee, netPnl: result.net, exitSource: source,
           reason: stop ? "剩餘部位觸及原停損；已實現分批損益保留" : "TP1 30%／TP2 30%／TP3 剩餘全部已出場" });
-      } else trade.reason = "SMC 分批持倉中；剩餘 " + trade.remainingQuantity;
+      } else trade.reason = "分批持倉中；剩餘 " + trade.remainingQuantity;
       return true;
     }
     function tryLimitFill(trade, price, at) {
@@ -351,7 +353,7 @@
       return changed;
     }
     function stats(profileId = "all") {
-      const cohort = trades.filter(t => profileId === "all" || (profileId === "smc" ? smc(t) : profileId === "legacy" ? !smc(t) : smc(t) && t.profileId === profileId));
+      const cohort = trades.filter(t => profileId === "all" || (profileId === "ema" ? ema(t) : profileId === "previous" ? !ema(t) : profileId.startsWith("ema:") ? ema(t) && t.profileId === profileId.slice(4) : profileId === "smc" ? smc(t) : profileId === "legacy" ? !smc(t) : smc(t) && t.profileId === profileId));
       const closed = cohort.filter(trade => CLOSED.has(trade.status)).sort((a,b) => a.closedAt - b.closedAt || a.id.localeCompare(b.id));
       const wins = closed.filter(trade => trade.netPnl > 0).length;
       let pnl = 0, peak = 0, maxDrawdown = 0, streak = 0, maxLossStreak = 0;

@@ -9,7 +9,7 @@
   let currentGeneration = null, symbolsKey = "", latest = { candidates: [], capital: 200, now: Date.now(), committed: false }, serverOffset = 0;
   let coordinator = null, recoveryController = null, recoveryProgress = "";
   const recoveryClient = window.PaperRecovery.createClient({ clock: () => now() });
-  const labels = { WAITING_PRICE: "待報價", OPEN: "持倉中", TAKE_PROFIT: "止盈", STOP_LOSS: "止損", SKIPPED: "略過", REVIEW: "待核對" };
+  const labels = { NOT_ENTERED:"未進場", WAITING_PRICE: "待報價", OPEN: "持倉中", TAKE_PROFIT: "止盈", STOP_LOSS: "止損", SKIPPED: "略過", REVIEW: "待核對" };
   const money = value => Number.isFinite(value) ? value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "—";
   const signed = value => Number.isFinite(value) ? (value > 0 ? "+" : "") + money(value) : "—";
   const price = value => Number.isFinite(value) ? value.toLocaleString("en-US", { maximumSignificantDigits: 10 }) : "—";
@@ -65,7 +65,7 @@
       if (!isLeader) for (const [key, plan] of plans) if (!plan.status) plans.set(key, { ...plan, ok: false, reason: "唯讀分頁，等待負責追蹤的分頁預留" });
       return plans;
     }, reconcileCandidates(candidates, observations, at) { if (isLeader && !storageBlocked && model.reconcileCandidates(candidates, observations, at)) { changed = dirty = true; syncSymbols(); save(true); render(); } }, acceptCandidates(candidates, capital, serverNow, commit = false) {
-    serverOffset = serverNow - Date.now(); latest = { candidates, capital, now: serverNow, committed: commit }; if (commit) ingest();
+    serverOffset = serverNow - Date.now(); latest = { candidates, capital, now: serverNow, committed: commit }; if (commit) { ingest(); dirty=true; render(); }
   } };
   function node(tag, className, text) {
     const element = document.createElement(tag); if (className) element.className = className;
@@ -85,9 +85,14 @@
     $("accountMarginDetail").textContent = account ? "持倉保證金 " + money(account.positionMargin) + " · 待成交保證金 " + money(account.orderMargin) + " · 預估費用預留 " + money(account.feeReserve) + " USDT；名目部位上限 " + account.limits.leverage + "x。" : "";
     $("accountStarted").textContent = account ? "起算 " + time(account.startedAt) + " · 初始餘額 " + money(account.initialCapital) + " · 起算淨值 " + money(account.startingEquity) + " USDT；既有持倉已納入風控。" : "";
     window.dispatchEvent(new Event("paper-account-update"));
-    const profileId = $("paperTimeframe").value, cohort = model.trades.filter(t => profileId === "all" || (profileId === "smc" ? !!t.strategyVersion : profileId === "legacy" ? !t.strategyVersion : t.profileId === profileId));
+    const profileId=$("paperTimeframe").value,ema=window.EmaEngine.isVersion;
+    const match=t=>profileId==="all"||(profileId==="ema"?ema(t.strategyVersion):profileId==="previous"?!ema(t.strategyVersion):profileId.startsWith("ema:")&&ema(t.strategyVersion)&&t.profileId===profileId.slice(4));
+    const records=window.CandidateRecords.create({getItem:key=>localStorage.getItem(key),setItem:(key,value)=>localStorage.setItem(key,value)}).list();
+    const currentKeys=new Set(latest.committed?latest.candidates.map(Engine.key):[]),plans=model.previewCandidates(latest.committed?latest.candidates:[],latest.capital,now());
+    const display=window.CandidateRecords.paperRows(records,model.trades,{now:now(),currentKeys,plans});
+    const cohort=model.trades.filter(match),displayCohort=display.filter(match);
     const stats = model.stats(profileId);
-    window.DashboardUI?.updateSummary(model.stats("smc"));
+    window.DashboardUI?.updateSummary(model.stats("ema"));
     window.TargetView.stats($("paperTargets"), cohort);
     $("paperClosed").textContent = String(stats.closed);
     $("paperOpen").textContent = stats.open + " 持倉 · " + stats.waiting + " 待報價 · " + stats.recovering + " 核對中 · " + model.trades.filter(t => window.TargetEngine.pending(t)).length + " 筆目標追蹤";
@@ -102,7 +107,7 @@
       (stats.short.winRate == null ? "—" : stats.short.winRate.toFixed(1) + "%");
     $("paperRecoverySummary").textContent = "連續追蹤平倉 " + stats.continuousClosed + " · 補查確認平倉 " + stats.reconciledClosed + " · 核對中 " + stats.recovering + (stats.legacyReview ? " · 舊版缺少成交編號 " + stats.legacyReview + " 筆保留待核對" : "");
     $("paperRecover").disabled = !isLeader || storageBlocked || coordinator?.running || !model.trades.some(t => t.recovery?.pending || (t.recovery?.state === "REVIEW" && t.checkpoint));
-    $("paperClear").disabled = !isLeader || storageBlocked || !model.trades.length;
+    $("paperClear").disabled = !isLeader || storageBlocked || !display.length;
     pause.disabled = !isLeader || storageBlocked; feeInput.disabled = slipInput.disabled = !isLeader || storageBlocked;
     pause.textContent = model.settings.enabled ? "暫停新增" : "恢復新增";
     const connection = feed.status().connections.some(c => c.route === "market" && c.state === WebSocket.OPEN);
@@ -112,18 +117,18 @@
     status.dataset.state = storageMessage ? "error" : isLeader ? "live" : "pending";
     const expanded = new Set([...table.querySelectorAll("tr[data-key]")].filter(row => row.querySelector("details")?.open).map(row => row.dataset.key));
     table.replaceChildren();
-    const visible = [...cohort].reverse().filter(trade => filter.value === "all" || (filter.value === "RECOVERING" && trade.recovery?.pending) || (filter.value === "REVIEW" && trade.targets?.some(t => t.status === "REVIEW")) ||
+    const visible = [...displayCohort].reverse().filter(trade => filter.value === "all" || (filter.value === "RECOVERING" && trade.recovery?.pending) || (filter.value === "REVIEW" && trade.targets?.some(t => t.status === "REVIEW")) ||
       (filter.value === "closed" ? Engine.CLOSED.has(trade.status) : filter.value === "active" ?
         trade.status === "OPEN" || trade.status === "WAITING_PRICE" || window.TargetEngine.pending(trade) : trade.status === filter.value));
-    $("paperCount").textContent = "(" + visible.length + " / " + model.trades.length + ")";
+    $("paperCount").textContent = "(" + visible.length + " / " + display.length + ")";
     if (!visible.length) {
-      const row = node("tr", "paper-empty"), td = node("td", "", model.trades.length ? "此篩選下沒有紀錄。" :
+      const row = node("tr", "paper-empty"), td = node("td", "", display.length ? "此篩選下沒有紀錄。" :
         "尚無模擬交易。新候選出現後會自動記錄；累積平倉樣本後才計算勝率。");
       td.colSpan = 10; row.append(td); table.append(row); return;
     }
     for (const trade of visible) {
       const row = node("tr", ""); row.dataset.status = trade.status; row.dataset.key = trade.id;
-      const identity = cell("幣種／訊號", ""); identity.append(node("strong", "", trade.symbol), node("span", "strategy-timeframe", trade.timeframeLabel ? "SMC · " + trade.timeframeLabel : "舊策略／未標示週期"), node("small", "", time(trade.confirmedAt)));
+      const identity = cell("幣種／訊號", ""); identity.append(node("strong", "", trade.symbol), node("span", "strategy-timeframe", trade.timeframeLabel ? (ema(trade.strategyVersion)?"EMA · ":"SMC · ") + trade.timeframeLabel : "舊策略／未標示週期"), node("small", "", time(trade.confirmedAt)));
       let pnl = Engine.CLOSED.has(trade.status) ? trade.netPnl : trade.status === "OPEN" && !trade.recovery?.pending ? model.netAt(trade, trade.lastPrice).net : null;
       const pnlCell = cell("淨損益 USDT", signed(pnl), "paper-pnl"); pnlCell.dataset.tone = pnl == null ? "neutral" : pnl >= 0 ? "positive" : "negative";
       if (trade.status === "OPEN" && !trade.recovery?.pending) pnlCell.append(node("small", "", "未實現估算"));
@@ -173,8 +178,8 @@
     if (model.retryRecovery(now())) { changed = dirty = true; save(true); syncSymbols(); render(); void pumpRecovery(); }
   });
   $("paperClear").addEventListener("click", () => {
-    if (!isLeader || storageBlocked || !model.trades.length) return;
-    if (!window.confirm("清空此瀏覽器全部模擬交易與持倉紀錄，並將共用模擬帳戶重設為初始資金？此操作無法還原。費率設定、歷史回測報告與掃描歷史會保留。")) return;
+    if (!isLeader || storageBlocked) return;
+    if (!window.confirm("清空此瀏覽器全部模擬交易與持倉紀錄，並將共用模擬帳戶重設為初始資金？此操作無法還原。費率設定會保留。")) return;
     const next = Engine.createModel({ version: 1, settings: { ...model.settings }, trades: [], ignoreBefore: now() });
     const currentAccount = model.accountSnapshot(); next.enableAccount(currentAccount?.initialCapital || 200, now(), currentAccount?.limits || window.AccountRisk.DEFAULTS);
     try { localStorage.setItem(ledgerKey, JSON.stringify(next.snapshot())); }
@@ -207,7 +212,8 @@
     const link = document.createElement("a"); link.href = url; link.download = "codex-paper-trades-" +
       new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Taipei" }) + ".json"; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
   });
-  window.addEventListener("storage", event => { if (event.key === ledgerKey && !isLeader) { load(); render(); } });
+  window.addEventListener("candidate-records-update",()=>{dirty=true;render();});
+  window.addEventListener("storage",event=>{if(event.key===window.CandidateRecords.KEY){dirty=true;render();}else if(event.key===ledgerKey&&!isLeader){load();render();}});
   window.addEventListener("online", () => { if (isLeader) void pumpRecovery(); });
   window.addEventListener("offline", () => {
     recoveryController?.abort();

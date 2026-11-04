@@ -2,7 +2,7 @@
   "use strict";
   const BASE = "https://fapi.binance.com";
   const Engine = root.StrategyEngine || (typeof require === "function" ? require("./strategy-engine.js") : null);
-  const Smc = root.SmcEngine || (typeof require === "function" ? require("./smc-engine.js") : null);
+  const Signal = root.EmaEngine || (typeof require === "function" ? require("./ema-engine.js") : null);
   function createClient({ fetcher = root.fetch.bind(root), intervalMs = 250, concurrency = 3,
       clock = () => Date.now(), sleep = (ms, signal) => new Promise((resolve, reject) => {
         const abort = () => { clearTimeout(timer); reject(new DOMException("Aborted", "AbortError")); };
@@ -78,7 +78,7 @@
     }
 
     async function candles(symbol, interval, asOf, signal) {
-      if (!Object.hasOwn(Engine.INTERVALS, interval)) throw new Error("只允許 SMC 的 4H／15M、1H／5M K 線");
+      if (!Object.hasOwn(Engine.INTERVALS, interval)) throw new Error("只允許 EMA 的 4H／15M、1H／5M K 線");
       const bucket = Math.floor(asOf / Engine.INTERVALS[interval]), key = symbol + ":" + interval;
       const previous = cache.get(key);
       if (previous?.bucket === bucket) return previous.bars;
@@ -92,22 +92,22 @@
     async function scan({ capital = Engine.SETTINGS.capital, rsiFilter = false, signal, onProgress = () => {} } = {}) {
       const time = await json("/fapi/v1/time", signal), asOf = Number(time.serverTime);
       if (!Number.isFinite(asOf) || asOf <= 0) throw new Error("幣安時間無效");
-      const localAt = clock(), universe = await topMarkets(signal), candidates = [], profiles = Object.values(Smc.PROFILES);
+      const localAt = clock(), universe = await topMarkets(signal), candidates = [], profiles = Object.values(Signal.PROFILES);
       const tasks = universe.flatMap(market => profiles.map(profile => ({ market, profile })));
-      const state = { strategyVersion: Smc.VERSION, filters: {macdFilter:true,rsiFilter:!!rsiFilter}, total: tasks.length, completed: 0, trending: 0, errors: 0, candidates, asOf,
+      const state = { strategyVersion: Signal.VERSION, filters: {emaPeriods:[20,60,200],rsiFilter:!!rsiFilter}, total: tasks.length, completed: 0, trending: 0, errors: 0, candidates, asOf,
         serverOffset: asOf - localAt, symbols: universe.map(m => m.symbol), rankedMarkets: universe.map(m => ({ ...m })), observations: [], failures: [] };
       onProgress({ ...state }); let cursor = 0, fatal = null;
       await Promise.all(Array.from({ length: Math.min(concurrency, tasks.length) }, async () => {
         while (cursor < tasks.length && !fatal) {
           if (signal?.aborted) { fatal = new DOMException("Aborted", "AbortError"); break; }
           const { market, profile } = tasks[cursor++];
-          const observation = { symbol: market.symbol, profileId: profile.id, timeframeLabel: profile.label, quoteVolume24h: market.quoteVolume24h, status: "WAIT_ZONE", direction: null, reason: "等待 SMC 區域" };
+          const observation = { symbol: market.symbol, profileId: profile.id, timeframeLabel: profile.label, quoteVolume24h: market.quoteVolume24h, status: "WAIT_PULLBACK", direction: null, reason: "等待 EMA 排列與回踩確認" };
           try {
             const higher = await candles(market.symbol, profile.high, asOf, signal);
             const lower = await candles(market.symbol, profile.low, asOf, signal);
-            const result = Smc.analyze(market, higher, lower, asOf, capital, profile.id, {rsiFilter});
-            Object.assign(observation, { macd: result.macd, entryFilter: result.entryFilter, status: result.status, reason: result.reason, direction: result.direction || result.pending?.direction || null, highZone: result.highZone || null, zones: result.zones.length });
-            if (result.status === "WAIT_SHIFT" || result.status === "WAIT_RETEST") state.trending++;
+            const result = Signal.analyze(market, higher, lower, asOf, capital, profile.id, {rsiFilter});
+            Object.assign(observation, { emaTrend: result.trend, entryFilter: result.entryFilter, status: result.status, reason: result.reason, direction: result.direction || result.pending?.direction || null });
+            if (result.trend?.direction) state.trending++;
             if (result.pending) { candidates.push(result.pending); observation.status = "CANDIDATE"; }
           } catch (error) {
             observation.status = "ERROR"; observation.reason = error.message;

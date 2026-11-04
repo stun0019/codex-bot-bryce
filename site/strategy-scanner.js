@@ -42,26 +42,24 @@
     const tradeState=trade?.status,label=tradeState==="OPEN"?(trade.recovering?"已進場 · 核對中":"已進場"):tradeState==="TAKE_PROFIT"||tradeState==="STOP_LOSS"?"已平倉":tradeState==="WAITING_PRICE"?"待進場":tradeState==="REVIEW"?(trade.entered?"已進場 · 待核對":"待核對"):tradeState==="SKIPPED"?"已取消":busy&&!retained?"掃描中":!retained&&plan.ok?"待預留":"未進場";
     const tradeLabel=node("span","candidate-trade-state",label);tradeLabel.dataset.state=tradeState||"UNRECORDED";tradeLabel.title=trade?.reason||plan.reason||"等待完成掃描與帳戶預留";
     badgeColumn.append(node("span","strategy-badge",long?"做多候選":"做空候選"),tradeLabel);head.append(identity,badgeColumn);
-    const subtitle = node("p", "strategy-subtitle", "高週期區域 → CHoCH → 等待 OB 中線回測");
-    const timeframe = node("p", "strategy-timeframe", "SMC · " + candidate.timeframeLabel + (retained ? " · 保留紀錄" : " · 本輪候選"));
+    const subtitle = node("p", "strategy-subtitle", "高週期 EMA20／60／200 → 低週期 EMA20 回踩／反彈確認");
+    const timeframe = node("p", "strategy-timeframe", "EMA · " + candidate.timeframeLabel + (retained ? " · 保留紀錄" : " · 本輪候選"));
     const prices = node("dl", "strategy-prices");
     prices.append(metric("進場參考", number(candidate.entry, candidate.tickSize)),
       metric("停損", number(candidate.stopLoss, candidate.tickSize)), ...candidate.targets.slice(0,3).map((target,index) => metric("TP" + (index + 1) + " · 1:" + (index + 2), number(target, candidate.tickSize))));
     const execution = node("p", "execution-status", tradeState==="TAKE_PROFIT"||tradeState==="STOP_LOSS" ? "已平倉 · "+(trade.reason||"原計畫已完成") : tradeState==="SKIPPED" ? "未進場 · "+trade.reason : busy ? "掃描中 · 尚未預留" : plan.ok ? plan.status === "RESERVED" ? "已預留 · 成交前再核驗" : plan.status === "OPEN" ? "已進場 · 數量固定" : "待共用帳戶預留" : "風控未通過：" + plan.reason);
     execution.dataset.state = plan.ok && !busy ? "ready" : "blocked";
     const rr = Math.abs(candidate.target - candidate.entry) / Math.abs(candidate.entry - candidate.stopLoss);
-    const foot = node("p", "strategy-foot", "SMC 結構確認 · 預估 " + rr.toFixed(2).replace(/\.00$/, "") + "R · 等待執行");
+    const foot = node("p", "strategy-foot", "EMA 回踩確認 · 預估 " + rr.toFixed(2).replace(/\.00$/, "") + "R · 等待執行");
     const risk = node("p", "strategy-risk", plan.ok ?
       "部位 " + number(plan.quantity, candidate.stepSize) + " · 估算風險 " + money(plan.risk) + " USDT · 三段全成淨利估算 " + money(plan.profit) + " USDT" : plan.reason);
     risk.dataset.state = plan.ok ? "ready" : "blocked";
     const details = node("details", "strategy-details");
     details.append(node("summary", "", "詳細資訊"));
     const detailList = node("dl", "strategy-calculations");
-    detailList.append(metric("高週期 MACD DIF",candidate.macd ? candidate.macd.dif.toFixed(6)+" · "+(candidate.macd.direction==="LONG"?"只多":"只空") : "舊版計畫"),metric("RSI＋放量過濾",candidate.entryFilter?.enabled ? "RSI "+candidate.entryFilter.rsi.toFixed(2)+" · 量 "+candidate.entryFilter.volumeRatio.toFixed(2)+" 倍" : "關閉"),metric("含費用保證金預留", plan.ok ? money(plan.marginReserve) + " USDT" : "—"), metric("數量來源", "卡片與模擬共用預留計畫；30%／30%／剩餘及交易精度已檢查"), metric("高週期 OB", number(candidate.highZone.low, candidate.tickSize) + " ～ " + number(candidate.highZone.high, candidate.tickSize)),
-      metric("高週期 FVG", candidate.highZone.fvg ? number(candidate.highZone.fvg.low, candidate.tickSize) + " ～ " + number(candidate.highZone.fvg.high, candidate.tickSize) : "無同向 FVG（非必要條件）"),
-      metric("進場 OB", number(candidate.entryZone.low, candidate.tickSize) + " ～ " + number(candidate.entryZone.high, candidate.tickSize)),
-      metric("結構轉換價", number(candidate.shiftLevel, candidate.tickSize)),metric("確認時間（台北）", time(candidate.confirmedAt)),metric("候選到期", time(candidate.expiresAt)),
-      metric("分批出場", "TP1 30% · TP2 30% · TP3 剩餘全部；TP4 僅觀察"));
+    detailList.append(metric("大框架 EMA20",number(candidate.emaTrend.ema20,candidate.tickSize)),metric("大框架 EMA60",number(candidate.emaTrend.ema60,candidate.tickSize)),metric("大框架 EMA200",number(candidate.emaTrend.ema200,candidate.tickSize)),
+      metric("小框架 EMA20",number(candidate.pullback.ema20,candidate.tickSize)),metric("RSI＋放量過濾",candidate.entryFilter?.enabled?"RSI "+candidate.entryFilter.rsi.toFixed(2)+" · 量 "+candidate.entryFilter.volumeRatio.toFixed(2)+" 倍":"關閉"),
+      metric("保證金及費用預留",plan.ok?money(plan.marginReserve)+" USDT":"—"),metric("數量來源","卡片與模擬共用含成本預留計畫"),metric("確認時間（台北）",time(candidate.confirmedAt)),metric("候選到期",time(candidate.expiresAt)),metric("分批出場","TP1 30% · TP2 30% · TP3 剩餘全部；TP4 僅觀察"));
     detailList.prepend(metric("原始部位數量",trade?.quantity?number(trade.quantity,candidate.stepSize):plan.ok?number(plan.quantity,candidate.stepSize):"未預留"),metric("含成本停損風險",trade?.estimatedStopRisk?money(trade.estimatedStopRisk)+" USDT":plan.ok?money(plan.risk)+" USDT":"—"),metric("已平倉淨損益",Number.isFinite(trade?.netPnl)?money(trade.netPnl)+" USDT":"—"),metric("TP4 · 1:5（僅觀察）",number(candidate.targets[3],candidate.tickSize)));
     details.append(execution,subtitle, foot, risk, detailList);
     const confirmed = node("p", "strategy-confirmed", "確認時間 " + time(candidate.confirmedAt) + " · BINANCE 永續");
@@ -70,7 +68,7 @@
   }
 
   function visibleCandidates() {
-    const merged=new Map(recordStore.list().map(r=>[window.PaperEngine.key(r.candidate),r.candidate]));
+    const merged=new Map(recordStore.list().filter(r=>window.EmaEngine.isVersion(r.candidate.strategyVersion)).map(r=>[window.PaperEngine.key(r.candidate),r.candidate]));
     for(const c of candidates)merged.set(window.PaperEngine.key(c),c);
     return [...merged.values()].filter(candidate=>(filter.value==="all"||candidate.direction===filter.value)&&($("timeframeFilter").value==="all"||candidate.profileId===$("timeframeFilter").value)).sort((a,b)=>b.confirmedAt-a.confirmedAt||a.symbol.localeCompare(b.symbol));
   }
@@ -90,8 +88,8 @@
     if (!visible.length) {
       const empty = node("div", "strategy-empty");
       empty.append(node("strong", "", busy ? "正在確認策略條件" : "目前沒有符合條件的候選"),
-        node("p", "", busy ? "分別檢查 4H＋15M、1H＋5M 的 OB、結構轉換與回測候選。" :
-          completed ? "等待高週期區域、低週期結構轉換與有效 OB；每 5 分鐘更新，兩套週期獨立。" : "請更新掃描，或等待連線恢復。"));
+        node("p", "", busy ? "分別檢查 4H＋15M、1H＋5M 的 EMA 排列與回踩／反彈確認。" :
+          completed ? "等待大框架均線排列與小框架 EMA20 確認；每5分鐘更新。" : "請更新掃描，或等待連線恢復。"));
       list.append(empty);
     } else visible.forEach(candidate => {
       const retained=!currentKeys.has(window.PaperEngine.key(candidate));
@@ -122,15 +120,16 @@
         candidates = state.candidates;
         window.PaperTrading?.acceptCandidates(state.candidates, capital, Date.now() + offset);
         status.textContent = "策略掃描中";
-        progress.textContent = "成交額 Top20 · 已掃描 " + state.completed + " / " + state.total + " · 區域進場監控 " + state.trending +
+        progress.textContent = "成交額 Top20 · 已掃描 " + state.completed + " / " + state.total + " · 趨勢方向已確認 " + state.trending +
           (state.errors ? " · 資料不可用 " + state.errors : "");
         meter.max = state.total; meter.value = state.completed;
         if (visibleCandidates().map(c => c.symbol + c.profileId + c.setupId).join(",") !== lastVisibleKey) render();
       } });
       candidates = outcome.candidates; completed = true; recordStore.update(candidates,outcome.asOf);
+      window.dispatchEvent(new Event("candidate-records-update"));
       window.PaperTrading?.reconcileCandidates(outcome.candidates, outcome.observations, Date.now() + offset);
       window.PaperTrading?.acceptCandidates(outcome.candidates, capital, Date.now() + offset, true);
-      void window.ScanArchive?.save(outcome, capital);
+
       status.textContent = outcome.errors ? "掃描完成 · 部分資料不可用" : "掃描完成";
       status.dataset.state = outcome.errors ? "partial" : "live";
       updated.dateTime = new Date(Date.now() + offset).toISOString();
@@ -138,7 +137,7 @@
       nextScanAt = Math.floor(outcome.asOf / Engine.INTERVALS["5m"] + 1) * Engine.INTERVALS["5m"] + 3000;
       if (outcome.errors) console.info("Strategy scanner skipped unavailable data:", outcome.failures);
     } catch (error) {
-      void window.ScanArchive?.save(scanState || { asOf: Date.now() + offset, serverOffset: offset }, capital, error.message);
+
       candidates = []; // Do not present partial or failed scans as completed signals.
       status.textContent = error.retryAt ? "請求限流 · 等待重試" : error.name === "AbortError" ? "掃描已停止" : "連線失敗 · 等待重試";
       status.dataset.state = "error";

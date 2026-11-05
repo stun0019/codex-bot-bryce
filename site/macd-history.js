@@ -1,0 +1,1 @@
+document.getElementById('quarterStatus').textContent='MACD新版尚無歷史回測報告；舊策略績效已停止載入。';document.getElementById('backtest').querySelectorAll('.paper-summary-folds,.quarter-panel,.paper-assumptions,.quarter-tabs').forEach(n=>{n.hidden=true;n.style.display="none";});document.getElementById('backtest').querySelector('.strategy-kicker').textContent='MACD(12,26,9) · 4H＋15M';

@@ -1,0 +1,2 @@
+importScripts("strategy-engine.js?v=macd-2","account-risk.js?v=1","smc-engine.js?v=macd-2","target-engine.js?v=macd-2","paper-engine.js?v=macd-2","bt-engine.js?v=macd-2");
+self.onmessage=event=>{try{const report=BacktestEngine.run(event.data,p=>self.postMessage({type:"progress",progress:p}));self.postMessage({type:"result",report});}catch(error){self.postMessage({type:"error",message:error.message});}};

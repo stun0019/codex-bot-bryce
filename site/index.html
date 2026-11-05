@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b0e11">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>策略掃描 · Codex Bot</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg?v=macd-final-1">
+  <link rel="stylesheet" href="styles.css?v=macd-final-1">
+  <link rel="stylesheet" href="dashboard.css?v=macd-final-1">
+  <link rel="stylesheet" href="trade-cards.css?v=1">
+</head>
+<body data-page="strategy">
+  <div id="appShell">
+    <header class="app-header">
+      <a class="brand" href="#overview" aria-label="CODEX BOT 策略總覽"><span class="desk-mark"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4v16M12 2v20M19 6v12"/><rect x="3" y="7" width="4" height="7" rx="1"/><rect x="10" y="9" width="4" height="8" rx="1"/><rect x="17" y="9" width="4" height="5" rx="1"/></svg></span><span class="brand-wordmark"><strong>CODEX BOT</strong><small>STRATEGY TERMINAL</small></span></a>
+      <div class="desk-header-right"><span class="strategy-exchange"><i class="desk-exchange-dot"></i>BINANCE · USDT 永續</span></div>
+    </header>
+    <main id="overview" class="terminal-shell">
+      <div class="desk-intro"><div><p class="desk-eyebrow">BINANCE FUTURES · STRATEGY DESK</p><h2>交易策略工作台<span class="desk-version">MACD · 4H＋15M</span></h2><p>順勢掃描，讓每一筆決策都有依據。</p></div><span class="desk-local"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="3"/><path d="M10 17h4"/></svg>瀏覽器本機紀錄</span></div>
+      <div id="accountHomeSlot"></div>
+      <section id="sharedAccount" class="shared-account" aria-labelledby="accountTitle">
+        <div class="account-heading"><h3 id="accountTitle">共用模擬帳戶</h3><span id="accountStatus" role="status">準備共用帳戶</span></div>
+        <div class="account-grid">
+          <div><span>帳戶餘額 USDT</span><strong id="accountBalance">—</strong></div><div><span>帳戶淨值 USDT</span><strong id="accountEquity">—</strong></div>
+          <div><span>可用保證金 USDT</span><strong id="accountAvailable">—</strong></div><div><span>總停損風險 USDT</span><strong id="accountRisk">—</strong><small id="accountRiskCap">總風險上限5%</small></div>
+          <div><span>多／空風險 USDT</span><strong><span id="accountLongRisk">—</span> / <span id="accountShortRisk">—</span></strong></div><div><span>保證金＋費用預留</span><strong id="accountMargin">—</strong></div>
+          <div><span>本期淨值變動 USDT</span><strong id="accountPeriodPnl">—</strong></div>
+        </div>
+        <details class="account-details"><summary>風控及帳戶起算方式</summary><p>單筆、全部持倉與待成交、同方向停損風險上限均為5%，名目部位上限50x；不對沖抵銷風險。未實現獲利不增加可開倉資金，未實現虧損會扣除可用額度。這是本機模擬估算，不是幣安帳戶實際可用保證金。</p><p id="accountMarginDetail"></p><p id="accountStarted"></p><p>舊已平倉損益不回加初始餘額；既有持倉保留原計畫並納入風險。持倉核對中或超限時停止新增；超限先取消待成交計畫，不自動改寫既有持倉。清空會重設帳戶至初始資金。</p></details>
+      </section>
+      <section id="overviewSummary" class="desk-overview" aria-label="前向模擬績效總覽">
+        <div class="desk-overview-head"><span><i></i> MACD 前向模擬績效</span><span>歷史訊號統計 · 帳戶淨值另列</span></div>
+        <div class="desk-stats">
+          <div class="desk-stat"><span>累計淨損益 <small>USDT</small></span><strong id="deskNet">0.00</strong><small id="deskClosed">0 筆已平倉</small></div>
+          <div class="desk-stat"><span>費後勝率</span><strong id="deskWin">—</strong><small id="deskWins">0 勝 / 0 敗</small></div>
+          <div class="desk-stat"><span>TP1 觸及率 <em>Fib 0</em></span><strong id="deskTP1">—</strong><small id="deskTPCount1">0 / 0 筆已判定</small></div>
+          <div class="desk-stat"><span>TP2 觸及率 <em>Fib −0.27</em></span><strong id="deskTP2">—</strong><small id="deskTPCount2">0 / 0 筆已判定</small></div>
+          <div class="desk-stat"><span>TP3 觸及率 <em>Fib −0.618</em></span><strong id="deskTP3">—</strong><small id="deskTPCount3">0 / 0 筆已判定</small></div>
+          <div class="desk-stat"><span>TP4 觸及率 <em>Fib −1</em></span><strong id="deskTP4">—</strong><small id="deskTPCount4">0 / 0 筆已判定</small></div>
+          <div class="desk-stat"><span>模擬持倉</span><strong id="deskTracking">0</strong><small id="deskWaiting">0 待報價 · 0 待核對</small></div>
+        </div>
+        <p class="desk-stats-note">觸及率以「已觸及＋先出場」為分母，追蹤中與待核對另計；獨立訊號損益並非共用帳戶淨值。</p>
+      </section>
+      <nav class="desk-nav" aria-label="主要功能">
+        <a href="#signals" data-desk-link="signals" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 17V7m8 13V4m8 13V7M1 10h6m2 5h6m2-5h6"/></svg>策略掃描<span id="deskCandidateCount">0</span></a>
+        <a href="#paperTitle" data-desk-link="paper"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="18" height="15" rx="2"/><path d="M8 6V3h8v3M3 12h18m-11 0v3h4v-3"/></svg>模擬交易<span id="deskPaperCount">0</span></a>
+        <a href="#backtestTitle" data-desk-link="backtest"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4v16h16M7 15l4-5 4 3 5-8"/></svg>歷史回測</a>
+      </nav>
+
+      <section id="signals" data-desk-panel="signals" class="signals-dashboard" aria-labelledby="scannerTitle">
+        <div id="signalsView" class="view-panel">
+          <div class="list-head">
+            <div><p class="strategy-kicker">24H 成交額 TOP20 · MACD(12,26,9) · 4H＋15M</p><h1 id="scannerTitle">策略掃描 <span id="candidateCount">(0 / 0)</span></h1></div>
+            <div class="list-actions">
+              <select id="timeframeFilter" aria-label="策略週期"><option value="4h15m">4H＋15M</option></select><select id="directionFilter" aria-label="策略方向"><option value="all">全部方向</option><option value="LONG">做多候選</option><option value="SHORT">做空候選</option></select>
+              <button class="refresh-button" id="refreshBtn" type="button">更新</button>
+              <label class="entry-filter-toggle" hidden style="display:none"><input id="rsiEntryFilter" type="checkbox"><span>RSI＋放量過濾</span></label>
+            </div>
+          </div>
+          <p id="entryFilterStatus" hidden style="display:none" class="lab-help" role="status"></p>
+          <div class="strategy-capital">
+            <label for="capitalInput">帳戶初始資金 <span class="capital-control"><input id="capitalInput" type="number" inputmode="decimal" min="0.01" step="0.01" value="200"><span>USDT</span></span></label>
+            <div><span>每筆風險 5%</span><strong id="riskBudget">10.00 USDT</strong></div>
+            <div><span>最低盈虧比</span><strong>1 : 2</strong></div>
+          </div>
+          <div class="strategy-scan-state"><span id="scannerStatus" role="status" data-state="pending">準備掃描</span><time id="lastUpdate"></time></div>
+          <progress id="scanMeter" max="1" value="0" aria-label="合約掃描進度"></progress>
+          <p id="scanProgress" class="strategy-progress" role="status">等待幣安資料</p>
+          <p id="candidateRecordStatus" class="lab-help" role="status"></p>
+          <div id="strategyList" class="strategy-list" aria-live="off"></div>
+          <p class="strategy-note">每5分鐘掃描Binance成交額Top20。4H及15M的MACD DIF與訊號線同在零軸同側才找同方向交易；15M放量BOS後回抽確認。卡片與模擬共用含費用及滑價的風控預留。公開行情模擬，不送出實盤訂單。</p>
+          <details class="strategy-rules"><summary>MACD 策略與風控</summary><p>只使用4H＋15M已收盤K。MACD(12,26,9)：4H DIF與訊號線都＞0視為多頭，都＜0視為空頭；15M兩線亦須同側同方向，否則觀望。柱狀圖正負不是進場依據。</p><p>15M收盤放量突破已確認前高／前低，量大於前20根均量；12根內回抽突破價、收盤回到趨勢方向才確認。確認價限價有效1根15M，之後新成交觸價才進場。停損為回抽極值外1tick。Fib四段目標0／−0.27／−0.618／−1，20%／30%／30%／20%分批，回撤上一TP全出。TP1費後不足2R不開倉。</p><p>初始200USDT，單筆／總／同向風險最多5%，名目上限50x。舊策略不再新增，舊持倉依原規則追蹤，歷史紀錄保留。</p></details>
+        </div>
+      </section>
+      <section id="paper" data-desk-panel="paper" class="paper-panel signals-dashboard" aria-labelledby="paperTitle">
+        <div class="list-head">
+          <div><p class="strategy-kicker">前向測試 · 共用帳戶風控 · 本機紀錄</p><h2 id="paperTitle">模擬交易 <span id="paperCount">(0 / 0)</span></h2></div>
+          <div class="list-actions"><button id="paperPause" type="button" disabled>暫停新增</button><button id="paperClear" type="button" disabled>清空</button><button id="paperRecover" type="button" disabled>重新核對</button><button id="paperExport" type="button">匯出紀錄</button></div>
+        </div>
+        <div class="paper-summary-folds">
+          <details class="paper-summary-fold"><summary>帳戶與風控說明</summary><div class="paper-fold-content"><div id="paperAccountSlot"></div>        <p class="paper-intro">策略掃描的所有MACD確認候選自動顯示在此。以MACD同向後的回抽確認價為限價參考，等待新成交觸價才進場；未取得風控額度的候選列為未進場並說明原因。持倉共用帳戶，合計停損風險與同方向風險上限均為5%；待成交先預留保證金與費用，卡片顯示同一份預留數量。成交前會因帳戶狀態改變重新核驗，失敗顯示原因。上方帳戶資訊是本期淨值，下面保留歷史訊號統計。</p>
+<p class="lab-help">累積盈虧以本期起算帳戶淨值計算，包含已實現與未實現損益，並非獨立訊號損益相加後除以本金；持倉核對中使用最後可確認估值。</p></div></details>
+          <details class="paper-summary-fold"><summary>詳細績效與計算方式</summary><div class="paper-fold-content">        <div class="paper-stats" aria-label="模擬交易績效">
+          <div><span>已平倉</span><strong id="paperClosed">0</strong><small id="paperOpen">0 持倉 · 0 待報價</small></div>
+          <div><span>平倉淨獲利勝率</span><strong id="paperWinRate">—</strong><small>僅計連續追蹤的已平倉樣本</small></div>
+          <div><span>累計淨損益 USDT</span><strong id="paperNet">0.00</strong><small>已扣模擬手續費與滑價</small></div>
+          <div><span>平均每筆淨損益</span><strong id="paperAverage">—</strong><small>USDT／已平倉</small></div>
+          <div><span>累積損益最大回撤</span><strong id="paperDrawdown">0.00</strong><small>USDT · 非帳戶淨值回撤</small></div>
+          <div><span>最大連敗</span><strong id="paperStreak">0</strong><small>依淨損益計算</small></div>
+        </div>
+        <h3>TP1／TP2／TP3／TP4 觸及率</h3><div id="paperTargets" class="target-stats" aria-label="前向模擬四段目標觸及率"></div>
+        <p class="lab-help">新Fib依20%／30%／30%／20%出場；回撤上一個已達TP則出清剩餘，全部出清後才列入平倉勝率。舊紀錄保留原規則。</p>
+        <details class="paper-assumptions"><summary>費用與成交假設</summary>
+          <div class="paper-settings"><label>單邊手續費 % <input id="paperFee" type="number" min="0" max="1" step="0.001" value="0.05"></label><label>單邊不利滑價 % <input id="paperSlippage" type="number" min="0" max="1" step="0.001" value="0.02"></label></div>
+          <p id="paperSettingsMessage">預設值為模擬假設，並非你的帳戶實際費率；調整只影響新訊號。</p>
+          <p>進場使用回抽確認收盤價限價，止盈分四次、原停損或TP回撤保護價出清剩餘部位；出場按觸發報價加不利滑價估算。費後盈虧比可能低於 2R；跳價也可能使實際模擬損失高於原預算。未計資金費率與委託簿深度。</p>
+        </details>
+<p class="lab-help">策略勝率依下方週期篩選，只計已平倉且費後淨獲利的樣本。TP觸及率分母為已觸及＋先出場，未進場、追蹤中、核對中與待核對不列入；TP4為新Fib最後出場目標，舊策略沿用原規則。</p></div></details>
+        </div>
+        <div id="paperSummary" class="paper-summary-grid" aria-label="模擬交易績效摘要"></div>
+        <div class="paper-toolbar"><span id="paperStatus" role="status">準備本機紀錄</span><select id="paperTimeframe" aria-label="交易策略"><option value="macd">MACD · 4H＋15M</option><option value="all">全部紀錄（含舊策略）</option></select><select id="paperFilter" aria-label="模擬交易篩選"><option value="all">全部紀錄</option><option value="active">持倉／待報價</option><option value="closed">已平倉</option><option value="NOT_ENTERED">未進場候選</option><option value="SKIPPED">已取消／略過</option><option value="RECOVERING">核對中</option><option value="REVIEW">待核對</option></select></div>
+        <p id="paperRecoverySummary" class="paper-breakdown" role="status"></p>
+        <p id="paperBreakdown" class="paper-breakdown" role="status">尚無平倉樣本</p>
+        <div id="paperCards" class="trade-card-grid" aria-live="off"></div><div class="paper-table-wrap" hidden style="display:none"><table class="paper-table"><thead><tr><th>幣種／訊號時間</th><th>方向</th><th>模擬進場</th><th>停損</th><th>TP1／TP2／TP3／TP4</th><th>數量</th><th>出場價</th><th>狀態</th><th>淨損益 USDT</th><th>說明／成交時間</th></tr></thead><tbody id="paperRows"></tbody></table></div>
+        <p class="strategy-note">此為啟用後累積的前向模擬，補查僅用於核對已存在的持倉。新版持倉在刷新、斷線或超過 30 秒無報價後，會保存檢查點並自動補查聚合成交，確認後恢復追蹤或補記出場。資料缺漏、超過補查範圍或舊版未保存成交編號者才列為待核對。候選到期不會結束已進場的模擬持倉。紀錄僅存在本瀏覽器／本網站，清除網站資料會遺失；可定期匯出。</p>
+      </section>
+
+      <section id="backtest" data-desk-panel="backtest" class="signals-dashboard" aria-labelledby="backtestTitle" hidden>
+        <div class="list-head"><div><p class="strategy-kicker">MACD · 4H＋15M · 尚無回測報告</p><h2 id="backtestTitle">歷史回測</h2></div><div class="quarter-tabs" role="group" aria-label="回測季度"><button type="button" data-quarter="1" aria-pressed="true">Q1</button><button type="button" data-quarter="2" aria-pressed="false">Q2</button><button type="button" data-quarter="3" aria-pressed="false">Q3</button></div></div>
+        <p id="quarterStatus" class="lab-help" role="status">載入2026 Q1回測報告</p>
+        <div class="paper-summary-folds"><details class="paper-summary-fold"><summary>回測範圍與成交假設</summary><div class="paper-fold-content"><p id="quarterScope"></p><ul id="quarterAssumptions"></ul></div></details><details class="paper-summary-fold"><summary>帳戶淨值與詳細績效</summary><div class="paper-fold-content"><div id="quarterAccount" class="account-grid"></div></div></details></div>
+        <div id="quarterSummary" class="paper-summary-grid" aria-label="季度回測績效摘要"></div>
+        <div class="quarter-panel"><h3>兩套週期績效</h3><div class="paper-table-wrap"><table class="quarter-profile-table"><thead><tr><th>週期</th><th>已平倉</th><th>費後勝率</th><th>已實現淨損益</th></tr></thead><tbody id="quarterProfiles"></tbody></table></div><p class="lab-help">兩套週期共同使用同一帳戶；下列淨損益為已平倉交易歸屬，帳戶盈虧另含季末持倉與費用。</p></div>
+        <details class="paper-assumptions"><summary>交易紀錄與目標觸及統計</summary><div id="quarterTargets" class="target-stats"></div><div class="paper-table-wrap"><table class="quarter-trade-table"><thead><tr><th>幣種／週期</th><th>進場時間</th><th>方向</th><th>狀態</th><th>淨損益 USDT</th></tr></thead><tbody id="quarterTrades"></tbody></table></div></details>
+      </section>
+      <footer class="desk-footer"><span>CODEX BOT / STRATEGY DESK</span><span>BINANCE USDT 永續 · MACD 4H＋15M · 瀏覽器本機保存</span></footer>
+    </main>
+  </div>
+  <script src="strategy-engine.js?v=macd-final-1"></script>
+  <script src="account-risk.js?v=macd-final-1"></script>
+  <script src="smc-engine.js?v=macd-final-1"></script>
+  <script src="ema-engine.js?v=macd-final-1"></script>
+  <script src="bos-legacy.js?v=macd-final-1"></script><script src="bos-engine.js?v=macd-final-1"></script><script src="macd-engine.js?v=macd-final-1"></script><script src="fib-engine.js?v=macd-final-1"></script>
+  <script src="strategy-data.js?v=macd-final-1"></script>
+  <script src="price-feed.js?v=macd-final-1"></script>
+  <script src="target-engine.js?v=macd-final-1"></script>
+  <script src="target-view.js?v=macd-final-1"></script>
+  <script src="paper-engine.js?v=macd-final-1"></script>
+  <script src="dashboard-ui.js?v=macd-final-1"></script>
+  <script src="paper-recovery.js?v=macd-final-1"></script>
+  <script src="candidate-records.js?v=macd-final-1"></script>
+  <script src="trade-cards.js?v=1"></script>
+  <script src="paper-panel.js?v=macd-final-1"></script>
+  <script src="strategy-scanner.js?v=macd-final-1"></script>
+  <script src="macd-history.js?v=macd-final-1"></script>
+</body>
+</html>

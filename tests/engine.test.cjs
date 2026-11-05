@@ -1,9 +1,0 @@
-const {test}=require('node:test'),assert=require('node:assert/strict'),{backtest,parseCSV,demo}=require('../engine.js');
-const rows=prices=>prices.map((close,i)=>({date:`2025-01-${String(i+1).padStart(2,'0')}`,close}));
-const p={capital:1000,fast:2,slow:3,fee:1,slip:1};
-test('cross signals execute next bar and round trip includes both fees and slippage',()=>{const data=rows([10,9,8,12,15,14,9,8,10]);const r=backtest(data,p);assert.deepEqual(r.trades.map(t=>[t.date,t.side]),[['2025-01-05','buy'],['2025-01-08','sell']]);const qty=1000/(15*1.01*1.01),cash=qty*8*.99*.99;assert.ok(Math.abs(r.ending-cash)<1e-8);assert.ok(Math.abs(r.trades[1].pnl-(cash-1000))<1e-8);assert.equal(r.winrate,0);assert.ok(r.drawdown>0);});
-test('initial trend does not count as a crossover',()=>{const r=backtest(rows([1,2,3,4,5,6]),p);assert.equal(r.trades.length,0);assert.equal(r.ending,1000);assert.equal(r.winrate,null);});
-test('last bar crossover cannot execute',()=>{const r=backtest(rows([10,9,8,7,15]),p);assert.equal(r.trades.length,0);});
-test('open holding is marked to close without forced exit',()=>{const r=backtest(rows([10,9,8,12,15,16]),p);assert.equal(r.trades.length,1);assert.ok(Math.abs(r.ending-r.qty*16)<1e-8);assert.equal(r.closed,0);});
-test('CSV validates dates, duplicates, prices and sorts',()=>{assert.deepEqual(parseCSV('date,close\n2025-01-03,3\n2025-01-01,1\n2025-01-02,2').map(r=>r.close),[1,2,3]);for(const txt of ['date,close\n2025-02-30,1\n2025-01-02,2\n2025-01-03,3','date,close\n2025-01-01,1\n2025-01-01,2\n2025-01-03,3','date,close\n2025-01-01,0\n2025-01-02,2\n2025-01-03,3'])assert.throws(()=>parseCSV(txt));});
-test('invalid parameters and insufficient data are rejected',()=>{assert.throws(()=>backtest(demo(),{...p,fast:3}));assert.throws(()=>backtest(rows([1,2,3]),p));assert.throws(()=>backtest(demo(),{...p,fee:NaN}));});

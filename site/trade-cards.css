@@ -6,3 +6,45 @@
 #sharedAccount>summary{cursor:pointer;list-style:none;margin-bottom:0}#sharedAccount>summary::-webkit-details-marker{display:none}#sharedAccount>summary:after{content:'＋';color:#f0b90b;margin-left:12px;font-size:20px}#sharedAccount[open]>summary:after{content:'−'}#sharedAccount[open]>summary{margin-bottom:18px}.trade-glass.strategy-card{background:linear-gradient(135deg,#181818,#0e0e0e 75%);border-color:#f0b90b80;box-shadow:inset 0 1px 12px #f0b90b08,0 6px 28px #0003}.trade-glass.strategy-card:before{background:linear-gradient(90deg,transparent,#f0b90b,transparent);box-shadow:0 0 13px #f0b90b40}
 
 #sharedAccount.shared-account{padding:0;border:1px solid #66511f;border-radius:9px;background:#11181f;overflow:hidden}#sharedAccount>summary.account-heading,#sharedAccount[open]>summary.account-heading{display:flex;flex-direction:row;align-items:center;justify-content:space-between;gap:12px;list-style:none;padding:12px 14px;margin:0;color:#f0b90b;font-size:13px;font-weight:600}#sharedAccount>summary h3{font-size:13px;font-weight:600;color:inherit;margin:0}#sharedAccount>summary:after{content:"+";color:#b7bdc6;font-size:17px;line-height:1;margin:0}#sharedAccount[open]>summary:after{content:"−"}#sharedAccount>.account-grid{margin:0 14px 14px}#sharedAccount>.account-details{margin:0 14px 14px}#sharedAccount>#accountStatus{font-size:12px;color:#f47786;margin:0 14px 12px}@media(max-width:480px){#sharedAccount>summary.account-heading,#sharedAccount[open]>summary.account-heading{padding:11px 12px}#sharedAccount>.account-grid,#sharedAccount>.account-details{margin-left:12px;margin-right:12px}}
+
+/* Only scanner candidates use this compact two-column layout. */
+#strategyList{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:12px}
+#strategyList .trade-glass.strategy-card{padding:14px;border-radius:13px}
+#strategyList .tg-head{align-items:flex-start;gap:6px;flex-wrap:wrap}
+#strategyList .tg-identity{gap:7px;max-width:100%;flex-wrap:wrap}
+#strategyList .tg-symbol{font-size:18px!important}
+#strategyList .tg-symbol small{font-size:12px}
+#strategyList .tg-direction{font-size:11px;padding:2px 6px}
+#strategyList .tg-state{font-size:11px}
+#strategyList .tg-meta{font-size:10px;margin:7px 0 9px}
+#strategyList .tg-pnl-row{flex-wrap:wrap;padding-bottom:10px;margin-bottom:6px;gap:6px}
+#strategyList .tg-pnl>strong{font-size:25px}
+#strategyList .tg-pnl>span,#strategyList .tg-pnl>small{font-size:10px}
+#strategyList .tg-quote{font-size:11px;align-items:flex-start}
+#strategyList .tg-ladder{gap:5px;padding:4px 0 8px}
+#strategyList .tg-level{grid-template-columns:28px minmax(4px,1fr) minmax(0,max-content) 48px;gap:6px;min-height:20px}
+#strategyList .tg-level-label{font-size:12px}
+#strategyList .tg-level-price{font-size:15px}
+#strategyList .tg-level-note{font-size:10px}
+#strategyList .tg-level.is-hit .tg-level-note{font-size:17px}
+#strategyList .tg-timeline{min-height:0;padding-top:4px}
+#strategyList .tg-wait,#strategyList .tg-details,#strategyList .tg-details p{font-size:11px;line-height:1.6}
+#strategyList .tg-bottom{gap:6px;flex-wrap:wrap;padding-top:4px}
+#strategyList .tg-copy{font-size:10px;padding:5px 8px}
+#strategyList .trade-glass[data-status=WATCH] .tg-pnl-row,#strategyList .trade-glass[data-status=WATCH] .tg-ladder{display:none}
+@media(max-width:480px){
+ #strategyList{gap:8px}
+ #strategyList .trade-glass.strategy-card{padding:10px 9px;border-radius:11px}
+ #strategyList .tg-symbol{font-size:14px!important}
+ #strategyList .tg-symbol small{font-size:10px}
+ #strategyList .tg-identity{gap:5px}
+ #strategyList .tg-state{font-size:10px}
+ #strategyList .tg-meta{font-size:9px;line-height:1.6}
+ #strategyList .tg-level{grid-template-columns:24px minmax(2px,1fr) minmax(0,max-content) 32px;gap:4px}
+ #strategyList .tg-level-label{font-size:10px}
+ #strategyList .tg-level-price{font-size:12px}
+ #strategyList .tg-level-note{font-size:8px}
+ #strategyList .tg-pnl>strong{font-size:22px}
+ #strategyList .tg-quote{font-size:10px}
+ #strategyList .tg-details p{overflow-wrap:anywhere}
+}

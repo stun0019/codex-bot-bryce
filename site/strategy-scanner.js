@@ -97,6 +97,7 @@
         meter.max = state.total; meter.value = state.completed;
         if (visibleCandidates().map(c => c.symbol + c.profileId + c.setupId).join(",") !== lastVisibleKey) render();
       } });
+      window.dispatchEvent(new CustomEvent('strategy-scan-complete',{detail:{symbols:[...new Set([...outcome.observations.filter(o=>o.direction&&o.status!=='ERROR').map(o=>o.symbol),...outcome.candidates.map(c=>c.symbol)])],at:outcome.asOf}}));
       watchCandidates=outcome.observations.filter(o=>o.direction&&o.status!=="CANDIDATE"); candidates = outcome.candidates; completed = true; recordStore.update(candidates,outcome.asOf);
       window.dispatchEvent(new Event("candidate-records-update"));
       window.PaperTrading?.reconcileCandidates(outcome.candidates, outcome.observations, Date.now() + offset);

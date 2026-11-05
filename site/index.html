@@ -10,7 +10,8 @@
   <link rel="icon" type="image/svg+xml" href="favicon.svg?v=pullback-4">
   <link rel="stylesheet" href="styles.css?v=pullback-4">
   <link rel="stylesheet" href="dashboard.css?v=pullback-4">
-  <link rel="stylesheet" href="trade-cards.css?v=pullback-4">
+  <link rel="stylesheet" href="trade-cards.css?v=compact-1">
+  <link rel="stylesheet" href="news-radar.css?v=1">
 </head>
 <body data-page="strategy">
   <div id="appShell">
@@ -35,6 +36,7 @@
       <nav class="desk-nav" aria-label="主要功能">
         <a href="#signals" data-desk-link="signals" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 17V7m8 13V4m8 13V7M1 10h6m2 5h6m2-5h6"/></svg>策略掃描<span id="deskCandidateCount">0</span></a>
         <a href="#paperTitle" data-desk-link="paper"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="18" height="15" rx="2"/><path d="M8 6V3h8v3M3 12h18m-11 0v3h4v-3"/></svg>模擬交易<span id="deskPaperCount">0</span></a>
+        <a href="#newsTitle" data-desk-link="news"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v16H4zM7 8h10M7 12h4m2 0h4M7 16h10"/></svg>新聞雷達<span id="deskNewsCount">0</span></a>
         <a href="#backtestTitle" data-desk-link="backtest"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4v16h16M7 15l4-5 4 3 5-8"/></svg>歷史回測</a>
       </nav>
 
@@ -96,6 +98,15 @@
         <p class="strategy-note">此為啟用後累積的前向模擬，補查僅用於核對已存在的持倉。新版持倉在刷新、斷線或超過 30 秒無報價後，會保存檢查點並自動補查聚合成交，確認後恢復追蹤或補記出場。資料缺漏、超過補查範圍或舊版未保存成交編號者才列為待核對。候選到期不會結束已進場的模擬持倉。紀錄僅存在本瀏覽器／本網站，清除網站資料會遺失；可定期匯出。</p>
       </section>
 
+      <section id="news" data-desk-panel="news" class="signals-dashboard" aria-labelledby="newsTitle" hidden>
+        <div class="list-head"><div><p class="strategy-kicker">本輪策略訊號 · 相關消息</p><h2 id="newsTitle">新聞雷達 <span id="newsCount"></span></h2></div><div class="list-actions"><button id="newsRefresh" type="button">更新新聞</button></div></div>
+        <p class="news-intro">只查詢本輪出現候選／進場訊號的幣種。來源：幣安最新官方公告；利多、利空與重要性為標題規則初判，尚未接入 AI 或全網媒體。</p>
+        <div class="news-toolbar"><div class="list-actions" role="group" aria-label="新聞類型"><button type="button" data-news-filter="all" aria-pressed="true">全部消息</button><button type="button" data-news-filter="bullish" aria-pressed="false">利多</button><button type="button" data-news-filter="bearish" aria-pressed="false">利空</button><button type="button" data-news-filter="important" aria-pressed="false">重大事件</button></div><div class="list-actions"><select id="newsCoin" aria-label="相關幣種"><option value="all">全部相關幣種</option></select><select id="newsRange" aria-label="消息期間"><option value="1">24 小時</option><option value="7" selected>7 天</option><option value="30">30 天</option></select></div></div>
+        <select id="newsFilter" hidden style="display:none"><option value="all">全部</option><option value="bullish">利多</option><option value="bearish">利空</option><option value="important">重大事件</option></select>
+        <div class="news-status-row"><span id="newsStatus" role="status">等待本輪策略掃描結果</span><time id="newsUpdated"></time></div>
+        <div id="newsList" class="news-list" aria-live="polite"></div>
+      </section>
+
       <section id="backtest" data-desk-panel="backtest" class="signals-dashboard" aria-labelledby="backtestTitle" hidden>
         <div class="list-head"><div><p class="strategy-kicker">MACD · 4H＋15M · 2026 月度回測</p><h2 id="backtestTitle">歷史回測</h2></div><div class="quarter-tabs" role="group" aria-label="回測月份"><button type="button" data-month="2026-08" aria-pressed="true">8 月</button><button type="button" data-month="2026-09" aria-pressed="false">9 月</button><button type="button" data-month="2026-10" aria-pressed="false">10 月</button></div></div>
         <div class="list-actions"><button id="monthUpdate" type="button">更新回測</button><button id="monthCancel" type="button" hidden>取消</button></div><p id="quarterStatus" class="lab-help" role="status">載入2026年月度回測報告</p>
@@ -117,12 +128,13 @@
   <script src="target-engine.js?v=pullback-4"></script>
   <script src="target-view.js?v=pullback-4"></script>
   <script src="paper-engine.js?v=pullback-4"></script>
-  <script src="dashboard-ui.js?v=pullback-4"></script>
+  <script src="dashboard-ui.js?v=news-1"></script>
   <script src="paper-recovery.js?v=pullback-4"></script>
   <script src="candidate-records.js?v=pullback-4"></script>
   <script src="trade-cards.js?v=pullback-4"></script>
   <script src="paper-panel.js?v=pullback-4"></script>
-  <script src="strategy-scanner.js?v=pullback-4"></script>
+  <script src="news-radar-data.js?v=1"></script><script src="news-radar.js?v=1"></script>
+  <script src="strategy-scanner.js?v=news-1"></script>
   <script src="macd-history.js?v=pullback-4"></script>
 </body>
 </html>

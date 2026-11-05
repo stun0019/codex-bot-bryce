@@ -7,10 +7,10 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>策略掃描 · Codex Bot</title>
-  <link rel="icon" type="image/svg+xml" href="favicon.svg?v=macd-final-1">
-  <link rel="stylesheet" href="styles.css?v=macd-final-1">
-  <link rel="stylesheet" href="dashboard.css?v=macd-final-1">
-  <link rel="stylesheet" href="trade-cards.css?v=1">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg?v=yellow-account-1">
+  <link rel="stylesheet" href="styles.css?v=yellow-account-1">
+  <link rel="stylesheet" href="dashboard.css?v=yellow-account-1">
+  <link rel="stylesheet" href="trade-cards.css?v=yellow-account-1">
 </head>
 <body data-page="strategy">
   <div id="appShell">
@@ -21,8 +21,8 @@
     <main id="overview" class="terminal-shell">
       <div class="desk-intro"><div><p class="desk-eyebrow">BINANCE FUTURES · STRATEGY DESK</p><h2>交易策略工作台<span class="desk-version">MACD · 4H＋15M</span></h2><p>順勢掃描，讓每一筆決策都有依據。</p></div><span class="desk-local"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="3"/><path d="M10 17h4"/></svg>瀏覽器本機紀錄</span></div>
       <div id="accountHomeSlot"></div>
-      <section id="sharedAccount" class="shared-account" aria-labelledby="accountTitle">
-        <div class="account-heading"><h3 id="accountTitle">共用模擬帳戶</h3><span id="accountStatus" role="status">準備共用帳戶</span></div>
+      <details id="sharedAccount" class="shared-account" aria-labelledby="accountTitle">
+        <summary class="account-heading"><h3 id="accountTitle">資金帳戶</h3><span id="accountStatus" role="status">準備共用帳戶</span></summary>
         <div class="account-grid">
           <div><span>帳戶餘額 USDT</span><strong id="accountBalance">—</strong></div><div><span>帳戶淨值 USDT</span><strong id="accountEquity">—</strong></div>
           <div><span>可用保證金 USDT</span><strong id="accountAvailable">—</strong></div><div><span>總停損風險 USDT</span><strong id="accountRisk">—</strong><small id="accountRiskCap">總風險上限5%</small></div>
@@ -30,20 +30,8 @@
           <div><span>本期淨值變動 USDT</span><strong id="accountPeriodPnl">—</strong></div>
         </div>
         <details class="account-details"><summary>風控及帳戶起算方式</summary><p>單筆、全部持倉與待成交、同方向停損風險上限均為5%，名目部位上限50x；不對沖抵銷風險。未實現獲利不增加可開倉資金，未實現虧損會扣除可用額度。這是本機模擬估算，不是幣安帳戶實際可用保證金。</p><p id="accountMarginDetail"></p><p id="accountStarted"></p><p>舊已平倉損益不回加初始餘額；既有持倉保留原計畫並納入風險。持倉核對中或超限時停止新增；超限先取消待成交計畫，不自動改寫既有持倉。清空會重設帳戶至初始資金。</p></details>
-      </section>
-      <section id="overviewSummary" class="desk-overview" aria-label="前向模擬績效總覽">
-        <div class="desk-overview-head"><span><i></i> MACD 前向模擬績效</span><span>歷史訊號統計 · 帳戶淨值另列</span></div>
-        <div class="desk-stats">
-          <div class="desk-stat"><span>累計淨損益 <small>USDT</small></span><strong id="deskNet">0.00</strong><small id="deskClosed">0 筆已平倉</small></div>
-          <div class="desk-stat"><span>費後勝率</span><strong id="deskWin">—</strong><small id="deskWins">0 勝 / 0 敗</small></div>
-          <div class="desk-stat"><span>TP1 觸及率 <em>Fib 0</em></span><strong id="deskTP1">—</strong><small id="deskTPCount1">0 / 0 筆已判定</small></div>
-          <div class="desk-stat"><span>TP2 觸及率 <em>Fib −0.27</em></span><strong id="deskTP2">—</strong><small id="deskTPCount2">0 / 0 筆已判定</small></div>
-          <div class="desk-stat"><span>TP3 觸及率 <em>Fib −0.618</em></span><strong id="deskTP3">—</strong><small id="deskTPCount3">0 / 0 筆已判定</small></div>
-          <div class="desk-stat"><span>TP4 觸及率 <em>Fib −1</em></span><strong id="deskTP4">—</strong><small id="deskTPCount4">0 / 0 筆已判定</small></div>
-          <div class="desk-stat"><span>模擬持倉</span><strong id="deskTracking">0</strong><small id="deskWaiting">0 待報價 · 0 待核對</small></div>
-        </div>
-        <p class="desk-stats-note">觸及率以「已觸及＋先出場」為分母，追蹤中與待核對另計；獨立訊號損益並非共用帳戶淨值。</p>
-      </section>
+      </details>
+
       <nav class="desk-nav" aria-label="主要功能">
         <a href="#signals" data-desk-link="signals" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 17V7m8 13V4m8 13V7M1 10h6m2 5h6m2-5h6"/></svg>策略掃描<span id="deskCandidateCount">0</span></a>
         <a href="#paperTitle" data-desk-link="paper"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="18" height="15" rx="2"/><path d="M8 6V3h8v3M3 12h18m-11 0v3h4v-3"/></svg>模擬交易<span id="deskPaperCount">0</span></a>
@@ -101,7 +89,7 @@
 <p class="lab-help">策略勝率依下方週期篩選，只計已平倉且費後淨獲利的樣本。TP觸及率分母為已觸及＋先出場，未進場、追蹤中、核對中與待核對不列入；TP4為新Fib最後出場目標，舊策略沿用原規則。</p></div></details>
         </div>
         <div id="paperSummary" class="paper-summary-grid" aria-label="模擬交易績效摘要"></div>
-        <div class="paper-toolbar"><span id="paperStatus" role="status">準備本機紀錄</span><select id="paperTimeframe" aria-label="交易策略"><option value="macd">MACD · 4H＋15M</option><option value="all">全部紀錄（含舊策略）</option></select><select id="paperFilter" aria-label="模擬交易篩選"><option value="all">全部紀錄</option><option value="active">持倉／待報價</option><option value="closed">已平倉</option><option value="NOT_ENTERED">未進場候選</option><option value="SKIPPED">已取消／略過</option><option value="RECOVERING">核對中</option><option value="REVIEW">待核對</option></select></div>
+        <div class="paper-toolbar"><span id="paperStatus" role="status">準備本機紀錄</span><select id="paperFilter" aria-label="模擬交易篩選"><option value="all">全部紀錄</option><option value="active">持倉／待報價</option><option value="closed">已平倉</option><option value="NOT_ENTERED">未進場候選</option><option value="SKIPPED">已取消／略過</option><option value="RECOVERING">核對中</option><option value="REVIEW">待核對</option></select></div>
         <p id="paperRecoverySummary" class="paper-breakdown" role="status"></p>
         <p id="paperBreakdown" class="paper-breakdown" role="status">尚無平倉樣本</p>
         <div id="paperCards" class="trade-card-grid" aria-live="off"></div><div class="paper-table-wrap" hidden style="display:none"><table class="paper-table"><thead><tr><th>幣種／訊號時間</th><th>方向</th><th>模擬進場</th><th>停損</th><th>TP1／TP2／TP3／TP4</th><th>數量</th><th>出場價</th><th>狀態</th><th>淨損益 USDT</th><th>說明／成交時間</th></tr></thead><tbody id="paperRows"></tbody></table></div>
@@ -119,22 +107,22 @@
       <footer class="desk-footer"><span>CODEX BOT / STRATEGY DESK</span><span>BINANCE USDT 永續 · MACD 4H＋15M · 瀏覽器本機保存</span></footer>
     </main>
   </div>
-  <script src="strategy-engine.js?v=macd-final-1"></script>
-  <script src="account-risk.js?v=macd-final-1"></script>
-  <script src="smc-engine.js?v=macd-final-1"></script>
-  <script src="ema-engine.js?v=macd-final-1"></script>
-  <script src="bos-legacy.js?v=macd-final-1"></script><script src="bos-engine.js?v=macd-final-1"></script><script src="macd-engine.js?v=macd-final-1"></script><script src="fib-engine.js?v=macd-final-1"></script>
-  <script src="strategy-data.js?v=macd-final-1"></script>
-  <script src="price-feed.js?v=macd-final-1"></script>
-  <script src="target-engine.js?v=macd-final-1"></script>
-  <script src="target-view.js?v=macd-final-1"></script>
-  <script src="paper-engine.js?v=macd-final-1"></script>
-  <script src="dashboard-ui.js?v=macd-final-1"></script>
-  <script src="paper-recovery.js?v=macd-final-1"></script>
-  <script src="candidate-records.js?v=macd-final-1"></script>
+  <script src="strategy-engine.js?v=yellow-account-1"></script>
+  <script src="account-risk.js?v=yellow-account-1"></script>
+  <script src="smc-engine.js?v=yellow-account-1"></script>
+  <script src="ema-engine.js?v=yellow-account-1"></script>
+  <script src="bos-legacy.js?v=yellow-account-1"></script><script src="bos-engine.js?v=yellow-account-1"></script><script src="macd-engine.js?v=yellow-account-1"></script><script src="fib-engine.js?v=yellow-account-1"></script>
+  <script src="strategy-data.js?v=yellow-account-1"></script>
+  <script src="price-feed.js?v=yellow-account-1"></script>
+  <script src="target-engine.js?v=yellow-account-1"></script>
+  <script src="target-view.js?v=yellow-account-1"></script>
+  <script src="paper-engine.js?v=yellow-account-1"></script>
+  <script src="dashboard-ui.js?v=yellow-account-1"></script>
+  <script src="paper-recovery.js?v=yellow-account-1"></script>
+  <script src="candidate-records.js?v=yellow-account-1"></script>
   <script src="trade-cards.js?v=1"></script>
-  <script src="paper-panel.js?v=macd-final-1"></script>
-  <script src="strategy-scanner.js?v=macd-final-1"></script>
-  <script src="macd-history.js?v=macd-final-1"></script>
+  <script src="paper-panel.js?v=yellow-account-1"></script>
+  <script src="strategy-scanner.js?v=yellow-account-1"></script>
+  <script src="macd-history.js?v=yellow-account-1"></script>
 </body>
 </html>

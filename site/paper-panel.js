@@ -82,12 +82,12 @@
     const values = { accountBalance: account?.balance, accountEquity: account?.equity, accountAvailable: account?.availableMargin, accountRisk: account?.usedRisk, accountLongRisk: account?.directions.LONG.risk, accountShortRisk: account?.directions.SHORT.risk, accountPeriodPnl: account?.periodPnl, accountMargin: account ? account.positionMargin + account.orderMargin + account.feeReserve : null };
     for (const [id, value] of Object.entries(values)) $(id).textContent = money(value);
     $("accountRiskCap").textContent = account ? "上限 " + money(account.totalLimit) + " USDT · 5%" : "總風險上限 5%";
-    $("accountStatus").textContent = storageMessage || (account ? account.blockedReason || (isLeader ? "共用模擬帳戶 · 風控正常" : "共用模擬帳戶 · 另一分頁負責追蹤") : "等待取得追蹤鎖並初始化共用帳戶");
+    $("accountStatus").textContent = storageMessage || (account ? account.blockedReason || (isLeader ? "資金帳戶 · 風控正常" : "資金帳戶 · 另一分頁負責追蹤") : "等待取得追蹤鎖並初始化共用帳戶");
     $("accountStatus").dataset.state = account?.blockedReason || storageBlocked ? "error" : "live";
     $("accountMarginDetail").textContent = account ? "持倉保證金 " + money(account.positionMargin) + " · 待成交保證金 " + money(account.orderMargin) + " · 預估費用預留 " + money(account.feeReserve) + " USDT；名目部位上限 " + account.limits.leverage + "x。" : "";
     $("accountStarted").textContent = account ? "起算 " + time(account.startedAt) + " · 初始餘額 " + money(account.initialCapital) + " · 起算淨值 " + money(account.startingEquity) + " USDT；既有持倉已納入風控。" : "";
     window.dispatchEvent(new Event("paper-account-update"));
-    const profileId=$("paperTimeframe").value,fib=window.FibEngine.isVersion;
+    const profileId="macd",fib=window.FibEngine.isVersion;
     const match=t=>profileId==="macd"?t.strategyVersion==="macd-lines-bos-4h15m-v1":profileId==="all"||(profileId==="fib"?fib(t.strategyVersion):profileId==="pre-fib"?!fib(t.strategyVersion):profileId.startsWith("fib:")&&fib(t.strategyVersion)&&t.profileId===profileId.slice(4));
     const records=window.CandidateRecords.create({getItem:key=>localStorage.getItem(key),setItem:(key,value)=>localStorage.setItem(key,value)}).list();
     const currentKeys=new Set(latest.committed?latest.candidates.map(Engine.key):[]),plans=model.previewCandidates(latest.committed?latest.candidates:[],latest.capital,now());
@@ -219,7 +219,7 @@
   }
   feeInput.addEventListener("change", updateAssumptions); slipInput.addEventListener("change", updateAssumptions);
   filter.addEventListener("change", () => { dirty = true; render(); });
-  $("paperTimeframe").addEventListener("change", () => { dirty = true; render(); });
+
   $("paperExport").addEventListener("click", () => {
     const payload = storageBlocked ? localStorage.getItem(ledgerKey) : JSON.stringify({ ...model.snapshot(),
       exportedAt: new Date().toISOString(), mode: "shared-account-forward-paper-trades", stats: model.stats() }, null, 2);

@@ -89,7 +89,7 @@
     $("accountStarted").textContent = account ? "起算 " + time(account.startedAt) + " · 初始餘額 " + money(account.initialCapital) + " · 起算淨值 " + money(account.startingEquity) + " USDT；既有持倉已納入風控。" : "";
     window.dispatchEvent(new Event("paper-account-update"));
     const profileId="macd",fib=window.FibEngine.isVersion;
-    const match=t=>profileId==="macd"?t.strategyVersion==="macd-lines-bos-4h15m-v1":profileId==="all"||(profileId==="fib"?fib(t.strategyVersion):profileId==="pre-fib"?!fib(t.strategyVersion):profileId.startsWith("fib:")&&fib(t.strategyVersion)&&t.profileId===profileId.slice(4));
+    const match=t=>profileId==="macd"?t.strategyVersion==="macd-body-bos-4h15m-v2":profileId==="all"||(profileId==="fib"?fib(t.strategyVersion):profileId==="pre-fib"?!fib(t.strategyVersion):profileId.startsWith("fib:")&&fib(t.strategyVersion)&&t.profileId===profileId.slice(4));
     const records=window.CandidateRecords.create({getItem:key=>localStorage.getItem(key),setItem:(key,value)=>localStorage.setItem(key,value)}).list();
     const currentKeys=new Set(latest.committed?latest.candidates.map(Engine.key):[]),plans=model.previewCandidates(latest.committed?latest.candidates:[],latest.capital,now());
     const display=window.CandidateRecords.paperRows(records,model.trades,{now:now(),currentKeys,plans});
@@ -133,7 +133,7 @@
     }
     for (const trade of visible) {
       const row = node("tr", ""); row.dataset.status = trade.status; row.dataset.exit=trade.exitReason||""; row.dataset.targetMode=trade.targetMode||"R"; row.dataset.key = trade.id;
-      const identity = cell("幣種／訊號", ""); identity.append(node("strong", "", trade.symbol), node("span", "strategy-timeframe", trade.timeframeLabel ? (trade.strategyVersion==="macd-lines-bos-4h15m-v1"?"MACD · ":fib(trade.strategyVersion)?"舊EMA＋Fib · ":window.EmaEngine.isVersion(trade.strategyVersion)?"EMA · ":"SMC · ") + trade.timeframeLabel : "舊策略／未標示週期"), node("small", "", time(trade.confirmedAt)));
+      const identity = cell("幣種／訊號", ""); identity.append(node("strong", "", trade.symbol), node("span", "strategy-timeframe", trade.timeframeLabel ? (trade.strategyVersion==="macd-body-bos-4h15m-v2"?"MACD · ":fib(trade.strategyVersion)?"舊EMA＋Fib · ":window.EmaEngine.isVersion(trade.strategyVersion)?"EMA · ":"SMC · ") + trade.timeframeLabel : "舊策略／未標示週期"), node("small", "", time(trade.confirmedAt)));
       let pnl = Engine.CLOSED.has(trade.status) ? trade.netPnl : trade.status === "OPEN" && !trade.recovery?.pending ? model.netAt(trade, trade.lastPrice).net : null;
       const pnlCell = cell("淨損益 USDT", signed(pnl), "paper-pnl"); pnlCell.dataset.tone = pnl == null ? "neutral" : pnl >= 0 ? "positive" : "negative";
       if (trade.status === "OPEN" && !trade.recovery?.pending) pnlCell.append(node("small", "", "未實現估算"));
@@ -169,7 +169,7 @@
       await navigator.locks.request("codex-paper-tracker-v1", { ifAvailable: true }, async lock => {
         acquiring = false; if (!lock) return;
         load(true); if (storageBlocked) return;
-        for(const t of model.trades)if(t.status==="WAITING_PRICE"&&t.strategyVersion!=="macd-lines-bos-4h15m-v1")model.cancelOrder(t,"舊策略停用，取消未成交計畫",now());
+        for(const t of model.trades)if(t.status==="WAITING_PRICE"&&t.strategyVersion!=="macd-body-bos-4h15m-v2")model.cancelOrder(t,"舊策略停用，取消未成交計畫",now());
         isLeader = true; currentGeneration = null;
         model.suspend("重新開啟頁面，離線期間觸價順序需核對", now()); changed = dirty = true; save(true);
         recoveryController = new AbortController();

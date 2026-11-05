@@ -7,10 +7,10 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>策略掃描 · Codex Bot</title>
-  <link rel="icon" type="image/svg+xml" href="favicon.svg?v=yellow-account-1">
-  <link rel="stylesheet" href="styles.css?v=yellow-account-1">
-  <link rel="stylesheet" href="dashboard.css?v=yellow-account-1">
-  <link rel="stylesheet" href="trade-cards.css?v=account-fold-2">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg?v=body-2">
+  <link rel="stylesheet" href="styles.css?v=body-2">
+  <link rel="stylesheet" href="dashboard.css?v=body-2">
+  <link rel="stylesheet" href="trade-cards.css?v=body-2">
 </head>
 <body data-page="strategy">
   <div id="appShell">
@@ -60,7 +60,7 @@
           <p id="candidateRecordStatus" class="lab-help" role="status"></p>
           <div id="strategyList" class="strategy-list" aria-live="off"></div>
           <p class="strategy-note">每5分鐘掃描Binance成交額Top20。4H及15M的MACD DIF與訊號線同在零軸同側才找同方向交易；15M放量BOS後回抽確認。卡片與模擬共用含費用及滑價的風控預留。公開行情模擬，不送出實盤訂單。</p>
-          <details class="strategy-rules"><summary>MACD 策略與風控</summary><p>只使用4H＋15M已收盤K。MACD(12,26,9)：4H DIF與訊號線都＞0視為多頭，都＜0視為空頭；15M兩線亦須同側同方向，否則觀望。柱狀圖正負不是進場依據。</p><p>15M收盤放量突破已確認前高／前低，量大於前20根均量；12根內回抽突破價、收盤回到趨勢方向才確認。確認價限價有效1根15M，之後新成交觸價才進場。停損為回抽極值外1tick。Fib四段目標0／−0.27／−0.618／−1，20%／30%／30%／20%分批，回撤上一TP全出。TP1費後不足2R不開倉。</p><p>初始200USDT，單筆／總／同向風險最多5%，名目上限50x。舊策略不再新增，舊持倉依原規則追蹤，歷史紀錄保留。</p></details>
+          <details class="strategy-rules"><summary>MACD 策略與風控</summary><p>只使用4H＋15M已收盤K。MACD(12,26,9)：4H DIF與訊號線都＞0視為多頭，都＜0視為空頭；15M兩線亦須同側同方向，否則觀望。柱狀圖正負不是進場依據。</p><p>15M放量K棒實體由結構內跨至結構外：做多開盤低於前高、收盤高於前高；做空開盤高於前低、收盤低於前低。影線刺穿與跳空不算。突破已確認前高／前低，量大於前20根均量；12根內回抽突破價、收盤回到趨勢方向才確認。確認價限價有效1根15M，之後新成交觸價才進場。停損為回抽極值外1tick。Fib四段目標0／−0.27／−0.618／−1，20%／30%／30%／20%分批，回撤上一TP全出。TP1費後不足2R不開倉。</p><p>初始200USDT，單筆／總／同向風險最多5%，名目上限50x。舊策略不再新增，舊持倉依原規則追蹤，歷史紀錄保留。</p></details>
         </div>
       </section>
       <section id="paper" data-desk-panel="paper" class="paper-panel signals-dashboard" aria-labelledby="paperTitle">
@@ -98,7 +98,7 @@
 
       <section id="backtest" data-desk-panel="backtest" class="signals-dashboard" aria-labelledby="backtestTitle" hidden>
         <div class="list-head"><div><p class="strategy-kicker">MACD · 4H＋15M · 2026 月度回測</p><h2 id="backtestTitle">歷史回測</h2></div><div class="quarter-tabs" role="group" aria-label="回測月份"><button type="button" data-month="2026-08" aria-pressed="true">8 月</button><button type="button" data-month="2026-09" aria-pressed="false">9 月</button><button type="button" data-month="2026-10" aria-pressed="false">10 月</button></div></div>
-        <p id="quarterStatus" class="lab-help" role="status">載入2026年月度回測報告</p>
+        <div class="list-actions"><button id="monthUpdate" type="button">更新回測</button><button id="monthCancel" type="button" hidden>取消</button></div><p id="quarterStatus" class="lab-help" role="status">載入2026年月度回測報告</p>
         <div class="paper-summary-folds"><details class="paper-summary-fold"><summary>回測範圍與成交假設</summary><div class="paper-fold-content"><p id="quarterScope"></p><ul id="quarterAssumptions"></ul></div></details><details class="paper-summary-fold"><summary>帳戶淨值與詳細績效</summary><div class="paper-fold-content"><div id="quarterAccount" class="account-grid"></div></div></details></div>
         <p class="lab-help monthly-scope">固定樣本歷史估算：每月獨立200 USDT，費用及滑價已計；非當時歷史Top20，未計資金費率與強平。</p><div class="paper-table-wrap"><table class="quarter-profile-table"><thead><tr><th>2026月份</th><th>報酬率</th><th>淨損益 USDT</th><th>費後勝率</th><th>已平倉</th><th>最大回撤</th></tr></thead><tbody id="monthlyComparison"></tbody></table></div><div id="quarterSummary" class="paper-summary-grid" aria-label="月度回測績效摘要"></div>
         <div class="quarter-panel"><h3>MACD 策略績效</h3><div class="paper-table-wrap"><table class="quarter-profile-table"><thead><tr><th>週期</th><th>已平倉</th><th>費後勝率</th><th>已實現淨損益</th></tr></thead><tbody id="quarterProfiles"></tbody></table></div><p class="lab-help">下列為已平倉交易績效；月度報酬另含月末未平倉估值。</p></div>
@@ -107,22 +107,22 @@
       <footer class="desk-footer"><span>CODEX BOT / STRATEGY DESK</span><span>BINANCE USDT 永續 · MACD 4H＋15M · 瀏覽器本機保存</span></footer>
     </main>
   </div>
-  <script src="strategy-engine.js?v=yellow-account-1"></script>
-  <script src="account-risk.js?v=yellow-account-1"></script>
-  <script src="smc-engine.js?v=yellow-account-1"></script>
-  <script src="ema-engine.js?v=yellow-account-1"></script>
-  <script src="bos-legacy.js?v=yellow-account-1"></script><script src="bos-engine.js?v=yellow-account-1"></script><script src="macd-engine.js?v=yellow-account-1"></script><script src="fib-engine.js?v=yellow-account-1"></script>
-  <script src="strategy-data.js?v=yellow-account-1"></script>
-  <script src="price-feed.js?v=yellow-account-1"></script>
-  <script src="target-engine.js?v=yellow-account-1"></script>
-  <script src="target-view.js?v=yellow-account-1"></script>
-  <script src="paper-engine.js?v=yellow-account-1"></script>
-  <script src="dashboard-ui.js?v=yellow-account-1"></script>
-  <script src="paper-recovery.js?v=yellow-account-1"></script>
-  <script src="candidate-records.js?v=yellow-account-1"></script>
-  <script src="trade-cards.js?v=1"></script>
-  <script src="paper-panel.js?v=yellow-account-1"></script>
-  <script src="strategy-scanner.js?v=yellow-account-1"></script>
-  <script src="macd-history.js?v=months-1"></script>
+  <script src="strategy-engine.js?v=body-2"></script>
+  <script src="account-risk.js?v=body-2"></script>
+  <script src="smc-engine.js?v=body-2"></script>
+  <script src="ema-engine.js?v=body-2"></script>
+  <script src="bos-legacy.js?v=body-2"></script><script src="bos-engine.js?v=body-2"></script><script src="macd-legacy.js?v=body-2"></script><script src="macd-engine.js?v=body-2"></script><script src="fib-engine.js?v=body-2"></script>
+  <script src="strategy-data.js?v=body-2"></script>
+  <script src="price-feed.js?v=body-2"></script>
+  <script src="target-engine.js?v=body-2"></script>
+  <script src="target-view.js?v=body-2"></script>
+  <script src="paper-engine.js?v=body-2"></script>
+  <script src="dashboard-ui.js?v=body-2"></script>
+  <script src="paper-recovery.js?v=body-2"></script>
+  <script src="candidate-records.js?v=body-2"></script>
+  <script src="trade-cards.js?v=body-2"></script>
+  <script src="paper-panel.js?v=body-2"></script>
+  <script src="strategy-scanner.js?v=body-2"></script>
+  <script src="macd-history.js?v=body-2"></script>
 </body>
 </html>

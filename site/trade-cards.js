@@ -13,7 +13,7 @@
     const state=t.recovery?.pending?'核對中':labels[status]||status;
     const head=el('header','tg-head'),identity=el('div','tg-identity'),name=el('h3','tg-symbol',String(t.symbol||'').replace(/USDT$/,''));name.append(el('small','','/USDT'));
     identity.append(el('span','tg-direction '+(long?'is-long':'is-short'),long?'做多':'做空'),name);head.append(identity,el('span','tg-state',state));card.append(head);
-    const strategy=t.strategyVersion==='macd-lines-bos-4h15m-v1'?'MACD':watch?'MACD':'舊策略';
+    const strategy=t.strategyVersion==='macd-body-bos-4h15m-v2'?'MACD':watch?'MACD':'舊策略';
     card.append(el('p','tg-meta',strategy+' · '+(t.timeframeLabel||'4H＋15M')+' · '+date(t.openedAt||t.confirmedAt||t.detectedAt)+(retained?' · 保留紀錄':'')));
     const pnlRow=el('div','tg-pnl-row'),pnlBlock=el('div','tg-pnl'),pct=finite(pnl)&&t.entry&&t.quantity?100*pnl/(t.entry*t.quantity):null;
     pnlBlock.dataset.tone=finite(pnl)?pnl<0?'negative':'positive':'neutral';pnlBlock.append(el('strong','',finite(pct)?signed(pct,1)+'%':'—'),el('span','',closed?'已實現費後':t.status==='OPEN'?'持倉費後估算':'尚未成交'));

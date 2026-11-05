@@ -1,7 +1,7 @@
 (function(root){
   'use strict';
   const E=root.StrategyEngine||(typeof require==='function'?require('./strategy-engine.js'):null);
-  const VERSION='macd-lines-bos-4h15m-v1', LEVELS=[0,-.27,-.618,-1];
+  const VERSION='macd-body-bos-4h15m-v2', LEVELS=[0,-.27,-.618,-1];
   const PROFILES={'4h15m':{id:'4h15m',label:'4H＋15M',high:'4h',low:'15m'}};
   const clone=x=>JSON.parse(JSON.stringify(x));
   function trend(bars){
@@ -32,6 +32,7 @@
   }
   function valid(c){
     try{
+      if(c.strategyVersion==='macd-lines-bos-4h15m-v1')return (root.LegacyMacdStrategy||(typeof require==='function'?require('./macd-legacy.js'):null)).valid(c);
 
       const profile=PROFILES[c.profileId];if(!profile)return false;const lo=E.INTERVALS[profile.low],hi=E.INTERVALS[profile.high];
       const f=c.fib,long=c.direction==='LONG',t=f?.trend;
@@ -41,7 +42,7 @@
       const pivot=f.pivot;
       if(pivot.bar.openTime!==pivot.openTime||f.a.bar.openTime!==f.a.openTime||f.b.bar.openTime!==f.b.openTime||f.a.confirmedAt!==f.a.openTime+(3*lo)||f.a.confirmedAt>f.breakBar.openTime||f.a.price!==(long?f.a.bar.low:f.a.bar.high)||f.b.price!==(long?f.b.bar.high:f.b.bar.low)||!Number.isFinite(f.pullbackExtreme)||(long?f.pullbackExtreme>f.confirm.low:f.pullbackExtreme<f.confirm.high)||f.confirm.openTime-f.breakBar.openTime>12*lo)return false;
       if(pivot.confirmedAt!==pivot.openTime+(3*lo)||pivot.confirmedAt>f.breakBar.openTime||pivot.price!==(long?pivot.bar.high:pivot.bar.low)||!(f.averageVolume>0)||f.breakBar.volume<=f.averageVolume||f.confirm.openTime<=f.breakBar.openTime||f.a.openTime>=f.breakBar.openTime||f.b.openTime<f.breakBar.openTime||f.b.openTime>=f.confirm.openTime)return false;
-      if(long?!(f.previousClose<=pivot.price&&f.breakBar.close>pivot.price&&f.confirm.low<=pivot.price&&f.confirm.close>pivot.price):!(f.previousClose>=pivot.price&&f.breakBar.close<pivot.price&&f.confirm.high>=pivot.price&&f.confirm.close<pivot.price))return false;
+      if(long?!(f.previousClose<=pivot.price&&f.breakBar.open<pivot.price&&f.breakBar.close>pivot.price&&f.confirm.low<=pivot.price&&f.confirm.close>pivot.price):!(f.previousClose>=pivot.price&&f.breakBar.open>pivot.price&&f.breakBar.close<pivot.price&&f.confirm.high>=pivot.price&&f.confirm.close<pivot.price))return false;
       if(c.confirmedAt!==f.confirm.closeTime+1||c.expiresAt!==c.confirmedAt+lo||c.setupId!==c.profileId+':'+c.direction+':'+f.breakBar.openTime+':'+f.confirm.openTime)return false;
       const lm=f.lowMacd;if(!lm||lm.at!==c.confirmedAt||![lm.dif,lm.signal].every(Number.isFinite)||(long?!(lm.dif>0&&lm.signal>0):!(lm.dif<0&&lm.signal<0)))return false;
       const p=prices(f,c.direction,c.tickSize),ts=c.plannedTargets||c.targets;
@@ -85,7 +86,7 @@
         }
         if(!wave&&!pending&&prev&&low.length>=21){
           const p=[...points].reverse().find(p=>p.side===(long?'HIGH':'LOW')&&!p.broken&&p.confirmedAt<=b.openTime);
-          if(p&&(long?prev.close<=p.price&&b.close>p.price:prev.close>=p.price&&b.close<p.price)){
+          if(p&&(long?prev.close<=p.price&&b.open<p.price&&b.close>p.price:prev.close>=p.price&&b.open>p.price&&b.close<p.price)){
             const avg=low.slice(-21,-1).reduce((s,x)=>s+x.volume,0)/20;
             const zone={low:0,high:Number.MAX_VALUE,invalid:false};
             const a=[...points].reverse().find(x=>x.side===(long?'LOW':'HIGH')&&x.confirmedAt<=b.openTime);
@@ -106,6 +107,6 @@
     const a=createAnalyzer(id);let h=0,r={pending:null};
     for(const b of lower){while(h<higher.length&&higher[h].closeTime<=b.closeTime)a.pushHigh(higher[h++]);if(h)r=a.pushLow(b,market);}return r;
   }
-  const api={VERSION,LEVELS,PROFILES,trend,prices,valid,createAnalyzer,analyze,isVersion:v=>v===VERSION};
+  const api={VERSION,LEVELS,PROFILES,trend,prices,valid,createAnalyzer,analyze,isVersion:v=>v===VERSION||v==='macd-lines-bos-4h15m-v1'};
   if(typeof module!=='undefined'&&module.exports)module.exports=api;root.MacdStrategy=api;
 })(typeof window!=='undefined'?window:globalThis);

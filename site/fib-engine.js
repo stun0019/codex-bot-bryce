@@ -114,6 +114,6 @@
     for(const bar of lower){while(h<higher.length&&higher[h].closeTime<=bar.closeTime)analyzer.pushHigh(higher[h++]);if(h)result=analyzer.pushLow(bar,market,capital);}
     return result;
   }
-  const api={VERSION,ENTRY_LEVEL,LEVELS,PROFILES,prices,valid,createAnalyzer,analyze,isVersion:v=>v===VERSION||["macd-lines-bos-4h15m-v1","ema20-60-bos-dual-v1","sma83-ema200-bos-15m5m-v1"].includes(v)};
+  const api={VERSION,ENTRY_LEVEL,LEVELS,PROFILES,prices,valid,createAnalyzer,analyze,isVersion:v=>v===VERSION||["macd-lines-bos-4h15m-v1","macd-body-bos-4h15m-v2","ema20-60-bos-dual-v1","sma83-ema200-bos-15m5m-v1"].includes(v)};
   if(typeof module!=="undefined"&&module.exports)module.exports=api;root.FibEngine=api;
 })(typeof window!=="undefined"?window:globalThis);

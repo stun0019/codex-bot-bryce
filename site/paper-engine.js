@@ -110,7 +110,7 @@
           ...(reservedPlan ? { accountId: account.id, reservedPlan: { ...reservedPlan } } : {}),
           tickSize: candidate.tickSize, capital: reservedPlan ? reservedPlan.capital : capital, budget: reservedPlan ? reservedPlan.budget : capital * (candidate.strategyVersion ? .05 : 0.03),
           market: { ...candidate.market }, feeRate: config.feeRate, slippage: config.slippage,
-          status: "WAITING_PRICE", reason: candidate.strategyVersion==="macd-lines-bos-4h15m-v1"?"MACD同向與回抽已確認，等待確認價新成交觸價":fib(candidate)?"區域與收盤破結構已確認，等待Fib 0.715新成交觸價":ema(candidate) ? "EMA確認，等待新成交報價到確認收盤參考價限價成交" : candidate.strategyVersion ? "等待新成交報價回測 OB 中線；不回填歷史成交" : "等待訊號產生後的新成交報價" };
+          status: "WAITING_PRICE", reason: candidate.strategyVersion==="macd-body-bos-4h15m-v2"?"MACD同向與回抽已確認，等待確認價新成交觸價":fib(candidate)?"區域與收盤破結構已確認，等待Fib 0.715新成交觸價":ema(candidate) ? "EMA確認，等待新成交報價到確認收盤參考價限價成交" : candidate.strategyVersion ? "等待新成交報價回測 OB 中線；不回填歷史成交" : "等待訊號產生後的新成交報價" };
         trades.push(trade); seen.add(trade.id); added++;
       }
       return added;
@@ -389,7 +389,7 @@
       return changed;
     }
     function stats(profileId = "all") {
-      const cohort = trades.filter(t => profileId === "macd" ? t.strategyVersion === "macd-lines-bos-4h15m-v1" : profileId === "all" || (profileId === "pre-fib" ? !fib(t) : profileId === "fib" ? fib(t) : profileId.startsWith("fib:") ? fib(t)&&t.profileId===profileId.slice(4) : profileId === "ema" ? ema(t) : profileId === "previous" ? !ema(t)&&!fib(t) : profileId.startsWith("ema:") ? ema(t) && t.profileId === profileId.slice(4) : profileId === "smc" ? smc(t) : profileId === "legacy" ? !smc(t) : smc(t) && t.profileId === profileId));
+      const cohort = trades.filter(t => profileId === "macd" ? t.strategyVersion === "macd-body-bos-4h15m-v2" : profileId === "all" || (profileId === "pre-fib" ? !fib(t) : profileId === "fib" ? fib(t) : profileId.startsWith("fib:") ? fib(t)&&t.profileId===profileId.slice(4) : profileId === "ema" ? ema(t) : profileId === "previous" ? !ema(t)&&!fib(t) : profileId.startsWith("ema:") ? ema(t) && t.profileId === profileId.slice(4) : profileId === "smc" ? smc(t) : profileId === "legacy" ? !smc(t) : smc(t) && t.profileId === profileId));
       const closed = cohort.filter(trade => CLOSED.has(trade.status)).sort((a,b) => a.closedAt - b.closedAt || a.id.localeCompare(b.id));
       const wins = closed.filter(trade => trade.netPnl > 0).length;
       let pnl = 0, peak = 0, maxDrawdown = 0, streak = 0, maxLossStreak = 0;

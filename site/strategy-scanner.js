@@ -34,7 +34,7 @@
   function card(candidate,plan,retained=false){const snapshot=window.PaperTrading?.cardSnapshot(candidate);return window.TradeCards.render({...candidate,referenceEntry:candidate.entry,...(snapshot||{}),...(snapshot?{}:{status:'NOT_ENTERED',reason:busy?'掃描中，尚未預留':plan.reason})},{plan,pnl:snapshot?.cardPnl??null,retained,now:Date.now()+offset});}
 
   function visibleCandidates() {
-    const merged=new Map(recordStore.list().filter(r=>window.MacdStrategy.isVersion(r.candidate.strategyVersion)).map(r=>[window.PaperEngine.key(r.candidate),r.candidate]));
+    const merged=new Map(recordStore.list().filter(r=>r.candidate.strategyVersion===window.MacdStrategy.VERSION).map(r=>[window.PaperEngine.key(r.candidate),r.candidate]));
     for(const c of candidates)merged.set(window.PaperEngine.key(c),c);
     return [...merged.values()].filter(candidate=>(filter.value==="all"||candidate.direction===filter.value)&&($("timeframeFilter").value==="all"||candidate.profileId===$("timeframeFilter").value)).sort((a,b)=>b.confirmedAt-a.confirmedAt||a.symbol.localeCompare(b.symbol));
   }

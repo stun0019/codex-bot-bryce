@@ -4,7 +4,7 @@
   const finite=Number.isFinite,price=v=>finite(v)?v.toLocaleString('en-US',{maximumSignificantDigits:9}):'—';
   const signed=(v,decimals=2)=>finite(v)?(v>0?'+':'')+v.toFixed(decimals):'—';
   const date=v=>v?new Date(v).toLocaleString('zh-TW',{timeZone:'Asia/Taipei',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false}):'—';
-  const labels={OPEN:'持倉中',WAITING_PRICE:'待進場',NOT_ENTERED:'未進場',SKIPPED:'已取消',TAKE_PROFIT:'已平倉',STOP_LOSS:'已平倉',REVIEW:'待核對',WATCH:'等待回調'};
+  const labels={OPEN:'持倉中',WAITING_PRICE:'待進場',NOT_ENTERED:'未進場',SKIPPED:'已取消',TAKE_PROFIT:'已平倉',STOP_LOSS:'已平倉',REVIEW:'待核對',WATCH:'MACD同向候選'};
   function render(t,{plan=null,pnl=null,watch=false,retained=false,now=Date.now()}={}){
     const long=t.direction==='LONG',closed=['TAKE_PROFIT','STOP_LOSS'].includes(t.status),status=watch?'WATCH':t.status||'NOT_ENTERED';
     const card=el('article','trade-glass strategy-card');card.dataset.direction=t.direction;card.dataset.status=status;card.dataset.key=t.id||[t.symbol,t.profileId,t.setupId||'watch'].join(':');
@@ -13,7 +13,7 @@
     const state=t.recovery?.pending?'核對中':labels[status]||status;
     const head=el('header','tg-head'),identity=el('div','tg-identity'),name=el('h3','tg-symbol',String(t.symbol||'').replace(/USDT$/,''));name.append(el('small','','/USDT'));
     identity.append(el('span','tg-direction '+(long?'is-long':'is-short'),long?'做多':'做空'),name);head.append(identity,el('span','tg-state',state));card.append(head);
-    const strategy=t.strategyVersion==='macd-body-bos-4h15m-v2'?'MACD':watch?'MACD':'舊策略';
+    const strategy=t.strategyVersion===window.MacdStrategy.VERSION?'MACD':watch?'MACD':'舊策略';
     card.append(el('p','tg-meta',strategy+' · '+(t.timeframeLabel||'4H＋15M')+' · '+date(t.openedAt||t.confirmedAt||t.detectedAt)+(retained?' · 保留紀錄':'')));
     const pnlRow=el('div','tg-pnl-row'),pnlBlock=el('div','tg-pnl'),pct=finite(pnl)&&t.entry&&t.quantity?100*pnl/(t.entry*t.quantity):null;
     pnlBlock.dataset.tone=finite(pnl)?pnl<0?'negative':'positive':'neutral';pnlBlock.append(el('strong','',finite(pct)?signed(pct,1)+'%':'—'),el('span','',closed?'已實現費後':t.status==='OPEN'?'持倉費後估算':'尚未成交'));
@@ -31,10 +31,10 @@
     if(t.exitGuard&&t.status==='OPEN')events.push({at:t.exitGuard.activatedAt,label:'回撤保護設於 '+price(t.exitGuard.price),detail:t.exitGuard.label+' · 剩餘部位回撤全出',kind:'guard'});
     const timeline=el('div','tg-timeline');
     for(const e of events.sort((a,b)=>a.at-b.at).slice(-4)){const row=el('div','tg-event '+e.kind);row.append(el('i','tg-event-dot'),el('strong','',e.label),el('small','',date(e.at)+' · '+e.detail));timeline.append(row);}
-    if(!events.length)timeline.append(el('p','tg-wait',watch?'等待15M MACD同向及順勢回調確認':t.reason||plan?.reason||'等待新成交觸價'));
+    if(!events.length)timeline.append(el('p','tg-wait',watch?'4H與15M MACD同向，先列候選；等待15M回調結構確認':t.reason||plan?.reason||'等待新成交觸價'));
     const bottom=el('footer','tg-bottom'),details=el('details','tg-details');details.append(el('summary','','詳細資訊'));
     details.append(el('p','',t.recovery?.pending?(t.recovery.lastError||'正在核對中斷期間成交'):t.reason||plan?.reason||'未取得風控預留'));
-    if(t.fib?.lowMacd)details.append(el('p','','4H DIF '+price(t.fib.trend.dif)+' / 訊號線 '+price(t.fib.trend.signal)+'；15M DIF '+price(t.fib.lowMacd.dif)+' / 訊號線 '+price(t.fib.lowMacd.signal)));
+    if(t.fib?.lowMacd)details.append(el('p','','4H DIF '+price((t.fib.highMacd||t.fib.trend).dif)+' / 訊號線 '+price((t.fib.highMacd||t.fib.trend).signal)+'；15M DIF '+price(t.fib.lowMacd.dif)+' / 訊號線 '+price(t.fib.lowMacd.signal)));
     const quantity=t.quantity??t.reservedPlan?.quantity??plan?.quantity,risk=t.estimatedStopRisk??t.reservedPlan?.risk??plan?.risk;
     if(finite(quantity))details.append(el('p','','原始數量 '+price(quantity)+' · 停損風險估算 '+price(risk)+' USDT'));
     if(finite(pct))details.append(el('p','','百分比為費後損益÷初始名目部位，包含已分批實現損益，不是槓桿保證金ROI。'));

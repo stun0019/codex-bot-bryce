@@ -12,5 +12,5 @@ test('opposing 15M MACD blocks an otherwise bullish 4H context',()=>{
  const f=fixture();for(const r of f.lower){const[o,h,l,c]=r.slice(1,5);r.splice(1,4,300-o,300-l,300-h,300-c);}assert.equal(analyze(f).pending,null);
 });
 test('both timeframe signal lines must remain on the indicated zero side',()=>{
- const c=analyze(fixture()).pending;assert.ok(c);for(const change of [x=>x.fib.trend.signal=0,x=>x.fib.lowMacd.signal=-1,x=>x.fib.lowMacd.dif=0]){const copy=structuredClone(c);change(copy);assert.equal(M.valid(copy),false);}
+ const c=analyze(fixture()).pending;assert.ok(c);for(const change of [x=>x.fib.highMacd.signal=0,x=>x.fib.lowMacd.signal=-1,x=>x.fib.lowMacd.dif=0]){const copy=structuredClone(c);change(copy);assert.equal(M.valid(copy),false);}
 });

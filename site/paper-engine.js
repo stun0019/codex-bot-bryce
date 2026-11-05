@@ -53,7 +53,7 @@
       const plan = trade.reservedPlan;
       if (!plan || !plan.ok || plan.accountId !== trade.accountId || !(plan.quantity > 0)) return false;
       const candidate = { ...trade, entry: trade.referenceEntry, targets: trade.plannedTargets };
-      const expected = Engine.position(candidate, trade.market, trade.capital, { entry: trade.referenceEntry, budget: trade.budget, riskFraction: smc(trade) ? .05 : .03, feeRate: trade.feeRate, slippage: trade.slippage, partialExit: smc(trade), leverage: plan.leverage, quantity: plan.quantity });
+      const expected = Engine.position(candidate, trade.market, trade.capital, { entry: trade.entryType==="MARKET_NEXT"?fill(trade,trade.referenceEntry,true):trade.referenceEntry, budget: trade.budget, riskFraction: smc(trade) ? .05 : .03, feeRate: trade.feeRate, slippage: trade.slippage, partialExit: smc(trade), leverage: plan.leverage, quantity: plan.quantity });
       return expected.ok && ["entry", "quantity", "risk", "entryFee", "stopExitFee", "initialMargin", "feeReserve", "marginReserve", "budget"].every(k => finite(plan[k]) && Math.abs(plan[k] - expected[k]) <= 1e-8 * Math.max(1, Math.abs(expected[k])));
     }
     function previewCandidates(candidates, capital = 200, at = Date.now()) {
@@ -106,17 +106,17 @@
         const trade = { id: key(candidate), symbol: candidate.symbol, direction: candidate.direction,
           confirmedAt: candidate.confirmedAt, detectedAt: now, expiresAt: candidate.expiresAt,
           referenceEntry: candidate.entry, stopLoss: candidate.stopLoss, target: candidate.target,
-          ...(candidate.strategyVersion ? { strategyVersion: candidate.strategyVersion, profileId: candidate.profileId, timeframeLabel: Smc.profile(candidate.profileId).label, setupId: candidate.setupId, entryType: fib(candidate)?"LIMIT_FIB":ema(candidate)?"LIMIT_CONFIRM":"LIMIT_OB", strategyName:candidate.strategyName||(fib(candidate)?"EMA＋Fib":ema(candidate)?"EMA":"SMC"), ...(fib(candidate)?{targetMode:"FIB",fib:JSON.parse(JSON.stringify(candidate.fib)),exitFractions:[.2,.3,.3,.2]}:{}), emaTrend: candidate.emaTrend || null, pullback: candidate.pullback || null, partialExit: true, targetCount: 4, riskFraction: .05, highZone: candidate.highZone, entryZone: candidate.entryZone, shiftLevel: candidate.shiftLevel, macd: candidate.macd || null, entryFilter: candidate.entryFilter || {enabled:false}, plannedTargets: [...candidate.targets] } : {}),
+          ...(candidate.strategyVersion ? { strategyVersion: candidate.strategyVersion, profileId: candidate.profileId, timeframeLabel: Smc.profile(candidate.profileId).label, setupId: candidate.setupId, entryType: candidate.entryType==="MARKET_NEXT"?"MARKET_NEXT":fib(candidate)?"LIMIT_FIB":ema(candidate)?"LIMIT_CONFIRM":"LIMIT_OB", strategyName:candidate.strategyName||(fib(candidate)?"EMA＋Fib":ema(candidate)?"EMA":"SMC"), ...(fib(candidate)?{targetMode:"FIB",fib:JSON.parse(JSON.stringify(candidate.fib)),exitFractions:[.2,.3,.3,.2]}:{}), emaTrend: candidate.emaTrend || null, pullback: candidate.pullback || null, partialExit: true, targetCount: 4, riskFraction: .05, highZone: candidate.highZone, entryZone: candidate.entryZone, shiftLevel: candidate.shiftLevel, macd: candidate.macd || null, entryFilter: candidate.entryFilter || {enabled:false}, plannedTargets: [...candidate.targets] } : {}),
           ...(reservedPlan ? { accountId: account.id, reservedPlan: { ...reservedPlan } } : {}),
           tickSize: candidate.tickSize, capital: reservedPlan ? reservedPlan.capital : capital, budget: reservedPlan ? reservedPlan.budget : capital * (candidate.strategyVersion ? .05 : 0.03),
           market: { ...candidate.market }, feeRate: config.feeRate, slippage: config.slippage,
-          status: "WAITING_PRICE", reason: candidate.strategyVersion==="macd-body-bos-4h15m-v2"?"MACD同向與回抽已確認，等待確認價新成交觸價":fib(candidate)?"區域與收盤破結構已確認，等待Fib 0.715新成交觸價":ema(candidate) ? "EMA確認，等待新成交報價到確認收盤參考價限價成交" : candidate.strategyVersion ? "等待新成交報價回測 OB 中線；不回填歷史成交" : "等待訊號產生後的新成交報價" };
+          status: "WAITING_PRICE", reason: candidate.strategyVersion==="macd-pullback-break-4h15m-v4"?"MACD同向與回抽已確認，等待確認價新成交觸價":fib(candidate)?"區域與收盤破結構已確認，等待Fib 0.715新成交觸價":ema(candidate) ? "EMA確認，等待新成交報價到確認收盤參考價限價成交" : candidate.strategyVersion ? "等待新成交報價回測 OB 中線；不回填歷史成交" : "等待訊號產生後的新成交報價" };
         trades.push(trade); seen.add(trade.id); added++;
       }
       return added;
     }
     function open(trade, price, at) {
-      const entry = smc(trade) ? trade.referenceEntry : fill(trade, price, true), long = trade.direction === "LONG";
+      const entry = trade.entryType==="MARKET_NEXT"?fill(trade,price,true):smc(trade) ? trade.referenceEntry : fill(trade, price, true), long = trade.direction === "LONG";
       if (!(entry > 0) || (long ? entry <= trade.stopLoss || entry >= trade.target : entry >= trade.stopLoss || entry <= trade.target)) {
         skip(trade, "進場報價已越過停損或目標", at); return;
       }
@@ -135,7 +135,7 @@
         trade.remainingQuantity = quantity; trade.realizedGross = 0; trade.realizedExitFees = 0; trade.exitFills = [];
         trade.exitLegs = plan.exitQuantities.map((quantity, i) => ({ label: "TP" + (i + 1), price: trade.plannedTargets[i], quantity, status: "PENDING" }));
       }
-      trade.targets = fib(trade)?Targets.createFib(trade):Targets.create(entry, trade.stopLoss, trade.direction, trade.tickSize, smc(trade) ? 4 : 3); trade.targetsLastQuoteAt = at;
+      trade.targets = fib(trade)?Targets.createFib({...trade,entry}):Targets.create(entry, trade.stopLoss, trade.direction, trade.tickSize, smc(trade) ? 4 : 3); trade.targetsLastQuoteAt = at;
       Object.assign(trade, { status: "OPEN", reason: "連續追蹤中", entry, quantity, openedAt: at,
         observedEntry: price, entryFee: entry * quantity * trade.feeRate,
         estimatedStopRisk: plan.risk, entryRewardRisk: rr, lastPrice: price, lastQuoteAt: at });
@@ -230,7 +230,7 @@
       const long = trade.direction === "LONG";
       if (at >= trade.expiresAt) skip(trade, "限價候選到期", at);
       else if (long ? price <= trade.stopLoss || price >= trade.target : price >= trade.stopLoss || price <= trade.target) skip(trade, "進場前已越過停損或 TP1", at);
-      else if (long ? price <= trade.referenceEntry : price >= trade.referenceEntry) open(trade, price, at);
+      else if (trade.entryType==="MARKET_NEXT" || (long ? price <= trade.referenceEntry : price >= trade.referenceEntry)) open(trade, price, at);
       return trade.status !== "WAITING_PRICE";
     }
     function cancelOrder(trade, reason, at) { if (trade.status === "WAITING_PRICE") { skip(trade, reason, at); return true; } return false; }
@@ -389,7 +389,7 @@
       return changed;
     }
     function stats(profileId = "all") {
-      const cohort = trades.filter(t => profileId === "macd" ? t.strategyVersion === "macd-body-bos-4h15m-v2" : profileId === "all" || (profileId === "pre-fib" ? !fib(t) : profileId === "fib" ? fib(t) : profileId.startsWith("fib:") ? fib(t)&&t.profileId===profileId.slice(4) : profileId === "ema" ? ema(t) : profileId === "previous" ? !ema(t)&&!fib(t) : profileId.startsWith("ema:") ? ema(t) && t.profileId === profileId.slice(4) : profileId === "smc" ? smc(t) : profileId === "legacy" ? !smc(t) : smc(t) && t.profileId === profileId));
+      const cohort = trades.filter(t => profileId === "macd" ? t.strategyVersion === "macd-pullback-break-4h15m-v4" : profileId === "all" || (profileId === "pre-fib" ? !fib(t) : profileId === "fib" ? fib(t) : profileId.startsWith("fib:") ? fib(t)&&t.profileId===profileId.slice(4) : profileId === "ema" ? ema(t) : profileId === "previous" ? !ema(t)&&!fib(t) : profileId.startsWith("ema:") ? ema(t) && t.profileId === profileId.slice(4) : profileId === "smc" ? smc(t) : profileId === "legacy" ? !smc(t) : smc(t) && t.profileId === profileId));
       const closed = cohort.filter(trade => CLOSED.has(trade.status)).sort((a,b) => a.closedAt - b.closedAt || a.id.localeCompare(b.id));
       const wins = closed.filter(trade => trade.netPnl > 0).length;
       let pnl = 0, peak = 0, maxDrawdown = 0, streak = 0, maxLossStreak = 0;

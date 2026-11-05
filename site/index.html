@@ -7,10 +7,10 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>策略掃描 · Codex Bot</title>
-  <link rel="icon" type="image/svg+xml" href="favicon.svg?v=body-2">
-  <link rel="stylesheet" href="styles.css?v=body-2">
-  <link rel="stylesheet" href="dashboard.css?v=body-2">
-  <link rel="stylesheet" href="trade-cards.css?v=body-2">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg?v=pullback-4">
+  <link rel="stylesheet" href="styles.css?v=pullback-4">
+  <link rel="stylesheet" href="dashboard.css?v=pullback-4">
+  <link rel="stylesheet" href="trade-cards.css?v=pullback-4">
 </head>
 <body data-page="strategy">
   <div id="appShell">
@@ -59,8 +59,8 @@
           <p id="scanProgress" class="strategy-progress" role="status">等待幣安資料</p>
           <p id="candidateRecordStatus" class="lab-help" role="status"></p>
           <div id="strategyList" class="strategy-list" aria-live="off"></div>
-          <p class="strategy-note">每5分鐘掃描Binance成交額Top20。4H及15M的MACD DIF與訊號線同在零軸同側才找同方向交易；15M放量BOS後回抽確認。卡片與模擬共用含費用及滑價的風控預留。公開行情模擬，不送出實盤訂單。</p>
-          <details class="strategy-rules"><summary>MACD 策略與風控</summary><p>只使用4H＋15M已收盤K。MACD(12,26,9)：4H DIF與訊號線都＞0視為多頭，都＜0視為空頭；15M兩線亦須同側同方向，否則觀望。柱狀圖正負不是進場依據。</p><p>15M放量K棒實體由結構內跨至結構外：做多開盤低於前高、收盤高於前高；做空開盤高於前低、收盤低於前低。影線刺穿與跳空不算。突破已確認前高／前低，量大於前20根均量；12根內回抽突破價、收盤回到趨勢方向才確認。確認價限價有效1根15M，之後新成交觸價才進場。停損為回抽極值外1tick。Fib四段目標0／−0.27／−0.618／−1，20%／30%／30%／20%分批，回撤上一TP全出。TP1費後不足2R不開倉。</p><p>初始200USDT，單筆／總／同向風險最多5%，名目上限50x。舊策略不再新增，舊持倉依原規則追蹤，歷史紀錄保留。</p></details>
+          <p class="strategy-note">每5分鐘掃描Binance成交額Top20。只篩選4H與15M MACD快慢線均在零軸同側的候選；目前不啟用BOS或建立新模擬部位。</p>
+          <details class="strategy-rules"><summary>MACD 回調結構策略</summary><p>4H與15M MACD(12,26,9)快慢線同在零軸上方只多，下方只空。15M回調形成較低小前高（做空鏡像），其後出現已確認回調低點；收盤突破小前高才進場，不限制突破K開盤位置。轉折左右各2根收盤確認；不額外要求量能或第二次回抽。</p><p>下一個可成交報價進場，含不利滑價，費後TP1至少2R才成交。停損在回調極值外1tick；TP1為回調前波段極值，後續Fib−0.27／−0.618／−1，20%／30%／30%／20%出場，回撤上一TP全出。總風險5%，本金200USDT。</p></details>
         </div>
       </section>
       <section id="paper" data-desk-panel="paper" class="paper-panel signals-dashboard" aria-labelledby="paperTitle">
@@ -107,22 +107,22 @@
       <footer class="desk-footer"><span>CODEX BOT / STRATEGY DESK</span><span>BINANCE USDT 永續 · MACD 4H＋15M · 瀏覽器本機保存</span></footer>
     </main>
   </div>
-  <script src="strategy-engine.js?v=body-2"></script>
-  <script src="account-risk.js?v=body-2"></script>
-  <script src="smc-engine.js?v=body-2"></script>
-  <script src="ema-engine.js?v=body-2"></script>
-  <script src="bos-legacy.js?v=body-2"></script><script src="bos-engine.js?v=body-2"></script><script src="macd-legacy.js?v=body-2"></script><script src="macd-engine.js?v=body-2"></script><script src="fib-engine.js?v=body-2"></script>
-  <script src="strategy-data.js?v=body-2"></script>
-  <script src="price-feed.js?v=body-2"></script>
-  <script src="target-engine.js?v=body-2"></script>
-  <script src="target-view.js?v=body-2"></script>
-  <script src="paper-engine.js?v=body-2"></script>
-  <script src="dashboard-ui.js?v=body-2"></script>
-  <script src="paper-recovery.js?v=body-2"></script>
-  <script src="candidate-records.js?v=body-2"></script>
-  <script src="trade-cards.js?v=body-2"></script>
-  <script src="paper-panel.js?v=body-2"></script>
-  <script src="strategy-scanner.js?v=body-2"></script>
-  <script src="macd-history.js?v=body-2"></script>
+  <script src="strategy-engine.js?v=pullback-4"></script>
+  <script src="account-risk.js?v=pullback-4"></script>
+  <script src="smc-engine.js?v=pullback-4"></script>
+  <script src="ema-engine.js?v=pullback-4"></script>
+  <script src="bos-legacy.js?v=pullback-4"></script><script src="bos-engine.js?v=pullback-4"></script><script src="macd-legacy.js?v=pullback-4"></script><script src="macd-body-legacy.js?v=pullback-4"></script><script src="macd-engine.js?v=pullback-4"></script><script src="fib-engine.js?v=pullback-4"></script>
+  <script src="strategy-data.js?v=pullback-4"></script>
+  <script src="price-feed.js?v=pullback-4"></script>
+  <script src="target-engine.js?v=pullback-4"></script>
+  <script src="target-view.js?v=pullback-4"></script>
+  <script src="paper-engine.js?v=pullback-4"></script>
+  <script src="dashboard-ui.js?v=pullback-4"></script>
+  <script src="paper-recovery.js?v=pullback-4"></script>
+  <script src="candidate-records.js?v=pullback-4"></script>
+  <script src="trade-cards.js?v=pullback-4"></script>
+  <script src="paper-panel.js?v=pullback-4"></script>
+  <script src="strategy-scanner.js?v=pullback-4"></script>
+  <script src="macd-history.js?v=pullback-4"></script>
 </body>
 </html>

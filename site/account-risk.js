@@ -54,7 +54,7 @@
   function plan(candidate,settings,state){
     if(state.blockedReason)return {ok:false,reason:state.blockedReason};
     const single=state.riskCapital*state.limits.singleRisk,total=Math.max(0,state.totalLimit-state.usedRisk),direction=Math.max(0,state.directionLimit-state.directions[candidate.direction].risk);
-    const budget=Math.min(single,total,direction),settingsOptions={...settings,riskFraction:state.limits.singleRisk,budget,leverage:state.limits.leverage,partialExit:!!candidate.partialExit};
+    const budget=Math.min(single,total,direction),settingsOptions={...settings,riskFraction:state.limits.singleRisk,budget,leverage:state.limits.leverage,partialExit:!!candidate.partialExit,...(candidate.entryType==="MARKET_NEXT"?{entry:E.quantize(candidate.entry*(candidate.direction==="LONG"?1+settings.slippage:1-settings.slippage),candidate.tickSize,candidate.direction==="LONG"?"ceil":"floor")}: {})};
     if(budget<=epsilon(state.riskCapital))return {ok:false,reason:total<=direction?"共用帳戶總停損風險額度不足":"同方向停損風險額度不足"};
     if(state.availableMargin<=epsilon(state.riskCapital))return {ok:false,reason:"共用帳戶可用保證金不足"};
     let result=E.position(candidate,candidate.market,state.riskCapital,settingsOptions);if(!result.ok)return result;

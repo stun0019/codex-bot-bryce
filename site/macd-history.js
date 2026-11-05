@@ -16,7 +16,8 @@
       const meta=index.months.find(r=>r.month===month);if(!meta)throw Error('找不到月份');
       if(!cache.has(month)){const r=await saved(month).catch(()=>null);if(r?.strategyVersion===window.MacdStrategy.VERSION)cache.set(month,r);}
       if(token!==requested)return;
-      if(!cache.has(month)){$('quarterStatus').textContent=month+'：新策略尚未回測，請按「更新回測」。';return;}
+      if(!cache.has(month)&&meta.url){const r=await json(meta.url);if(r.strategyVersion===window.MacdStrategy.VERSION)cache.set(month,r);}
+      if(!cache.has(month)){$('quarterStatus').textContent=month+'：目前僅篩選MACD同向候選，尚未設定進場條件，暫無交易績效。';return;}
       if(token!==requested)return;const r=cache.get(month);
       $('quarterStatus').textContent=r.month+' · '+time(r.start)+' 至 '+time(r.end-1)+' · 獨立起算 200 USDT';
       window.TargetView.paperSummary($('quarterSummary'),{account:r.account,stats:r.stats,trades:r.trades});
@@ -36,12 +37,12 @@
   function controls(busy){$('monthUpdate').disabled=busy;$('monthCancel').hidden=!busy;document.querySelectorAll('[data-month]').forEach(b=>b.disabled=busy);}
   function stop(){job++;preparing=false;worker?.terminate();worker=null;controls(false);}
   $('monthCancel').addEventListener('click',()=>{stop();$('quarterStatus').textContent='已取消本次回測，未覆寫結果。';});
-  $('monthUpdate').addEventListener('click',async()=>{if(worker||preparing)return;preparing=true;const currentJob=++job,month=selected;controls(true);$('quarterStatus').textContent='準備下載所選月份歷史行情…';try{
-    if(!window.Worker)throw Error('此瀏覽器不支援背景回測');const universe=await json('research/macd-universe.json');if(currentJob!==job)return;preparing=false;worker=new Worker('month-backtest-worker.js?v=body-2');worker.onerror=e=>{stop();$('quarterStatus').textContent='回測失敗：'+e.message;};
+  $('monthUpdate').addEventListener('click',async()=>{if(window.MacdStrategy.MODE==='CANDIDATES_ONLY'){$('quarterStatus').textContent='目前僅篩選MACD同向候選，尚未設定進出場條件，無法計算交易績效。';return;}if(worker||preparing)return;preparing=true;const currentJob=++job,month=selected;controls(true);$('quarterStatus').textContent='準備下載所選月份歷史行情…';try{
+    if(!window.Worker)throw Error('此瀏覽器不支援背景回測');const universe=await json('research/macd-universe.json');if(currentJob!==job)return;preparing=false;worker=new Worker('month-backtest-worker.js?v=pullback-4');worker.onerror=e=>{stop();$('quarterStatus').textContent='回測失敗：'+e.message;};
     worker.onmessage=async e=>{const m=e.data;if(m.type==='progress'){$('quarterStatus').textContent=m.text;return;}if(m.type==='error'){stop();$('quarterStatus').textContent='回測失敗：'+m.text;return;}if(m.type==='done'){const r=m.report;if(r.strategyVersion!==window.MacdStrategy.VERSION||r.month!==month){stop();$('quarterStatus').textContent='回測版本不符，未保存';return;}let warning='';try{await saved(month,r);}catch{warning='；本機儲存失敗，關閉頁面後此結果會遺失';}cache.set(month,r);stop();comparison();await load(month);$('quarterStatus').textContent+=' · 已手動更新'+warning;}};
     worker.postMessage({month,universe});
   }catch(e){stop();$('quarterStatus').textContent='回測失敗：'+e.message;}});
   window.addEventListener('pagehide',()=>stop());
-  async function init(){index={months:['2026-08','2026-09','2026-10'].map(month=>({month}))};for(const m of index.months){const r=await saved(m.month).catch(()=>null);if(r?.strategyVersion===window.MacdStrategy.VERSION)cache.set(m.month,r);}comparison();document.querySelectorAll('[data-month]').forEach(b=>b.addEventListener('click',()=>load(b.dataset.month)));await load('2026-08');}
+  async function init(){index={months:['2026-08','2026-09','2026-10'].map(month=>({month}))};try{const fresh=await json('research/macd-month-index.json');if(fresh.strategyVersion===window.MacdStrategy.VERSION)index=fresh;}catch{}for(const m of index.months){const r=await saved(m.month).catch(()=>null);if(r?.strategyVersion===window.MacdStrategy.VERSION)cache.set(m.month,r);else if(m.url){const r=await json(m.url);if(r.strategyVersion===window.MacdStrategy.VERSION)cache.set(m.month,r);}} comparison();document.querySelectorAll('[data-month]').forEach(b=>b.addEventListener('click',()=>load(b.dataset.month)));await load('2026-08');}
   init();
 })();

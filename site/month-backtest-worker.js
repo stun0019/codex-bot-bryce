@@ -1,5 +1,5 @@
 'use strict';
-importScripts('strategy-engine.js?v=body-2','account-risk.js?v=body-2','smc-engine.js?v=body-2','ema-engine.js?v=body-2','bos-legacy.js?v=body-2','bos-engine.js?v=body-2','macd-legacy.js?v=body-2','macd-engine.js?v=body-2','fib-engine.js?v=body-2','target-engine.js?v=body-2','paper-engine.js?v=body-2','macd-backtest.js?v=body-2');
+importScripts('strategy-engine.js?v=pullback-4','account-risk.js?v=pullback-4','smc-engine.js?v=pullback-4','ema-engine.js?v=pullback-4','bos-legacy.js?v=pullback-4','bos-engine.js?v=pullback-4','macd-legacy.js?v=pullback-4','macd-engine.js?v=pullback-4','fib-engine.js?v=pullback-4','target-engine.js?v=pullback-4','paper-engine.js?v=pullback-4','macd-backtest.js?v=pullback-4');
 let running=false,nextAt=0;
 const progress=text=>postMessage({type:'progress',text});
 async function candles(symbol,interval,start,end){let cursor=start,rows=[];const d=StrategyEngine.INTERVALS[interval];cursor=Math.floor(cursor/d)*d;
@@ -15,5 +15,5 @@ onmessage=async event=>{if(running)return;running=true;try{const{month,universe}
  progress('計算 '+market.symbol+' 實體BOS訊號');events.push(...MacdBacktest.signals(market,series,start,end));datasets[market.symbol]={'5m':series['5m']};signalCoverage.push({symbol:market.symbol,highBars:series['4h'].length,lowBars:series['15m'].length});}
  progress('行情下載完成，重播帳戶與分批出場…');const report=MacdBacktest.run({markets:universe.markets,datasets,events,start,end,capital:200,strategyVersion:MacdStrategy.VERSION});
  if(report.coverage.some(c=>c.percent<100))throw Error('執行行情不完整，本次不保存績效');Object.assign(report,{month,id:'macd-body-'+month,createdAt:Date.now(),rankingAsOf:universe.rankingAsOf,symbols:universe.markets.map(m=>m.symbol),signalCoverage,scope:'固定2026年11月Top20樣本，非當時歷史排名，有選樣與存活者偏差。以當前實體BOS規則手動重算。'});
- report.assumptions.unshift('BOS必須當根開盤在結構內、收盤在結構外；影線及跳空不算。','每月獨立200 USDT；結果保存於此瀏覽器，不影響模擬持倉。');postMessage({type:'done',report});
+ report.assumptions.unshift('15M回調形成已確認的小結構及後續回調轉折，收盤突破後下一筆報價進場；無額外成交量或開盤位置限制。','每月獨立200 USDT；結果保存於此瀏覽器，不影響模擬持倉。');postMessage({type:'done',report});
  }catch(error){postMessage({type:'error',text:error.message});}finally{running=false;}};

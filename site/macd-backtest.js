@@ -98,7 +98,7 @@
     }
     return {version:2,executionVersion:"dynamic-barriers-opening-account-v2",strategyVersion,start,end,capital,feeRate,slippage,account:model.accountState(end),accountRecord:model.accountSnapshot(),stats:model.stats("macd"),profiles:Object.fromEntries(Object.keys(F.PROFILES).map(id=>[id,model.stats("fib:"+id)])),
       trades:model.trades,curve,maxDrawdown,maxDrawdownPct,ambiguousBars,blockedCandidates:[...blocked.keys()].filter(id=>!model.trades.some(t=>t.id===id)).length,blockedReasons:[...new Set([...blocked].filter(([id])=>!model.trades.some(t=>t.id===id)).map(([,reason])=>reason))],coverage,signals:schedules.filter(e=>e.candidate).length,
-      assumptions:["每月獨立200 USDT；單筆／總持倉含待成交／同向風險均最多5%，名目上限50x。","訊號僅用已收盤4H＋15M，MACD(12,26,9) DIF及訊號線均在零軸同一側且兩週期同向；15M放量BOS後回抽收盤確認。","5M OHLC只作成交路徑重播；每5分鐘按當時已知訊號預留，新釋放額度下一5分鐘使用。","每根執行K重播開高低收及開低高收，取較低期末淨清算價值；非逐筆成交，不保證全期間最差路徑。","回抽確認收盤價限價，有效1根15M；單邊手續費0.05%、出場不利滑價0.02%，跳空按開盤報價處理。","TP1至4依20%／30%／30%／剩餘20%出場，回撤上一個已達TP出清剩餘。","月末持倉按最後收盤估值，未強制平倉且不列已平倉勝率；未計資金費率、強平及訂單簿深度。"]};
+      assumptions:["每月獨立200 USDT；單筆／總持倉含待成交／同向風險均最多5%，名目上限50x。","訊號僅用已收盤4H＋15M，MACD(12,26,9) DIF及訊號線均在零軸同一側且兩週期同向；15M回調中形成較低小前高／較高小前低及後續已確認回調轉折，再收盤突破小結構。","5M OHLC只作成交路徑重播；每5分鐘按當時已知訊號預留，新釋放額度下一5分鐘使用。","每根執行K重播開高低收及開低高收，取較低期末淨清算價值；非逐筆成交，不保證全期間最差路徑。","收盤突破小結構後下一可成交報價進場，有效1根15M；進場亦含不利滑價；單邊手續費0.05%、出場不利滑價0.02%，跳空按開盤報價處理。","TP1至4依20%／30%／30%／剩餘20%出場，回撤上一個已達TP出清剩餘。","月末持倉按最後收盤估值，未強制平倉且不列已平倉勝率；未計資金費率、強平及訂單簿深度。"]};
   }
   const api={signals,replay,executeBar,run};if(typeof module!=="undefined"&&module.exports)module.exports=api;root.MacdBacktest=api;
 })(typeof window!=="undefined"?window:globalThis);

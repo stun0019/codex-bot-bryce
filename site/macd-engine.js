@@ -1,7 +1,7 @@
 (function(root){
   'use strict';
   const E=root.StrategyEngine||(typeof require==='function'?require('./strategy-engine.js'):null);
-  const VERSION='macd-body-bos-4h15m-v2', LEVELS=[0,-.27,-.618,-1];
+  const VERSION='macd-pullback-break-4h15m-v4', LEVELS=[0,-.27,-.618,-1];
   const PROFILES={'4h15m':{id:'4h15m',label:'4H＋15M',high:'4h',low:'15m'}};
   const clone=x=>JSON.parse(JSON.stringify(x));
   function trend(bars){
@@ -30,83 +30,28 @@
     if(!(span>0)||!(stopLoss>0)||(long?a>=b||stopLoss>=entry: a<=b||stopLoss<=entry)||targets.some((p,i)=>!(p>0)||(long?p<=entry||i>0&&p<=targets[i-1]:p>=entry||i>0&&p>=targets[i-1])))throw Error('回抽進場與 Fib 目標價位無效');
     return {entry,stopLoss,target:targets[0],targets};
   }
-  function valid(c){
-    try{
-      if(c.strategyVersion==='macd-lines-bos-4h15m-v1')return (root.LegacyMacdStrategy||(typeof require==='function'?require('./macd-legacy.js'):null)).valid(c);
-
-      const profile=PROFILES[c.profileId];if(!profile)return false;const lo=E.INTERVALS[profile.low],hi=E.INTERVALS[profile.high];
-      const f=c.fib,long=c.direction==='LONG',t=f?.trend;
-      if(c.strategyVersion!==VERSION||!['LONG','SHORT'].includes(c.direction)||c.entryType!=='LIMIT_FIB'||c.targetMode!=='FIB'||f?.kind!=='BOS_RETEST'||JSON.stringify(f.levels)!==JSON.stringify(LEVELS)||JSON.stringify(c.exitFractions)!=='[0.2,0.3,0.3,0.2]')return false;
-      if(!t||t.direction!==c.direction||![t.dif,t.signal,t.at].every(Number.isFinite)||(long?!(t.dif>0&&t.signal>0):!(t.dif<0&&t.signal<0))||t.at%hi||t.at>c.confirmedAt)return false;
-      for(const b of [f.breakBar,f.confirm,f.a.bar,f.b.bar,f.pivot.bar])check(b,null,lo);
-      const pivot=f.pivot;
-      if(pivot.bar.openTime!==pivot.openTime||f.a.bar.openTime!==f.a.openTime||f.b.bar.openTime!==f.b.openTime||f.a.confirmedAt!==f.a.openTime+(3*lo)||f.a.confirmedAt>f.breakBar.openTime||f.a.price!==(long?f.a.bar.low:f.a.bar.high)||f.b.price!==(long?f.b.bar.high:f.b.bar.low)||!Number.isFinite(f.pullbackExtreme)||(long?f.pullbackExtreme>f.confirm.low:f.pullbackExtreme<f.confirm.high)||f.confirm.openTime-f.breakBar.openTime>12*lo)return false;
-      if(pivot.confirmedAt!==pivot.openTime+(3*lo)||pivot.confirmedAt>f.breakBar.openTime||pivot.price!==(long?pivot.bar.high:pivot.bar.low)||!(f.averageVolume>0)||f.breakBar.volume<=f.averageVolume||f.confirm.openTime<=f.breakBar.openTime||f.a.openTime>=f.breakBar.openTime||f.b.openTime<f.breakBar.openTime||f.b.openTime>=f.confirm.openTime)return false;
-      if(long?!(f.previousClose<=pivot.price&&f.breakBar.open<pivot.price&&f.breakBar.close>pivot.price&&f.confirm.low<=pivot.price&&f.confirm.close>pivot.price):!(f.previousClose>=pivot.price&&f.breakBar.open>pivot.price&&f.breakBar.close<pivot.price&&f.confirm.high>=pivot.price&&f.confirm.close<pivot.price))return false;
-      if(c.confirmedAt!==f.confirm.closeTime+1||c.expiresAt!==c.confirmedAt+lo||c.setupId!==c.profileId+':'+c.direction+':'+f.breakBar.openTime+':'+f.confirm.openTime)return false;
-      const lm=f.lowMacd;if(!lm||lm.at!==c.confirmedAt||![lm.dif,lm.signal].every(Number.isFinite)||(long?!(lm.dif>0&&lm.signal>0):!(lm.dif<0&&lm.signal<0)))return false;
-      const p=prices(f,c.direction,c.tickSize),ts=c.plannedTargets||c.targets;
-      return (c.referenceEntry??c.entry)===p.entry&&c.stopLoss===p.stopLoss&&c.target===p.target&&ts?.length===4&&ts.every((v,i)=>v===p.targets[i]);
-    }catch{return false;}
-  }
+  function prices(f,direction,tick){const long=direction==='LONG',entry=E.quantize(f.confirm.close,tick,long?'ceil':'floor'),stopLoss=E.quantize(f.extreme+(long?-tick:tick),tick,long?'floor':'ceil'),span=Math.abs(f.impulse.price-f.extreme),targets=LEVELS.map(l=>E.quantize(f.impulse.price+(long?1:-1)*(-l)*span,tick,long?'floor':'ceil'));if(!(stopLoss>0)||(long?stopLoss>=entry:stopLoss<=entry)||targets.some((t,i)=>!(t>0)||(long?t<=entry||i>0&&t<=targets[i-1]:t>=entry||i>0&&t>=targets[i-1])))throw Error('結構目標或停損無效');return{entry,stopLoss,target:targets[0],targets};}
+  function valid(c){if(c?.strategyVersion!==VERSION){const legacy=root.LegacyBodyMacdStrategy||(typeof require==='function'?require('./macd-body-legacy.js'):null);return legacy?.isVersion(c?.strategyVersion)?legacy.valid(c):false;}try{const f=c.fib,long=c.direction==='LONG',plan=prices(f,c.direction,c.tickSize),targets=c.plannedTargets||c.targets;if(c.profileId!=='4h15m'||c.entryType!=='MARKET_NEXT'||c.targetMode!=='FIB'||f.kind!=='PULLBACK_BREAK'||![f.highMacd,f.lowMacd].every(t=>t&&t.direction===c.direction&&(long?t.dif>0&&t.signal>0:t.dif<0&&t.signal<0)))return false;for(const point of [f.impulse,f.trigger,f.lowPoint])if(point.confirmedAt!==point.openTime+2700000||point.confirmedAt>f.confirm.openTime)return false;if(!(f.impulse.openTime<f.trigger.openTime&&f.trigger.openTime<f.lowPoint.openTime)||f.confirm.closeTime+1!==c.confirmedAt||f.lowMacd.at!==c.confirmedAt||f.highMacd.at>c.confirmedAt||c.expiresAt!==c.confirmedAt+900000)return false;if(long?!(f.trigger.price<f.impulse.price&&f.previousClose<=f.trigger.price&&f.confirm.close>f.trigger.price):!(f.trigger.price>f.impulse.price&&f.previousClose>=f.trigger.price&&f.confirm.close<f.trigger.price))return false;return (c.referenceEntry??c.entry)===plan.entry&&c.stopLoss===plan.stopLoss&&c.target===plan.target&&targets.length===4&&targets.every((x,i)=>x===plan.targets[i]);}catch{return false;}}
   function createAnalyzer(id='4h15m'){
-    if(!PROFILES[id])throw Error('未知週期');const lo=E.INTERVALS[PROFILES[id].low],hi=E.INTERVALS[PROFILES[id].high];
-    const high=[],low=[],points=[];let bias=null,wave=null,pending=null;
-    function pushHigh(b){
-      check(b,high.at(-1),hi);high.push(clone(b));if(high.length>499)high.shift();
-      bias=trend(high);
-      if(wave&&wave.direction!==bias?.direction)wave=null;
-      if(pending&&pending.direction!==bias?.direction)pending=null;
-    }
-    function pushLow(b,market){
-      check(b,low.at(-1),lo);if(!high.length||high.at(-1).closeTime>b.closeTime)throw Error('高框架尚未收盤');
-      const prev=low.at(-1),at=b.closeTime+1;let candidate=null,status='WAIT_BOS',reason='等待15M放量收盤突破';
-      if(pending&&at>=pending.expiresAt)pending=null;
-      low.push(clone(b));if(low.length>499)low.shift();
-      const lowerMacd=trend(low);
-      if(!bias?.direction||lowerMacd?.direction!==bias.direction){wave=null;pending=null;status=bias?'NO_TREND':'WARMUP';reason='等待4H與15M的DIF、訊號線同在零軸一側';}
-      else{
-        const long=bias.direction==='LONG';
-        if(wave&&(b.openTime-wave.breakBar.openTime>12*lo||false))wave=null;
-        if(wave&&b.openTime>wave.breakBar.openTime){
-          const touch=long?b.low<=wave.pivot.price:b.high>=wave.pivot.price;
-          if(touch){
-            wave.pullbackExtreme=wave.pullbackExtreme==null?(long?b.low:b.high):(long?Math.min(wave.pullbackExtreme,b.low):Math.max(wave.pullbackExtreme,b.high));
-            if(long?b.close>wave.pivot.price:b.close<wave.pivot.price){
-              const f={kind:'BOS_RETEST',version:1,levels:[...LEVELS],a:clone(wave.a),b:clone(wave.b),pivot:clone(wave.pivot),breakBar:clone(wave.breakBar),previousClose:wave.previousClose,averageVolume:wave.averageVolume,zone:clone(wave.zone),trend:clone(bias),lowMacd:clone(lowerMacd),confirm:clone(b),pullbackExtreme:wave.pullbackExtreme};
-              try{
-                const p=prices(f,bias.direction,market.tickSize);
-                candidate={symbol:market.symbol,direction:bias.direction,strategyVersion:VERSION,strategyName:'MACD · BOS',profileId:id,timeframeLabel:PROFILES[id].label,setupId:id+':'+bias.direction+':'+wave.breakBar.openTime+':'+b.openTime,entryType:'LIMIT_FIB',targetMode:'FIB',exitFractions:[.2,.3,.3,.2],partialExit:true,targetCount:4,riskFraction:.05,...p,tickSize:market.tickSize,stepSize:market.stepSize,confirmedAt:at,expiresAt:at+lo,emaTrend:clone(bias),fib:f,market:{...market},entryFilter:{enabled:false}};
-                if(!valid(candidate))throw Error('計畫驗證失敗');pending=clone(candidate);
-              }catch(e){status='INVALID_LEVELS';reason=e.message;}wave=null;
-            }
-          }
-          // Do not use the confirmation candle's unknown intrabar high/low as the Fib target anchor.
-          if(wave&&(long?b.high>wave.b.price:b.low<wave.b.price))wave.b={price:long?b.high:b.low,openTime:b.openTime,bar:clone(b)};
-        }
-        if(!wave&&!pending&&prev&&low.length>=21){
-          const p=[...points].reverse().find(p=>p.side===(long?'HIGH':'LOW')&&!p.broken&&p.confirmedAt<=b.openTime);
-          if(p&&(long?prev.close<=p.price&&b.open<p.price&&b.close>p.price:prev.close>=p.price&&b.open>p.price&&b.close<p.price)){
-            const avg=low.slice(-21,-1).reduce((s,x)=>s+x.volume,0)/20;
-            const zone={low:0,high:Number.MAX_VALUE,invalid:false};
-            const a=[...points].reverse().find(x=>x.side===(long?'LOW':'HIGH')&&x.confirmedAt<=b.openTime);
-            if(zone&&a&&avg>0&&b.volume>avg)wave={direction:bias.direction,pivot:clone(p),zone,a:clone(a),b:{price:long?b.high:b.low,openTime:b.openTime,bar:clone(b)},breakBar:clone(b),previousClose:prev.close,averageVolume:avg};
-          }
+    if(!PROFILES[id])throw Error('未知週期');const high=[],low=[],points=[];let bias=null,pending=null;
+    function pushHigh(b){check(b,high.at(-1),14400000);high.push(clone(b));if(high.length>499)high.shift();bias=trend(high);}
+    function pushLow(b,market){check(b,low.at(-1),900000);const prev=low.at(-1),at=b.closeTime+1;low.push(clone(b));if(low.length>499)low.shift();const lm=trend(low),direction=bias?.direction&&lm?.direction===bias.direction?bias.direction:null;let candidate=null;
+      if(pending&&(at>=pending.expiresAt||pending.direction!==direction))pending=null;
+      if(direction&&!pending&&prev){const long=direction==='LONG',side=long?'HIGH':'LOW',swings=points.filter(p=>p.side===side&&p.confirmedAt<=b.openTime),trigger=swings.at(-1),impulse=swings.at(-2),lowPoint=points.filter(p=>p.side!==(side)&&p.confirmedAt<=b.openTime&&p.openTime>trigger?.openTime).at(-1);
+        if(trigger&&impulse&&lowPoint&&!trigger.broken&&(long?trigger.price<impulse.price&&prev.close<=trigger.price&&b.close>trigger.price:trigger.price>impulse.price&&prev.close>=trigger.price&&b.close<trigger.price)){
+          const segment=low.filter(x=>x.openTime>impulse.openTime&&x.openTime<=b.openTime),extreme=long?Math.min(...segment.map(x=>x.low)):Math.max(...segment.map(x=>x.high)),fib={kind:'PULLBACK_BREAK',levels:[...LEVELS],impulse:clone(impulse),trigger:clone(trigger),lowPoint:clone(lowPoint),confirm:clone(b),previousClose:prev.close,extreme,highMacd:clone(bias),lowMacd:clone(lm)};
+          try{const plan=prices(fib,direction,market.tickSize);candidate={symbol:market.symbol,direction,strategyVersion:VERSION,strategyName:'MACD回調結構',profileId:id,timeframeLabel:'4H＋15M',setupId:id+':'+direction+':'+trigger.openTime+':'+b.openTime,entryType:'MARKET_NEXT',targetMode:'FIB',exitFractions:[.2,.3,.3,.2],partialExit:true,targetCount:4,riskFraction:.05,...plan,tickSize:market.tickSize,stepSize:market.stepSize,confirmedAt:at,expiresAt:at+900000,fib,market:{...market},entryFilter:{enabled:false}};if(!valid(candidate))throw Error('驗證失敗');pending=clone(candidate);}catch{candidate=null;}
         }
       }
-      for(const p of points)if(p.side==='HIGH'?b.close>p.price:b.close<p.price)p.broken=true;
-      points.push(...pivots(low));if(points.length>200)points.splice(0,points.length-200);
-      if(wave){status='WAIT_RETEST';reason='已放量BOS，等待回抽突破位並收回';}
-      if(pending){status='WAIT_FILL';reason='回抽確認完成，等待確認價限價成交';}
-      return {candidate,pending:pending?clone(pending):null,status,reason,trend:bias,direction:bias?.direction||null,entryFilter:{enabled:false}};
-    }
-    return {pushHigh,pushLow};
+      for(const p of points)if(p.side==='HIGH'?b.close>p.price:b.close<p.price)p.broken=true;points.push(...pivots(low));if(points.length>200)points.splice(0,points.length-200);
+      return{candidate,pending:pending?clone(pending):null,status:pending?'WAIT_FILL':direction?'WAIT_PULLBACK_STRUCTURE':'NO_ALIGNMENT',reason:pending?'回調小結構收盤突破，等待下一筆報價':direction?'MACD同向，等待回調低點與小結構突破':'等待4H與15M MACD同向',trend:bias,macdLow:lm,direction,entryFilter:{enabled:false}};
+    }return{pushHigh,pushLow};
   }
   function analyze(market,higher,lower,asOf,capital=200,id='4h15m'){
     for(const [bars,d] of [[higher,E.INTERVALS[PROFILES[id].high]],[lower,E.INTERVALS[PROFILES[id].low]]])if(!bars.length||bars.at(-1).closeTime!==Math.floor(asOf/d)*d-1)throw Error('需要最新已收盤K線');
     const a=createAnalyzer(id);let h=0,r={pending:null};
     for(const b of lower){while(h<higher.length&&higher[h].closeTime<=b.closeTime)a.pushHigh(higher[h++]);if(h)r=a.pushLow(b,market);}return r;
   }
-  const api={VERSION,LEVELS,PROFILES,trend,prices,valid,createAnalyzer,analyze,isVersion:v=>v===VERSION||v==='macd-lines-bos-4h15m-v1'};
+  const api={MODE:"STRUCTURE_ENTRY",VERSION,LEVELS,PROFILES,trend,prices,valid,createAnalyzer,analyze,isVersion:v=>[VERSION,'macd-body-bos-4h15m-v2','macd-lines-bos-4h15m-v1'].includes(v)};
   if(typeof module!=='undefined'&&module.exports)module.exports=api;root.MacdStrategy=api;
 })(typeof window!=='undefined'?window:globalThis);

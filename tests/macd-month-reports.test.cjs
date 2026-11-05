@@ -1,7 +1,7 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('fs'),path=require('path'),P=require('../site/paper-engine.js'),M=require('../site/macd-engine.js'),T=require('../site/target-engine.js');
 const root=path.join(__dirname,'../site'),index=JSON.parse(fs.readFileSync(path.join(root,'research/macd-month-index.json')));
 test('monthly reports cover August, September and October with the current strategy and disclosed fixed sample',()=>{
- assert.deepEqual(index.months.map(m=>m.month),['2026-08','2026-09','2026-10']);assert.equal(index.strategyVersion,'macd-lines-bos-4h15m-v1');assert.notEqual(index.strategyVersion,M.VERSION);
+ assert.deepEqual(index.months.map(m=>m.month),['2026-08','2026-09','2026-10']);assert.equal(index.strategyVersion,M.VERSION);
  for(const meta of index.months){const r=JSON.parse(fs.readFileSync(path.join(root,meta.url)));assert.equal(r.strategyVersion,index.strategyVersion);assert.equal(r.capital,200);assert.equal(r.start,Date.parse(r.month+'-01T00:00:00+08:00'));assert.equal(r.end,Date.parse('2026-'+String(Number(r.month.slice(5))+1).padStart(2,'0')+'-01T00:00:00+08:00'));assert.equal(r.account.limits.totalRisk,.05);assert.equal(r.account.limits.singleRisk,.05);assert.equal(r.executionVersion,'dynamic-barriers-opening-account-v2');assert.ok(r.scope.includes('存活者'));assert.ok(r.assumptions.some(x=>x.includes('資金費率')));assert.ok(r.coverage.every(x=>x.percent===100));assert.ok(r.trades.every(t=>M.valid(t)&&(!t.openedAt||t.openedAt>=t.confirmedAt)));}
 });
 test('saved monthly accounts reproduce fee-adjusted pnl, wins, targets and equity without mutating browser records',()=>{

@@ -48,11 +48,14 @@
     const all = candidates.filter(c => c.expiresAt > Date.now() + offset);
     count.textContent = "(" + all.length + " 候選 · " + visible.length + " 紀錄)";
     $("candidateRecordStatus").textContent=recordStore.getError()?"候選卡片保存失敗："+recordStore.getError():"最近200筆候選保存在本機，刷新／更新後保留；只作紀錄，不重新開倉。";
-    window.DashboardUI?.setCandidates(all.length);
+
     lastVisibleKey = visible.map(c => c.symbol + c.profileId + c.setupId).join(",");
     list.replaceChildren();
     const watches=watchCandidates.filter(o=>filter.value==="all"||filter.value===o.direction);
-    count.textContent="("+(all.length+watches.length)+" 候選 · "+all.length+" 已確認進場)";
+    const confirmed=all.filter(c=>filter.value==="all"||filter.value===c.direction).length;
+    const candidateTotal=confirmed+watches.length;
+    count.textContent="("+candidateTotal+" 候選 · "+confirmed+" 已確認進場)";
+    window.DashboardUI?.setCandidates(candidateTotal);
     for(const o of watches)list.append(window.TradeCards.render({...o,strategyVersion:window.MacdStrategy.VERSION,timeframeLabel:'4H＋15M'},{watch:true,now:Date.now()+offset}));
     if (!visible.length&&!watches.length) {
       const empty = node("div", "strategy-empty");

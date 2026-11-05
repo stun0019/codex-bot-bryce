@@ -10,7 +10,7 @@
   <link rel="icon" type="image/svg+xml" href="favicon.svg?v=yellow-account-1">
   <link rel="stylesheet" href="styles.css?v=yellow-account-1">
   <link rel="stylesheet" href="dashboard.css?v=yellow-account-1">
-  <link rel="stylesheet" href="trade-cards.css?v=yellow-account-1">
+  <link rel="stylesheet" href="trade-cards.css?v=account-fold-2">
 </head>
 <body data-page="strategy">
   <div id="appShell">
@@ -22,7 +22,7 @@
       <div class="desk-intro"><div><p class="desk-eyebrow">BINANCE FUTURES · STRATEGY DESK</p><h2>交易策略工作台<span class="desk-version">MACD · 4H＋15M</span></h2><p>順勢掃描，讓每一筆決策都有依據。</p></div><span class="desk-local"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="3"/><path d="M10 17h4"/></svg>瀏覽器本機紀錄</span></div>
       <div id="accountHomeSlot"></div>
       <details id="sharedAccount" class="shared-account" aria-labelledby="accountTitle">
-        <summary class="account-heading"><h3 id="accountTitle">資金帳戶</h3><span id="accountStatus" role="status">準備共用帳戶</span></summary>
+        <summary class="account-heading"><h3 id="accountTitle">資金帳戶</h3></summary><p id="accountStatus" role="status" hidden></p>
         <div class="account-grid">
           <div><span>帳戶餘額 USDT</span><strong id="accountBalance">—</strong></div><div><span>帳戶淨值 USDT</span><strong id="accountEquity">—</strong></div>
           <div><span>可用保證金 USDT</span><strong id="accountAvailable">—</strong></div><div><span>總停損風險 USDT</span><strong id="accountRisk">—</strong><small id="accountRiskCap">總風險上限5%</small></div>
@@ -97,12 +97,12 @@
       </section>
 
       <section id="backtest" data-desk-panel="backtest" class="signals-dashboard" aria-labelledby="backtestTitle" hidden>
-        <div class="list-head"><div><p class="strategy-kicker">MACD · 4H＋15M · 尚無回測報告</p><h2 id="backtestTitle">歷史回測</h2></div><div class="quarter-tabs" role="group" aria-label="回測季度"><button type="button" data-quarter="1" aria-pressed="true">Q1</button><button type="button" data-quarter="2" aria-pressed="false">Q2</button><button type="button" data-quarter="3" aria-pressed="false">Q3</button></div></div>
-        <p id="quarterStatus" class="lab-help" role="status">載入2026 Q1回測報告</p>
+        <div class="list-head"><div><p class="strategy-kicker">MACD · 4H＋15M · 2026 月度回測</p><h2 id="backtestTitle">歷史回測</h2></div><div class="quarter-tabs" role="group" aria-label="回測月份"><button type="button" data-month="2026-08" aria-pressed="true">8 月</button><button type="button" data-month="2026-09" aria-pressed="false">9 月</button><button type="button" data-month="2026-10" aria-pressed="false">10 月</button></div></div>
+        <p id="quarterStatus" class="lab-help" role="status">載入2026年月度回測報告</p>
         <div class="paper-summary-folds"><details class="paper-summary-fold"><summary>回測範圍與成交假設</summary><div class="paper-fold-content"><p id="quarterScope"></p><ul id="quarterAssumptions"></ul></div></details><details class="paper-summary-fold"><summary>帳戶淨值與詳細績效</summary><div class="paper-fold-content"><div id="quarterAccount" class="account-grid"></div></div></details></div>
-        <div id="quarterSummary" class="paper-summary-grid" aria-label="季度回測績效摘要"></div>
-        <div class="quarter-panel"><h3>兩套週期績效</h3><div class="paper-table-wrap"><table class="quarter-profile-table"><thead><tr><th>週期</th><th>已平倉</th><th>費後勝率</th><th>已實現淨損益</th></tr></thead><tbody id="quarterProfiles"></tbody></table></div><p class="lab-help">兩套週期共同使用同一帳戶；下列淨損益為已平倉交易歸屬，帳戶盈虧另含季末持倉與費用。</p></div>
-        <details class="paper-assumptions"><summary>交易紀錄與目標觸及統計</summary><div id="quarterTargets" class="target-stats"></div><div class="paper-table-wrap"><table class="quarter-trade-table"><thead><tr><th>幣種／週期</th><th>進場時間</th><th>方向</th><th>狀態</th><th>淨損益 USDT</th></tr></thead><tbody id="quarterTrades"></tbody></table></div></details>
+        <p class="lab-help monthly-scope">固定樣本歷史估算：每月獨立200 USDT，費用及滑價已計；非當時歷史Top20，未計資金費率與強平。</p><div class="paper-table-wrap"><table class="quarter-profile-table"><thead><tr><th>2026月份</th><th>報酬率</th><th>淨損益 USDT</th><th>費後勝率</th><th>已平倉</th><th>最大回撤</th></tr></thead><tbody id="monthlyComparison"></tbody></table></div><div id="quarterSummary" class="paper-summary-grid" aria-label="月度回測績效摘要"></div>
+        <div class="quarter-panel"><h3>MACD 策略績效</h3><div class="paper-table-wrap"><table class="quarter-profile-table"><thead><tr><th>週期</th><th>已平倉</th><th>費後勝率</th><th>已實現淨損益</th></tr></thead><tbody id="quarterProfiles"></tbody></table></div><p class="lab-help">下列為已平倉交易績效；月度報酬另含月末未平倉估值。</p></div>
+        <details class="paper-assumptions"><summary>交易紀錄與目標觸及統計</summary><div id="quarterTargets" class="target-stats"></div><div class="paper-table-wrap"><table class="quarter-trade-table"><thead><tr><th>幣種／週期</th><th>進場時間</th><th>方向</th><th>進場</th><th>原停損</th><th>狀態</th><th>淨損益 USDT</th></tr></thead><tbody id="quarterTrades"></tbody></table></div></details>
       </section>
       <footer class="desk-footer"><span>CODEX BOT / STRATEGY DESK</span><span>BINANCE USDT 永續 · MACD 4H＋15M · 瀏覽器本機保存</span></footer>
     </main>
@@ -123,6 +123,6 @@
   <script src="trade-cards.js?v=1"></script>
   <script src="paper-panel.js?v=yellow-account-1"></script>
   <script src="strategy-scanner.js?v=yellow-account-1"></script>
-  <script src="macd-history.js?v=yellow-account-1"></script>
+  <script src="macd-history.js?v=months-1"></script>
 </body>
 </html>

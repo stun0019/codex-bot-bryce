@@ -94,6 +94,7 @@
     }
     const entryFee = notional * feeRate, stopExitFee = quantity * stopFill * feeRate, initialMargin = notional / leverage;
     const grossProfit = exitQuantities.reduce((sum, q, i) => {const price = quantize(exitPrices[i] * (long ? 1 - slippage : 1 + slippage), tick, long ? "floor" : "ceil");return sum + (price - entry) * q * (long ? 1 : -1) - price * q * feeRate;}, 0);
+    if(candidate.targetMode==="SINGLE"&&!(grossProfit-entryFee>0))return blocked("2R目標不足以涵蓋交易成本");
     return { ok: true, capital, budget, entry, stopFill, quantity, notional, risk: quantity * riskPerUnit, riskPerUnit, rewardRisk,
       entryFee, stopExitFee, initialMargin, feeReserve: entryFee + stopExitFee, marginReserve: initialMargin + entryFee + stopExitFee,
       profit: grossProfit - entryFee, exitQuantities, exitPrices, feeRate, slippage, leverage, partialExit: partial };

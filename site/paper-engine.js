@@ -2,13 +2,10 @@
   "use strict";
   const Engine = root.StrategyEngine || (typeof require === "function" ? require("./strategy-engine.js") : null);
   const Targets = root.TargetEngine || (typeof require === "function" ? require("./target-engine.js") : null);
-  const Smc = root.SmcEngine || (typeof require === "function" ? require("./smc-engine.js") : null);
   const Account = root.AccountRisk || (typeof require === "function" ? require("./account-risk.js") : null);
-  const Ema = root.EmaEngine || (typeof require === "function" ? require("./ema-engine.js") : null);
-  const Fib = root.FibEngine || (typeof require === "function" ? require("./fib-engine.js") : null);
-  const fib = trade => Fib?.isVersion(trade.strategyVersion) === true;
-  const ema = trade => Ema?.isVersion(trade.strategyVersion) === true;
-  const smc = trade => Smc.isVersion(trade.strategyVersion) || ema(trade) || fib(trade);
+  const Single=root.SmcEntry||(typeof require==='function'?require('./smc-entry.js'):null);
+  const single=trade=>Single.isSingle(trade);
+  const smc=single;
   const DEFAULTS = Object.freeze({ enabled: true, feeRate: 0.0005, slippage: 0.0002 });
   const ACTIVE = new Set(["WAITING_PRICE", "OPEN"]), CLOSED = new Set(["TAKE_PROFIT", "STOP_LOSS"]);
   const STATUSES = new Set([...ACTIVE, ...CLOSED, "SKIPPED", "REVIEW"]);
@@ -29,7 +26,7 @@
     if (!finite(ignoreBefore) || ignoreBefore < 0) throw new Error("模擬紀錄清空時間無效");
     const seen = new Set();
     for (const trade of trades) {
-      if (!trade || (trade.strategyVersion && !validSmc(trade)) || (trade.checkpoint !== undefined && !validCursor(trade.checkpoint)) || (trade.recovery?.pending && (!validCursor(trade.checkpoint) || !hasWork(trade))) || !Targets.valid(trade) || !STATUSES.has(trade.status) || !/^[A-Z0-9]+USDT$/.test(trade.symbol) ||
+      if (!trade || !single(trade) || !validSmc(trade) || (trade.checkpoint !== undefined && !validCursor(trade.checkpoint)) || (trade.recovery?.pending && (!validCursor(trade.checkpoint) || !hasWork(trade))) || !Targets.valid(trade) || !STATUSES.has(trade.status) || !/^[A-Z0-9]+USDT$/.test(trade.symbol) ||
           !["LONG", "SHORT"].includes(trade.direction) || trade.id !== key(trade) || seen.has(trade.id) ||
           !finite(trade.detectedAt) || !finite(trade.confirmedAt) || !finite(trade.expiresAt) ||
           !(trade.stopLoss > 0) || !(trade.target > 0) || !(trade.tickSize > 0) || !(trade.capital > 0) ||
@@ -53,7 +50,8 @@
       const plan = trade.reservedPlan;
       if (!plan || !plan.ok || plan.accountId !== trade.accountId || !(plan.quantity > 0)) return false;
       const candidate = { ...trade, entry: trade.referenceEntry, targets: trade.plannedTargets };
-      const expected = Engine.position(candidate, trade.market, trade.capital, { entry: trade.entryType==="MARKET_NEXT"?fill(trade,trade.referenceEntry,true):trade.referenceEntry, budget: trade.budget, riskFraction: smc(trade) ? .05 : .03, feeRate: trade.feeRate, slippage: trade.slippage, partialExit: smc(trade), leverage: plan.leverage, quantity: plan.quantity });
+      if(single(trade))Object.assign(candidate,Single.planAt(candidate,fill(trade,trade.referenceEntry,true)));
+      const expected = Engine.position(candidate, trade.market, trade.capital, { entry: trade.entryType==="MARKET_NEXT"?fill(trade,trade.referenceEntry,true):trade.referenceEntry, budget: trade.budget, riskFraction: smc(trade) ? .05 : .03, feeRate: trade.feeRate, slippage: trade.slippage, partialExit: smc(trade)&&!single(trade), leverage: plan.leverage, quantity: plan.quantity });
       return expected.ok && ["entry", "quantity", "risk", "entryFee", "stopExitFee", "initialMargin", "feeReserve", "marginReserve", "budget"].every(k => finite(plan[k]) && Math.abs(plan[k] - expected[k]) <= 1e-8 * Math.max(1, Math.abs(expected[k])));
     }
     function previewCandidates(candidates, capital = 200, at = Date.now()) {
@@ -97,7 +95,7 @@
       let added = 0;
       if (account) enforceAccount(now);
       for (const candidate of (account ? [...candidates].sort(priority) : candidates)) {
-        if (!candidate || (fib(candidate)&&!Fib.valid(candidate)) || (candidate.strategyVersion && (!smc(candidate) || !Smc.PROFILES[candidate.profileId] || !Array.isArray(candidate.targets) || candidate.targets.length !== 4 || typeof candidate.setupId !== "string")) || !/^[A-Z0-9]+USDT$/.test(candidate.symbol) || !["LONG", "SHORT"].includes(candidate.direction) ||
+        if (!candidate || !Single.valid(candidate) || !/^[A-Z0-9]+USDT$/.test(candidate.symbol) || !["LONG", "SHORT"].includes(candidate.direction) ||
             !finite(candidate.confirmedAt) || candidate.confirmedAt <= ignoreBefore || !finite(candidate.expiresAt) || candidate.confirmedAt > now || candidate.expiresAt <= now ||
             !(candidate.stopLoss > 0) || !(candidate.target > 0) || !(candidate.tickSize > 0) ||
             !(candidate.market?.stepSize > 0) || seen.has(key(candidate))) continue;
@@ -106,36 +104,37 @@
         const trade = { id: key(candidate), symbol: candidate.symbol, direction: candidate.direction,
           confirmedAt: candidate.confirmedAt, detectedAt: now, expiresAt: candidate.expiresAt,
           referenceEntry: candidate.entry, stopLoss: candidate.stopLoss, target: candidate.target,
-          ...(candidate.strategyVersion ? { strategyVersion: candidate.strategyVersion, profileId: candidate.profileId, timeframeLabel: Smc.profile(candidate.profileId).label, setupId: candidate.setupId, entryType: candidate.entryType==="MARKET_NEXT"?"MARKET_NEXT":fib(candidate)?"LIMIT_FIB":ema(candidate)?"LIMIT_CONFIRM":"LIMIT_OB", strategyName:candidate.strategyName||(fib(candidate)?"EMA＋Fib":ema(candidate)?"EMA":"SMC"), ...(fib(candidate)?{targetMode:"FIB",fib:JSON.parse(JSON.stringify(candidate.fib)),exitFractions:[.2,.3,.3,.2]}:{}), emaTrend: candidate.emaTrend || null, pullback: candidate.pullback || null, partialExit: true, targetCount: 4, riskFraction: .05, highZone: candidate.highZone, entryZone: candidate.entryZone, shiftLevel: candidate.shiftLevel, macd: candidate.macd || null, entryFilter: candidate.entryFilter || {enabled:false}, plannedTargets: [...candidate.targets] } : {}),
+          strategyVersion:candidate.strategyVersion,profileId:candidate.profileId,timeframeLabel:candidate.timeframeLabel,setupId:candidate.setupId,entryType:'MARKET_NEXT',strategyName:candidate.strategyName,targetMode:'SINGLE',smcEntry:JSON.parse(JSON.stringify(candidate.smcEntry)),partialExit:false,targetCount:1,riskFraction:.05,plannedTargets:[...candidate.targets],entryFilter:{enabled:false},
           ...(reservedPlan ? { accountId: account.id, reservedPlan: { ...reservedPlan } } : {}),
           tickSize: candidate.tickSize, capital: reservedPlan ? reservedPlan.capital : capital, budget: reservedPlan ? reservedPlan.budget : capital * (candidate.strategyVersion ? .05 : 0.03),
           market: { ...candidate.market }, feeRate: config.feeRate, slippage: config.slippage,
-          status: "WAITING_PRICE", reason: candidate.strategyVersion==="macd-pullback-break-4h15m-v4"?"MACD同向與回抽已確認，等待確認價新成交觸價":fib(candidate)?"區域與收盤破結構已確認，等待Fib 0.715新成交觸價":ema(candidate) ? "EMA確認，等待新成交報價到確認收盤參考價限價成交" : candidate.strategyVersion ? "等待新成交報價回測 OB 中線；不回填歷史成交" : "等待訊號產生後的新成交報價" };
+          status: "WAITING_PRICE", reason: "15M SMC回踩確認，等待下一筆新成交報價" };
         trades.push(trade); seen.add(trade.id); added++;
       }
       return added;
     }
-    function open(trade, price, at) {
+    function open(trade, price, at, frozenState=null) {
       const entry = trade.entryType==="MARKET_NEXT"?fill(trade,price,true):smc(trade) ? trade.referenceEntry : fill(trade, price, true), long = trade.direction === "LONG";
-      if (!(entry > 0) || (long ? entry <= trade.stopLoss || entry >= trade.target : entry >= trade.stopLoss || entry <= trade.target)) {
+      if (!(entry > 0) || (long ? entry <= trade.stopLoss : entry >= trade.stopLoss)) {
         skip(trade, "進場報價已越過停損或目標", at); return;
       }
-      const distance = Math.abs(entry - trade.stopLoss), rr = Math.abs(trade.target - entry) / distance;
+      const proposed=Single.planAt(trade,entry);
+      const distance = Math.abs(entry - trade.stopLoss), rr = Math.abs(proposed.target - entry) / distance;
       if (rr < 2) { skip(trade, "實際模擬進場的價差盈虧比不足 1:2", at); return; }
-      const candidate = { ...trade, entry, targets: trade.plannedTargets };
+      const candidate = { ...trade, ...proposed, targets: proposed.targets };
       const plan = Engine.position(candidate, trade.market, trade.capital, { entry, budget: trade.budget, riskFraction: smc(trade) ? .05 : .03, feeRate: trade.feeRate, slippage: trade.slippage,
-        partialExit: smc(trade), leverage: trade.reservedPlan?.leverage || 50, ...(trade.reservedPlan ? { quantity: trade.reservedPlan.quantity } : {}) });
+        partialExit: smc(trade)&&!single(trade), leverage: trade.reservedPlan?.leverage || 50, ...(trade.reservedPlan ? { quantity: trade.reservedPlan.quantity } : {}) });
       if (!plan.ok) { skip(trade, plan.reason, at); return; }
       if (account) {
-        const reason = Account.canOpen(plan, accountState(at, trade.id), trade.direction, price);
+        const reason = Account.canOpen(plan, frozenState||accountState(at, trade.id), trade.direction, price);
         if (reason) { skip(trade, reason, at); return; }
       }
-      const quantity = plan.quantity; trade.executionPlan = { ...plan };
+      const quantity = plan.quantity;trade.target=proposed.target;trade.plannedTargets=proposed.targets;trade.executionPlan = { ...plan };
       if (smc(trade)) {
         trade.remainingQuantity = quantity; trade.realizedGross = 0; trade.realizedExitFees = 0; trade.exitFills = [];
         trade.exitLegs = plan.exitQuantities.map((quantity, i) => ({ label: "TP" + (i + 1), price: trade.plannedTargets[i], quantity, status: "PENDING" }));
       }
-      trade.targets = fib(trade)?Targets.createFib({...trade,entry}):Targets.create(entry, trade.stopLoss, trade.direction, trade.tickSize, smc(trade) ? 4 : 3); trade.targetsLastQuoteAt = at;
+      trade.targets = Targets.createSingle({...trade,entry}); trade.targetsLastQuoteAt = at;
       Object.assign(trade, { status: "OPEN", reason: "連續追蹤中", entry, quantity, openedAt: at,
         observedEntry: price, entryFee: entry * quantity * trade.feeRate,
         estimatedStopRisk: plan.risk, entryRewardRisk: rr, lastPrice: price, lastQuoteAt: at });
@@ -152,91 +151,21 @@
       return { exit, gross, exitFee: exit * trade.quantity * trade.feeRate,
         net: gross - trade.entryFee - exit * trade.quantity * trade.feeRate };
     }
-    function validSmc(trade) {
-      if(fib(trade))return validFibTrade(trade);
-      if (!smc(trade) || !Smc.PROFILES[trade.profileId] || typeof trade.setupId !== "string" || trade.entryType !== (ema(trade)?"LIMIT_CONFIRM":"LIMIT_OB") || trade.targetCount !== 4 || trade.partialExit !== true || trade.riskFraction !== .05 || !Array.isArray(trade.plannedTargets) || trade.plannedTargets.length !== 4 || trade.plannedTargets.some(p => !(p > 0))) return false;
-      const expected = Engine.targets(trade.referenceEntry, trade.stopLoss, trade.direction, trade.tickSize);
-      if (trade.plannedTargets.some((p, i) => p !== expected[i])) return false;
-      if (trade.status === "OPEN" || CLOSED.has(trade.status)) {
-        if (!finite(trade.remainingQuantity) || trade.remainingQuantity < 0 || trade.remainingQuantity > trade.quantity || !finite(trade.realizedGross) || !finite(trade.realizedExitFees) || trade.realizedExitFees < 0 || !Array.isArray(trade.exitFills) || !Array.isArray(trade.exitLegs) || trade.exitLegs.length !== 3) return false;
-        if (trade.exitFills.some(f => !finite(f.quantity) || f.quantity <= 0 || !(f.price > 0) || !finite(f.at) || !finite(f.fee))) return false;
-        const total = trade.exitFills.reduce((sum, f) => sum + f.quantity, 0);
-        if (Math.abs(total + trade.remainingQuantity - trade.quantity) > 1e-8 * Math.max(1, trade.quantity)) return false;
-        if (trade.exitLegs.some(l => !["PENDING", "FILLED", "CANCELLED"].includes(l.status) || !(l.quantity > 0) || !(l.price > 0))) return false;
-        const first = Engine.quantize(trade.quantity * .3, trade.market.stepSize, "floor"), quantities = [first, first, Number((trade.quantity - first * 2).toFixed(Math.min(14, Engine.decimals(trade.market.stepSize))))];
-        if (trade.exitLegs.some((l, i) => l.label !== "TP" + (i + 1) || l.price !== expected[i] || l.quantity !== quantities[i])) return false;
-        const gross = trade.exitFills.reduce((sum, f) => sum + (f.price - trade.entry) * f.quantity * (trade.direction === "LONG" ? 1 : -1), 0), fees = trade.exitFills.reduce((sum, f) => sum + f.fee, 0);
-        const near = (a, b) => Math.abs(a - b) <= 1e-8 * Math.max(1, Math.abs(a), Math.abs(b));
-        if (!near(gross, trade.realizedGross) || !near(fees, trade.realizedExitFees) || trade.exitFills.some(f => !near(f.fee, f.price * f.quantity * trade.feeRate))) return false;
-        if (CLOSED.has(trade.status) && !near(trade.netPnl, gross - trade.entryFee - fees)) return false;
-        if (CLOSED.has(trade.status) && trade.remainingQuantity !== 0) return false;
-      }
-      return true;
-    }
-    function validFibTrade(t){
-      if(!Fib.valid(t)||t.partialExit!==true||t.targetCount!==4||t.riskFraction!==.05)return false;
-      if(!(t.entry>0))return t.exitGuard===undefined;
-      if(!finite(t.quantity)||t.quantity<=0||!finite(t.remainingQuantity)||t.remainingQuantity<0||t.remainingQuantity>t.quantity||!finite(t.entryFee)||!finite(t.realizedGross)||!finite(t.realizedExitFees)||!Array.isArray(t.exitFills)||!Array.isArray(t.exitLegs)||t.exitLegs.length!==4)return false;
-      const quantities=Engine.partialQuantities(t.quantity,t.market.stepSize,[.2,.3,.3,.2]),near=(a,b)=>finite(a)&&finite(b)&&Math.abs(a-b)<=1e-8*Math.max(1,Math.abs(a),Math.abs(b));
-      let notFilled=false;
-      for(let i=0;i<4;i++){const l=t.exitLegs[i];if(l.label!=="TP"+(i+1)||l.price!==t.plannedTargets[i]||l.quantity!==quantities[i]||!["PENDING","FILLED","CANCELLED"].includes(l.status))return false;if(l.status!=="FILLED")notFilled=true;else if(notFilled||!finite(l.at))return false;}
-      if(t.exitFills.some(f=>!finite(f.quantity)||f.quantity<=0||!finite(f.price)||f.price<=0||!finite(f.at)||!finite(f.fee)||!near(f.fee,f.price*f.quantity*t.feeRate)||!/^TP[1-4]$|^STOP$|^RETRACE_TP[1-3]$/.test(f.label)))return false;
-      for(const l of t.exitLegs){const fills=t.exitFills.filter(f=>f.label===l.label);if(l.status==="FILLED"?(fills.length!==1||fills[0].quantity!==l.quantity||fills[0].at!==l.at):fills.length)return false;}
-      const top=t.exitLegs.filter(l=>l.status==="FILLED").at(-1);
-      if(top?(!t.exitGuard||t.exitGuard.price!==top.price||t.exitGuard.label!==top.label||t.exitGuard.activatedAt!==top.at||!finite(t.exitGuard.bestPrice)||(t.direction==="LONG"?t.exitGuard.bestPrice<t.exitGuard.price:t.exitGuard.bestPrice>t.exitGuard.price)):t.exitGuard!==undefined)return false;
-      const gross=t.exitFills.reduce((s,f)=>s+(f.price-t.entry)*f.quantity*(t.direction==="LONG"?1:-1),0),fees=t.exitFills.reduce((s,f)=>s+f.fee,0),out=t.exitFills.reduce((s,f)=>s+f.quantity,0);
-      if(!near(out+t.remainingQuantity,t.quantity)||!near(gross,t.realizedGross)||!near(fees,t.realizedExitFees))return false;
-      if(CLOSED.has(t.status)&&(!near(t.netPnl,gross-t.entryFee-fees)||t.remainingQuantity!==0||t.exitLegs.some(l=>l.status==="PENDING")))return false;
-      if(t.status==="OPEN"&&t.exitLegs.some(l=>l.status==="CANCELLED"))return false;
-      return true;
-    }
-    function executeFib(trade,price,at,source){
-      if(trade.status!=="OPEN")return false;
-      const long=trade.direction==="LONG",guard=trade.exitGuard,stop=Targets.hitStop(trade,price);
-      const reduce=(quantity,label)=>{const exit=fill(trade,price,false),fee=exit*quantity*trade.feeRate;trade.realizedGross+=(exit-trade.entry)*quantity*(long?1:-1);trade.realizedExitFees+=fee;
-        trade.remainingQuantity=Number(Math.max(0,trade.remainingQuantity-quantity).toFixed(Math.min(14,Engine.decimals(trade.market.stepSize))));trade.exitFills.push({label,quantity,price:exit,fee,at,source});};
-      // Check the previously armed protection before processing this new quote's target hits.
-      if(stop){const label=guard?"RETRACE_"+guard.label:"STOP";reduce(trade.remainingQuantity,label);trade.exitReason=label;for(const leg of trade.exitLegs)if(leg.status==="PENDING")leg.status="CANCELLED";}
-      else for(const leg of trade.exitLegs)if(leg.status==="PENDING"&&(long?price>=leg.price:price<=leg.price)){reduce(leg.quantity,leg.label);leg.status="FILLED";leg.at=at;trade.exitGuard={price:leg.price,label:leg.label,activatedAt:at,bestPrice:price};}
-      if(!stop&&trade.exitGuard)trade.exitGuard.bestPrice=long?Math.max(trade.exitGuard.bestPrice,price):Math.min(trade.exitGuard.bestPrice,price);
-      trade.lastPrice=price;trade.lastQuoteAt=at;
-      if(trade.remainingQuantity===0){const result=netAt(trade,price);Object.assign(trade,{status:stop?"STOP_LOSS":"TAKE_PROFIT",closedAt:at,exit:result.exit,observedExit:price,grossPnl:result.gross,exitFee:result.exitFee,netPnl:result.net,exitSource:source,
-        reason:stop?(guard?"回撤至"+guard.label+"，剩餘部位全部出場":"觸及原停損，剩餘部位全部出場"):"TP1 20%／TP2 30%／TP3 30%／TP4剩餘20%已完成"});}
-      else trade.reason="Fib分批持倉中 · 剩餘 "+trade.remainingQuantity+(trade.exitGuard?" · 保護價 "+trade.exitGuard.label+" "+trade.exitGuard.price:"");
-      return true;
-    }
-    function executeSmc(trade, price, at, source = "live") {
-      if(fib(trade))return executeFib(trade,price,at,source);
-      if (trade.status !== "OPEN") return false;
-      const long = trade.direction === "LONG", stop = long ? price <= trade.stopLoss : price >= trade.stopLoss;
-      const reduce = (quantity, label) => {
-        const exit = fill(trade, price, false), fee = exit * quantity * trade.feeRate;
-        trade.realizedGross += (exit - trade.entry) * quantity * (long ? 1 : -1); trade.realizedExitFees += fee;
-        trade.remainingQuantity = Number(Math.max(0, trade.remainingQuantity - quantity).toFixed(Math.min(14, Engine.decimals(trade.market.stepSize))));
-        trade.exitFills.push({ label, quantity, price: exit, fee, at, source });
-      };
-      if (stop) { reduce(trade.remainingQuantity, "STOP"); for (const leg of trade.exitLegs) if (leg.status === "PENDING") leg.status = "CANCELLED"; }
-      else for (const leg of trade.exitLegs) if (leg.status === "PENDING" && (long ? price >= leg.price : price <= leg.price)) { reduce(leg.quantity, leg.label); leg.status = "FILLED"; leg.at = at; }
-      trade.lastPrice = price; trade.lastQuoteAt = at;
-      if (trade.remainingQuantity === 0) {
-        const result = netAt(trade, price);
-        Object.assign(trade, { status: stop ? "STOP_LOSS" : "TAKE_PROFIT", closedAt: at, exit: result.exit, observedExit: price, grossPnl: result.gross, exitFee: result.exitFee, netPnl: result.net, exitSource: source,
-          reason: stop ? "剩餘部位觸及原停損；已實現分批損益保留" : "TP1 30%／TP2 30%／TP3 剩餘全部已出場" });
-      } else trade.reason = "分批持倉中；剩餘 " + trade.remainingQuantity;
-      return true;
-    }
-    function tryLimitFill(trade, price, at) {
+    function validSmc(trade){return Single.validTrade(trade);}
+    function executeSingle(t,price,at,source){if(t.status!=="OPEN")return false;const long=t.direction==="LONG",stop=long?price<=t.stopLoss:price>=t.stopLoss,hit=long?price>=t.target:price<=t.target;t.lastPrice=price;t.lastQuoteAt=at;if(!stop&&!hit)return false;const result=netAt(t,price),label=stop?"STOP":"TP1";t.exitFills=[{label,quantity:t.quantity,price:result.exit,fee:result.exitFee,at,source}];t.remainingQuantity=0;t.realizedGross=result.gross;t.realizedExitFees=result.exitFee;t.exitLegs[0].status=stop?"CANCELLED":"FILLED";if(!stop)t.exitLegs[0].at=at;Object.assign(t,{status:stop?"STOP_LOSS":"TAKE_PROFIT",closedAt:at,exit:result.exit,observedExit:price,grossPnl:result.gross,exitFee:result.exitFee,netPnl:result.net,exitReason:label,exitSource:source,reason:stop?"觸及OB停損，全部出場":"觸及2R目標，全部出場"});return true;}
+    function executeSmc(trade,price,at,source="live"){return executeSingle(trade,price,at,source);}
+    function tryLimitFill(trade, price, at, frozenState=null) {
       if (!smc(trade) || trade.status !== "WAITING_PRICE" || !(price > 0) || !finite(price) || !finite(at) || at < trade.detectedAt) return false;
       const long = trade.direction === "LONG";
-      if (at >= trade.expiresAt) skip(trade, "限價候選到期", at);
-      else if (long ? price <= trade.stopLoss || price >= trade.target : price >= trade.stopLoss || price <= trade.target) skip(trade, "進場前已越過停損或 TP1", at);
-      else if (trade.entryType==="MARKET_NEXT" || (long ? price <= trade.referenceEntry : price >= trade.referenceEntry)) open(trade, price, at);
+      if (at >= trade.expiresAt) skip(trade, "進場候選到期", at);
+      else if (long ? price <= trade.stopLoss : price >= trade.stopLoss) skip(trade, "進場前已越過停損或 TP1", at);
+      else if (trade.entryType==="MARKET_NEXT" || (long ? price <= trade.referenceEntry : price >= trade.referenceEntry)) open(trade, price, at, frozenState);
       return trade.status !== "WAITING_PRICE";
     }
     function cancelOrder(trade, reason, at) { if (trade.status === "WAITING_PRICE") { skip(trade, reason, at); return true; } return false; }
     function reconcileCandidates(candidates, observations, at) {
       const ids = new Set(candidates.map(key)), checked = new Set(observations.filter(o => o.status !== "ERROR").map(o => o.symbol + ":" + o.profileId)); let changed = false;
-      for (const trade of trades) if (smc(trade) && trade.status === "WAITING_PRICE" && (fib(trade)||checked.has(trade.symbol + ":" + trade.profileId)) && !ids.has(trade.id)) { skip(trade, "已收盤 K 線確認候選失效／已回測，不回填成交", at); changed = true; }
+      for (const trade of trades) if (smc(trade) && trade.status === "WAITING_PRICE" && checked.has(trade.symbol + ":" + trade.profileId) && !ids.has(trade.id)) { skip(trade, "已收盤 K 線確認候選失效／已回測，不回填成交", at); changed = true; }
       return changed;
     }
     function hasWork(trade) { return trade.status === "OPEN" || Targets.pending(trade); }
@@ -244,7 +173,7 @@
     function queueRecovery(trade, reason, at) {
       if (trade.status === "WAITING_PRICE") { skip(trade, "追蹤已中斷，不回填過期進場", at); return true; }
       if (!hasWork(trade) || trade.recovery?.pending) return false;
-      if (!validCursor(trade.checkpoint)) { review(trade, "舊版缺少成交編號，無法自動核對：" + reason, at); return true; }
+      if (!validCursor(trade.checkpoint)) { review(trade, "缺少成交編號，無法自動核對：" + reason, at); return true; }
       trade.recovery = { ...trade.recovery, pending: true, state: "PENDING", reason, requestedAt: at, nextRetryAt: 0, attempts: 0, lastError: "" }; return true;
     }
     function suspend(reason, at, symbol = null) {
@@ -331,9 +260,9 @@
         }
         if (trade.status === "WAITING_PRICE" && smc(trade)) {
           const long = trade.direction === "LONG";
-          if (at >= trade.expiresAt || at - (trade.lastQuoteAt || trade.detectedAt) > MAX_GAP_MS) skip(trade, "限價候選到期或行情中斷；不回填進場", at);
+          if (at >= trade.expiresAt || at - (trade.lastQuoteAt || trade.detectedAt) > MAX_GAP_MS) skip(trade, "進場候選到期或行情中斷；不回填進場", at);
           else if (long ? price <= trade.stopLoss || price >= trade.target : price >= trade.stopLoss || price <= trade.target) skip(trade, "進場前已越過停損或 TP1", at);
-          else if (long ? price <= trade.referenceEntry : price >= trade.referenceEntry) open(trade, price, at);
+          else open(trade, price, at);
           trade.lastQuoteAt = at;
           if (hasId && (trade.status === "WAITING_PRICE" || trade.status === "OPEN")) trade.checkpoint = { id: metadata.aggregateId, at, price };
           changed = true; continue;
@@ -346,7 +275,7 @@
         if (hasId && trade.checkpoint) { observe(trade, price, at, "live"); trade.checkpoint = { id: metadata.aggregateId, at, price }; changed = true; continue; }
         if (Targets.pending(trade)) {
           if (at < trade.targetsLastQuoteAt) continue;
-          if (at - trade.targetsLastQuoteAt > MAX_GAP_MS) Targets.interrupt(trade, "三段目標報價中斷，需核對", at);
+          if (at - trade.targetsLastQuoteAt > MAX_GAP_MS) Targets.interrupt(trade, "2R目標報價中斷，需核對", at);
           else { Targets.quote(trade, price, at); trade.targetsLastQuoteAt = at; }
           changed = true;
         }
@@ -376,20 +305,20 @@
       for (const trade of trades) {
         if (trade.recovery?.pending) continue;
         if (trade.status === "WAITING_PRICE" && smc(trade)) {
-          if (now >= trade.expiresAt || now - (trade.lastQuoteAt || trade.detectedAt) > MAX_GAP_MS) { skip(trade, "限價候選到期或行情中斷；不回填進場", now); changed = true; }
+          if (now >= trade.expiresAt || now - (trade.lastQuoteAt || trade.detectedAt) > MAX_GAP_MS) { skip(trade, "進場候選到期或行情中斷；不回填進場", now); changed = true; }
           continue;
         }
         if (trade.status === "WAITING_PRICE" && now >= Math.min(trade.expiresAt, trade.detectedAt + MAX_GAP_MS)) { skip(trade, "未及時取得新成交報價", now); changed = true; }
         else if (trade.checkpoint && hasWork(trade) && now - Math.max(trade.checkpoint.at, trade.recovery?.lastCheckedAt || 0) > MAX_GAP_MS) { if (queueRecovery(trade, "超過 30 秒未取得成交，等待自動核對", now)) changed = true; }
         else if (!trade.checkpoint) {
-          if (Targets.pending(trade) && now - trade.targetsLastQuoteAt > MAX_GAP_MS) { Targets.interrupt(trade, "三段目標超過 30 秒無報價，需核對", now); changed = true; }
+          if (Targets.pending(trade) && now - trade.targetsLastQuoteAt > MAX_GAP_MS) { Targets.interrupt(trade, "2R目標超過 30 秒無報價，需核對", now); changed = true; }
           if (trade.status === "OPEN" && now - trade.lastQuoteAt > MAX_GAP_MS) { review(trade, "超過 30 秒未取得成交報價，需核對", now); changed = true; }
         }
       }
       return changed;
     }
     function stats(profileId = "all") {
-      const cohort = trades.filter(t => profileId === "macd" ? t.strategyVersion === "macd-pullback-break-4h15m-v4" : profileId === "all" || (profileId === "pre-fib" ? !fib(t) : profileId === "fib" ? fib(t) : profileId.startsWith("fib:") ? fib(t)&&t.profileId===profileId.slice(4) : profileId === "ema" ? ema(t) : profileId === "previous" ? !ema(t)&&!fib(t) : profileId.startsWith("ema:") ? ema(t) && t.profileId === profileId.slice(4) : profileId === "smc" ? smc(t) : profileId === "legacy" ? !smc(t) : smc(t) && t.profileId === profileId));
+      const cohort=trades.filter(t=>single(t));
       const closed = cohort.filter(trade => CLOSED.has(trade.status)).sort((a,b) => a.closedAt - b.closedAt || a.id.localeCompare(b.id));
       const wins = closed.filter(trade => trade.netPnl > 0).length;
       let pnl = 0, peak = 0, maxDrawdown = 0, streak = 0, maxLossStreak = 0;
@@ -399,7 +328,7 @@
       }
       const byDirection = direction => { const rows = closed.filter(t => t.direction === direction); return { count: rows.length,
         winRate: rows.length ? rows.filter(t => t.netPnl > 0).length / rows.length * 100 : null }; };
-      return { recovering: cohort.filter(t => t.recovery?.pending).length, reconciledClosed: closed.filter(t => t.exitSource === "reconciled").length, continuousClosed: closed.filter(t => t.exitSource !== "reconciled").length, legacyReview: cohort.filter(t => !t.checkpoint && (t.status === "REVIEW" || t.targets?.some(level => level.status === "REVIEW"))).length, targets: Targets.stats(cohort,{targetMode:profileId==="fib"||profileId.startsWith("fib:")?"FIB":undefined}), closed: closed.length, wins, losses: closed.filter(t => t.netPnl < 0).length,
+      return { recovering: cohort.filter(t => t.recovery?.pending).length, reconciledClosed: closed.filter(t => t.exitSource === "reconciled").length, continuousClosed: closed.filter(t => t.exitSource !== "reconciled").length, legacyReview: cohort.filter(t => !t.checkpoint && (t.status === "REVIEW" || t.targets?.some(level => level.status === "REVIEW"))).length, targets: Targets.stats(cohort,{targetMode:"SINGLE"}), closed: closed.length, wins, losses: closed.filter(t => t.netPnl < 0).length,
         winRate: closed.length ? wins / closed.length * 100 : null, netPnl: pnl,
         averagePnl: closed.length ? pnl / closed.length : null, maxDrawdown, maxLossStreak,
         open: cohort.filter(t => t.status === "OPEN" && !t.recovery?.pending).length, waiting: cohort.filter(t => t.status === "WAITING_PRICE").length,

@@ -60,8 +60,8 @@
     if (!visible.length&&!watches.length) {
       const empty = node("div", "strategy-empty");
       empty.append(node("strong", "", busy ? "正在確認策略條件" : "目前沒有符合條件的候選"),
-        node("p", "", busy ? "檢查4H與15M的MACD零軸方向、放量BOS及回抽確認。" :
-          completed ? "等待MACD同向與15M回抽確認；每5分鐘更新。" : "請更新掃描，或等待連線恢復。"));
+        node("p", "", busy ? "檢查4H與15M MACD同向、15M收盤BOS與OB回踩確認。" :
+          completed ? "等待MACD同向與15M SMC回踩確認；每5分鐘更新。" : "請更新掃描，或等待連線恢復。"));
       list.append(empty);
     } else { const rows=[...watches.map(item=>({item,watch:true})),...visible.map(item=>({item,watch:false}))]; for(const group of window.MarketGroups.split(rows)){list.append(window.MarketGroups.heading(group));for(const row of group.items){const candidate=row.item;if(row.watch){list.append(window.TradeCards.render({...candidate,strategyVersion:window.MacdStrategy.VERSION,timeframeLabel:'4H＋15M'},{watch:true,now:Date.now()+offset}));continue;}
       const retained=!currentKeys.has(window.PaperEngine.key(candidate));

@@ -1,7 +1,7 @@
 (function () {
   "use strict";
   const Engine = window.PaperEngine, feed = window.CatPriceFeed;
-  const $ = id => document.getElementById(id), ledgerKey = "codex-paper-ledger-v1";
+  const $ = id => document.getElementById(id), ledgerKey = "codex-paper-smc-2r-ledger-v1";
   const table = $("paperRows"), status = $("paperStatus"), pause = $("paperPause"), filter = $("paperFilter");
   const feeInput = $("paperFee"), slipInput = $("paperSlippage");
   let model = Engine.createModel(), isLeader = false, acquiring = false, releaseLock = null;
@@ -88,15 +88,15 @@
     $("accountMarginDetail").textContent = account ? "持倉保證金 " + money(account.positionMargin) + " · 待成交保證金 " + money(account.orderMargin) + " · 預估費用預留 " + money(account.feeReserve) + " USDT；名目部位上限 " + account.limits.leverage + "x。" : "";
     $("accountStarted").textContent = account ? "起算 " + time(account.startedAt) + " · 初始餘額 " + money(account.initialCapital) + " · 起算淨值 " + money(account.startingEquity) + " USDT；既有持倉已納入風控。" : "";
     window.dispatchEvent(new Event("paper-account-update"));
-    const profileId="macd",fib=window.FibEngine.isVersion;
-    const match=t=>profileId==="macd"?t.strategyVersion==="macd-pullback-break-4h15m-v4":profileId==="all"||(profileId==="fib"?fib(t.strategyVersion):profileId==="pre-fib"?!fib(t.strategyVersion):profileId.startsWith("fib:")&&fib(t.strategyVersion)&&t.profileId===profileId.slice(4));
+    const profileId="macd";
+    const match=t=>window.SmcEntry.isSingle(t);
     const records=window.CandidateRecords.create({getItem:key=>localStorage.getItem(key),setItem:(key,value)=>localStorage.setItem(key,value)}).list();
     const currentKeys=new Set(latest.committed?latest.candidates.map(Engine.key):[]),plans=model.previewCandidates(latest.committed?latest.candidates:[],latest.capital,now());
     const display=window.CandidateRecords.paperRows(records,model.trades,{now:now(),currentKeys,plans});
     const cohort=model.trades.filter(match),displayCohort=display.filter(match);
     const stats = model.stats(profileId);
     window.DashboardUI?.updateSummary(model.stats("macd"));
-    window.TargetView.stats($("paperTargets"), cohort, {targetMode:profileId==="fib"||profileId.startsWith("fib:")?"FIB":undefined});
+    window.TargetView.stats($("paperTargets"), cohort, {targetMode:"SINGLE"});
     window.TargetView.paperSummary($("paperSummary"), {account: summaryAccount(account,cohort),stats,trades:cohort});
     $("paperClosed").textContent = String(stats.closed);
     $("paperOpen").textContent = stats.open + " 持倉 · " + stats.waiting + " 待報價 · " + stats.recovering + " 核對中 · " + model.trades.filter(t => window.TargetEngine.pending(t)).length + " 筆目標追蹤";
@@ -133,7 +133,7 @@
     }
     for (const trade of visible) {
       const row = node("tr", ""); row.dataset.status = trade.status; row.dataset.exit=trade.exitReason||""; row.dataset.targetMode=trade.targetMode||"R"; row.dataset.key = trade.id;
-      const identity = cell("幣種／訊號", ""); identity.append(node("strong", "", trade.symbol), node("span", "strategy-timeframe", trade.timeframeLabel ? (trade.strategyVersion==="macd-pullback-break-4h15m-v4"?"MACD · ":fib(trade.strategyVersion)?"舊EMA＋Fib · ":window.EmaEngine.isVersion(trade.strategyVersion)?"EMA · ":"SMC · ") + trade.timeframeLabel : "舊策略／未標示週期"), node("small", "", time(trade.confirmedAt)));
+      const identity = cell("幣種／訊號", ""); identity.append(node("strong", "", trade.symbol), node("span", "strategy-timeframe", trade.timeframeLabel ? 'MACD＋SMC · ' + trade.timeframeLabel : "MACD＋SMC"), node("small", "", time(trade.confirmedAt)));
       let pnl = Engine.CLOSED.has(trade.status) ? trade.netPnl : trade.status === "OPEN" && !trade.recovery?.pending ? model.netAt(trade, trade.lastPrice).net : null;
       const pnlCell = cell("淨損益 USDT", signed(pnl), "paper-pnl"); pnlCell.dataset.tone = pnl == null ? "neutral" : pnl >= 0 ? "positive" : "negative";
       if (trade.status === "OPEN" && !trade.recovery?.pending) pnlCell.append(node("small", "", "未實現估算"));
@@ -149,11 +149,11 @@
       }
       stateCell.append(statusLine);
       const reason = cell("", ""), explanation = node("details", "card-explanation");
-      explanation.append(node("summary", "", "詳細資訊"), node("p", "", (trade.recovery?.pending ? trade.recovery.lastError || trade.recovery.reason : trade.reason) + (trade.recovery?.recovered ? " · 已核對至 " + time(trade.recovery.lastVerifiedAt) : "") + " · TP1 基準 " + price(trade.target)+(fib(trade.strategyVersion)?" · 原停損 "+price(trade.stopLoss)+" · Fib 0／−0.27／−0.618／−1 · 分批20%／30%／30%／20%":"")),
+      explanation.append(node("summary", "", "詳細資訊"), node("p", "", (trade.recovery?.pending ? trade.recovery.lastError || trade.recovery.reason : trade.reason) + (trade.recovery?.recovered ? " · 已核對至 " + time(trade.recovery.lastVerifiedAt) : "") + " · TP1 基準 " + price(trade.target)+" · 單一2R全部出場"),
         node("small", "", trade.closedAt ? "出場 " + time(trade.closedAt) : trade.openedAt ? "進場 " + time(trade.openedAt) : "發現 " + time(trade.detectedAt)));
       if (trade.exitFills) explanation.append(node("p", "", "已出場：" + (trade.exitFills.map(f => f.label + " " + price(f.quantity) + " @ " + price(f.price)).join("；") || "尚無") + " · 初始部位 " + price(trade.quantity)));
       explanation.open = expanded.has(trade.id); reason.append(explanation);
-      const targetCell = cell("TP1／TP2／TP3／TP4", ""); targetCell.append(window.TargetView.detail(trade));
+      const targetCell = cell("2R 目標", ""); targetCell.append(window.TargetView.detail(trade));
       if (trade.recovery?.recovered && !trade.recovery.pending && trade.status === "OPEN") stateCell.append(node("small", "", "已核對恢復"));
       if (window.TargetEngine.pending(trade)) stateCell.append(node("small", "", trade.recovery?.pending ? "目標核對中" : "目標繼續追蹤"));
       row.append(identity, cell("方向", trade.direction === "LONG" ? "做多" : "做空"), cell("模擬進場", price(trade.entry)),
@@ -169,7 +169,6 @@
       await navigator.locks.request("codex-paper-tracker-v1", { ifAvailable: true }, async lock => {
         acquiring = false; if (!lock) return;
         load(true); if (storageBlocked) return;
-        for(const t of model.trades)if(t.status==="WAITING_PRICE"&&t.strategyVersion!=="macd-pullback-break-4h15m-v4")model.cancelOrder(t,"舊策略停用，取消未成交計畫",now());
         isLeader = true; currentGeneration = null;
         model.suspend("重新開啟頁面，離線期間觸價順序需核對", now()); changed = dirty = true; save(true);
         recoveryController = new AbortController();

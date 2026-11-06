@@ -1,6 +1,7 @@
 (function(root){
   "use strict";
   const E=root.StrategyEngine||(typeof require==="function"?require("./strategy-engine.js"):null);
+  const Single=root.SmcEntry||(typeof require==='function'?require('./smc-entry.js'):null);
   const DEFAULTS=Object.freeze({singleRisk:.05,totalRisk:.05,directionRisk:.05,leverage:50});
   const finite=n=>typeof n==="number"&&Number.isFinite(n),epsilon=n=>1e-9*Math.max(1,Math.abs(n));
   const opened=t=>t.entry>0&&t.quantity>0;
@@ -53,10 +54,12 @@
   }
   function plan(candidate,settings,state){
     if(state.blockedReason)return {ok:false,reason:state.blockedReason};
+    if(state.openCount||state.pendingCount)return {ok:false,reason:"已有持倉或待成交計畫，同時只持一單"};
     const single=state.riskCapital*state.limits.singleRisk,total=Math.max(0,state.totalLimit-state.usedRisk),direction=Math.max(0,state.directionLimit-state.directions[candidate.direction].risk);
     const budget=Math.min(single,total,direction),settingsOptions={...settings,riskFraction:state.limits.singleRisk,budget,leverage:state.limits.leverage,partialExit:!!candidate.partialExit,...(candidate.entryType==="MARKET_NEXT"?{entry:E.quantize(candidate.entry*(candidate.direction==="LONG"?1+settings.slippage:1-settings.slippage),candidate.tickSize,candidate.direction==="LONG"?"ceil":"floor")}: {})};
     if(budget<=epsilon(state.riskCapital))return {ok:false,reason:total<=direction?"共用帳戶總停損風險額度不足":"同方向停損風險額度不足"};
     if(state.availableMargin<=epsilon(state.riskCapital))return {ok:false,reason:"共用帳戶可用保證金不足"};
+    if(Single.isSingle(candidate))candidate={...candidate,...Single.planAt(candidate,settingsOptions.entry??candidate.entry)};
     let result=E.position(candidate,candidate.market,state.riskCapital,settingsOptions);if(!result.ok)return result;
     const marginCap=result.quantity*state.availableMargin/result.marginReserve,notionalCap=Math.max(0,state.riskCapital*state.limits.leverage-state.notional)/result.entry;
     if(result.quantity>Math.min(marginCap,notionalCap)){

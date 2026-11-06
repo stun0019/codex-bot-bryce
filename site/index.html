@@ -10,7 +10,7 @@
   <link rel="icon" type="image/svg+xml" href="favicon.svg?v=pullback-4">
   <link rel="stylesheet" href="styles.css?v=pullback-4">
   <link rel="stylesheet" href="dashboard.css?v=pullback-4">
-  <link rel="stylesheet" href="trade-cards.css?v=compact-1">
+  <link rel="stylesheet" href="trade-cards.css?v=watch-levels-1">
   <link rel="stylesheet" href="news-radar.css?v=1">
   <link rel="stylesheet" href="market-groups.css?v=tradfi-1">
 </head>
@@ -52,7 +52,7 @@
             </div>
           </div>
           <p id="entryFilterStatus" hidden style="display:none" class="lab-help" role="status"></p>
-          <div class="strategy-capital">
+          <div class="strategy-capital" hidden style="display:none">
             <label for="capitalInput">帳戶初始資金 <span class="capital-control"><input id="capitalInput" type="number" inputmode="decimal" min="0.01" step="0.01" value="200"><span>USDT</span></span></label>
             <div><span>每筆風險 5%</span><strong id="riskBudget">10.00 USDT</strong></div>
             <div><span>最低盈虧比</span><strong>1 : 2</strong></div>
@@ -62,7 +62,7 @@
           <p id="scanProgress" class="strategy-progress" role="status">等待幣安資料</p>
           <p id="candidateRecordStatus" class="lab-help" role="status"></p>
           <div id="strategyList" class="strategy-list" aria-live="off"></div>
-          <p class="strategy-note">每5分鐘將加密永續與TradFi永續合併按24H成交額取Top20，候選分類顯示。4H與15M MACD同向後，等待15M SMC進場。</p><details class="strategy-rules"><summary>MACD＋15M SMC · 2R</summary><p>4H與15M MACD(12,26,9) DIF與訊號線全部在零軸上方只多、下方只空。15M收盤突破已確認前高／前低，取突破前最後一根反向K完整高低作OB；回踩OB並收盤朝預期方向離開後，下一筆新成交報價進場。影線突破不算。轉折左右各2根收盤確認。</p><p>停損OB遠端外1tick，實際成交後重算單一2R目標並一次全部出場；手續費與滑價另扣，費後盈虧比低於2R。單筆及總風險最多5%，同時只持一單。5M只作歷史成交重播；實際網頁以聚合成交逐筆追蹤。</p></details>
+          <p class="strategy-note">4H與15M MACD DIF及訊號線全部＞0列做多候選、全部＜0列做空候選；進場由你自行判斷。加密與TradFi合併成交額Top20，每5分鐘掃描。</p><details class="strategy-rules"><summary>MACD方向與M15高低點</summary><p>僅使用已收盤K線。M15近期高點／低點為最近已確認的轉折：高點嚴格高於左右各2根K的最高價，低點嚴格低於左右各2根K的最低價；右側2根收盤後才成立。卡片時間是該轉折K的時間，不是進場訊號。</p><p>不自動判斷進場，不建立新的模擬單。已有持倉仍依原設定追蹤。</p></details>
         </div>
       </section>
       <section id="paper" data-desk-panel="paper" class="paper-panel signals-dashboard" aria-labelledby="paperTitle">
@@ -71,7 +71,7 @@
           <div class="list-actions"><button id="paperPause" type="button" disabled>暫停新增</button><button id="paperClear" type="button" disabled>清空</button><button id="paperRecover" type="button" disabled>重新核對</button><button id="paperExport" type="button">匯出紀錄</button></div>
         </div>
         <div class="paper-summary-folds">
-          <details class="paper-summary-fold"><summary>帳戶與風控說明</summary><div class="paper-fold-content"><div id="paperAccountSlot"></div>        <p class="paper-intro">SMC確認候選會保存並帶入此頁。新成交報價進場，停損OB遠端外1tick，成交後重算單一2R目標，觸及則全部出場。同時只持一單，帳戶總風險最多5%；卡片與引擎使用同一份部位預留，費用及滑價另扣。</p>
+          <details class="paper-summary-fold"><summary>帳戶與風控說明</summary><div class="paper-fold-content"><div id="paperAccountSlot"></div>        <p class="paper-intro">目前只列MACD同向候選，進場由你自行判斷，不再新增模擬單。以下只顯示既有交易紀錄與持倉追蹤；未成交計畫取消，已進場持倉沿用原停損與目標，不會因改為手動判斷而失去追蹤。</p>
 <p class="lab-help">累積盈虧以本期起算帳戶淨值計算，包含已實現與未實現損益，並非獨立訊號損益相加後除以本金；持倉核對中使用最後可確認估值。</p></div></details>
           <details class="paper-summary-fold"><summary>詳細績效與計算方式</summary><div class="paper-fold-content">        <div class="paper-stats" aria-label="模擬交易績效">
           <div><span>已平倉</span><strong id="paperClosed">0</strong><small id="paperOpen">0 持倉 · 0 待報價</small></div>
@@ -122,19 +122,19 @@
   <script src="strategy-engine.js?v=smc-2r-1"></script>
   <script src="smc-entry.js?v=smc-2r-1"></script>
   <script src="account-risk.js?v=smc-2r-1"></script>
-  <script src="macd-engine.js?v=smc-2r-1"></script>
-  <script src="strategy-data.js?v=smc-2r-1"></script>
+  <script src="macd-engine.js?v=watch-levels-1"></script>
+  <script src="strategy-data.js?v=watch-levels-1"></script>
   <script src="price-feed.js?v=tradfi-1"></script>
   <script src="target-engine.js?v=smc-2r-1"></script>
   <script src="target-view.js?v=smc-2r-1"></script>
-  <script src="paper-engine.js?v=smc-2r-1"></script>
+  <script src="paper-engine.js?v=watch-levels-1"></script>
   <script src="dashboard-ui.js?v=news-1"></script>
   <script src="paper-recovery.js?v=smc-2r-1"></script>
   <script src="candidate-records.js?v=smc-2r-1"></script>
-  <script src="trade-cards.js?v=smc-2r-1"></script>
-  <script src="paper-panel.js?v=smc-2r-1"></script>
+  <script src="trade-cards.js?v=watch-levels-1"></script>
+  <script src="paper-panel.js?v=watch-levels-1"></script>
   <script src="news-radar-data.js?v=1"></script><script src="news-radar.js?v=1"></script>
-  <script src="strategy-scanner.js?v=smc-2r-1"></script>
-  <script src="macd-history.js?v=smc-2r-1"></script>
+  <script src="strategy-scanner.js?v=watch-levels-1"></script>
+  <script src="macd-history.js?v=watch-levels-1"></script>
 </body>
 </html>

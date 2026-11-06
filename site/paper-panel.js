@@ -17,7 +17,7 @@
   const now = () => Date.now() + serverOffset;
   function load(activateAccount = false) {
     recoveryController?.abort(); recoveryController = null;
-    try { const raw = localStorage.getItem(ledgerKey); model = Engine.createModel(raw ? JSON.parse(raw) : null); }
+    try { const raw = localStorage.getItem(ledgerKey); model = Engine.createModel(raw ? JSON.parse(raw) : null); if(window.MacdStrategy.MODE==='CANDIDATES_ONLY')for(const t of model.trades)if(t.status==='WAITING_PRICE')model.cancelOrder(t,'已改為主觀進場，不再自動成交',now()); }
     catch (error) { storageBlocked = true; storageMessage = "既有紀錄無法讀取，已暫停新增與覆寫；請先匯出保存。"; model = Engine.createModel(); }
     if (activateAccount && !storageBlocked) model.enableAccount(200, now());
     coordinator = window.PaperRecovery.createCoordinator({ model, client: recoveryClient, clock: now,
@@ -112,8 +112,8 @@
     $("paperRecoverySummary").textContent = "連續追蹤平倉 " + stats.continuousClosed + " · 補查確認平倉 " + stats.reconciledClosed + " · 核對中 " + stats.recovering + (stats.legacyReview ? " · 舊版缺少成交編號 " + stats.legacyReview + " 筆保留待核對" : "");
     $("paperRecover").disabled = !isLeader || storageBlocked || coordinator?.running || !model.trades.some(t => t.recovery?.pending || (t.recovery?.state === "REVIEW" && t.checkpoint));
     $("paperClear").disabled = !isLeader || storageBlocked || !display.length;
-    pause.disabled = !isLeader || storageBlocked; feeInput.disabled = slipInput.disabled = !isLeader || storageBlocked;
-    pause.textContent = model.settings.enabled ? "暫停新增" : "恢復新增";
+    pause.disabled = window.MacdStrategy.MODE==='CANDIDATES_ONLY' || !isLeader || storageBlocked; feeInput.disabled = slipInput.disabled = !isLeader || storageBlocked;
+    pause.textContent = window.MacdStrategy.MODE==='CANDIDATES_ONLY'?'已停用自動新增':model.settings.enabled ? "暫停新增" : "恢復新增";
     const connection = feed.status().connections.some(c => c.route === "market" && c.state === WebSocket.OPEN);
     status.textContent = storageMessage || (isLeader && stats.recovering ? (recoveryProgress || "等待補查中斷行情，確認後自動恢復") : "") || (!isLeader ? "唯讀檢視 · 由另一個分頁追蹤，或等待取得追蹤鎖" :
       model.activeSymbols().length ? connection ? "成交報價追蹤中 · 本機保存" : "連接成交報價中" :

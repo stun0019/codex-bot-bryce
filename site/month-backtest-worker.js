@@ -9,7 +9,7 @@ async function candles(symbol,interval,start,end){let cursor=start,rows=[];const
  rows.push(...data.filter(r=>r[0]>=cursor&&r[6]<end));const next=Number(data.at(-1)[0])+d;if(next<=cursor)throw Error('歷史資料時間無進展');cursor=next;
  }return rows;
 }
-onmessage=async event=>{if(running)return;running=true;try{const{month,universe}=event.data;if(!['2026-08','2026-09','2026-10'].includes(month)||!Array.isArray(universe.markets)||universe.markets.length!==20)throw Error('回測月份或樣本無效');
+onmessage=async event=>{if(MacdStrategy.MODE==='CANDIDATES_ONLY'){postMessage({type:'error',text:'目前只列候選，沒有自動進場規則可回測'});return;}if(running)return;running=true;try{const{month,universe}=event.data;if(!['2026-08','2026-09','2026-10'].includes(month)||!Array.isArray(universe.markets)||universe.markets.length!==20)throw Error('回測月份或樣本無效');
  const start=Date.parse(month+'-01T00:00:00+08:00'),end=Date.parse('2026-'+String(Number(month.slice(5))+1).padStart(2,'0')+'-01T00:00:00+08:00'),datasets={},events=[],signalCoverage=[];
  for(let i=0;i<universe.markets.length;i++){const market=universe.markets[i],series={};for(const interval of ['4h','15m','5m']){progress('下載 '+(i+1)+'/20 '+market.symbol+' '+interval);series[interval]=await candles(market.symbol,interval,start-(interval==='4h'?90:interval==='15m'?20:0)*86400000,end);}
  progress('計算 '+market.symbol+' 15M SMC＋OB回踩訊號');events.push(...MacdBacktest.signals(market,series,start,end));datasets[market.symbol]={'5m':series['5m']};signalCoverage.push({symbol:market.symbol,highBars:series['4h'].length,lowBars:series['15m'].length});}

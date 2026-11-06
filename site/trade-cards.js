@@ -13,6 +13,13 @@
     const state=t.recovery?.pending?'核對中':labels[status]||status;
     const head=el('header','tg-head'),identity=el('div','tg-identity'),name=el('h3','tg-symbol',String(t.symbol||'').replace(/USDT$/,''));name.append(el('small','','/USDT'));
     identity.append(el('span','tg-direction '+(long?'is-long':'is-short'),long?'做多':'做空'),name);head.append(identity,el('span','tg-state',state));card.append(head);
+
+    if(watch){
+      card.classList.add('macd-watch-card');card.append(el('p','tg-meta','MACD同向 · 4H＋15M · '+date(t.confirmedAt)));
+      const quote=window.CatPriceFeed?.get?.(t.symbol),quoteValue=quote?.fresh?quote.price:t.lastClose;card.append(el('p','watch-quote',(quote?.fresh?'現價 ':'M15收盤 ')+price(quoteValue)));
+      const levels=el('dl','watch-levels');for(const [label,p,cls]of [['M15近期高點',t.recentHigh,'watch-high'],['M15近期低點',t.recentLow,'watch-low']]){const box=el('div','watch-level '+cls);box.append(el('dt','',label),el('dd','',price(p?.price)),el('small','',p?date(p.openTime):'尚無已確認轉折'));if(p)box.title='轉折K：'+date(p.openTime)+' · 確認時間：'+date(p.confirmedAt);levels.append(box);}card.append(levels);
+      const details=el('details','tg-details');details.append(el('summary','','MACD數值與高低點定義'));for(const [label,m]of [['4H',t.emaTrend],['15M',t.macdLow]])if(m)details.append(el('p','',label+' DIF '+price(m.dif)+' · 訊號線 '+price(m.signal)));details.append(el('p','','近期高低點為左右各2根已收盤K確認的最近轉折；時間為轉折K時間。僅供主觀判斷，未設定進場、停損或止盈。'));card.append(details);return card;
+    }
     const strategy='MACD＋SMC';
     card.append(el('p','tg-meta',strategy+' · '+(t.timeframeLabel||'4H＋15M')+' · '+date(t.openedAt||t.confirmedAt||t.detectedAt)+(retained?' · 保留紀錄':'')));
     const pnlRow=el('div','tg-pnl-row'),pnlBlock=el('div','tg-pnl'),pct=finite(pnl)&&t.entry&&t.quantity?100*pnl/(t.entry*t.quantity):null;

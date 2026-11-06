@@ -94,20 +94,20 @@
       if (!Number.isFinite(asOf) || asOf <= 0) throw new Error("幣安時間無效");
       const localAt = clock(), universe = await topMarkets(signal), candidates = [], profiles = Object.values(Signal.PROFILES);
       const tasks = universe.flatMap(market => profiles.map(profile => ({ market, profile })));
-      const state = { strategyVersion: Signal.VERSION, filters: {macd:[12,26,9],entryPolicy:"macd-smc-ob-2r",rsiFilter:!!rsiFilter}, total: tasks.length, completed: 0, trending: 0, errors: 0, candidates, asOf,
+      const state = { strategyVersion: Signal.VERSION, filters: {macd:[12,26,9],entryPolicy:"manual-entry-macd-alignment",rsiFilter:!!rsiFilter}, total: tasks.length, completed: 0, trending: 0, errors: 0, candidates, asOf,
         serverOffset: asOf - localAt, symbols: universe.map(m => m.symbol), rankedMarkets: universe.map(m => ({ ...m })), observations: [], failures: [] };
       onProgress({ ...state }); let cursor = 0, fatal = null;
       await Promise.all(Array.from({ length: Math.min(concurrency, tasks.length) }, async () => {
         while (cursor < tasks.length && !fatal) {
           if (signal?.aborted) { fatal = new DOMException("Aborted", "AbortError"); break; }
           const { market, profile } = tasks[cursor++];
-          const observation = { symbol: market.symbol, profileId: profile.id, timeframeLabel: profile.label, contractType:market.contractType, underlyingType:market.underlyingType, quoteVolume24h: market.quoteVolume24h, status: "WAIT_PULLBACK", direction: null, reason: "等待MACD同向與15M SMC回踩確認" };
+          const observation = { symbol: market.symbol, profileId: profile.id, timeframeLabel: profile.label, contractType:market.contractType, underlyingType:market.underlyingType, quoteVolume24h: market.quoteVolume24h, status: "WAIT_PULLBACK", direction: null, reason: "等待4H與15M MACD同向" };
           try {
             const higher = await candles(market.symbol, profile.high, asOf, signal);
             const lower = await candles(market.symbol, profile.low, asOf, signal);
             const result = Signal.analyze(market, higher, lower, asOf, capital, profile.id, {rsiFilter});
-            Object.assign(observation, { emaTrend: result.trend, macdLow: result.macdLow, entryFilter: result.entryFilter, status: result.status, reason: result.reason, direction: result.direction || result.pending?.direction || null });
-            if (result.trend?.direction) state.trending++;
+            Object.assign(observation, { emaTrend: result.trend, macdLow: result.macdLow, entryFilter: result.entryFilter, status: result.status, reason: result.reason, direction: result.direction || null, recentHigh:result.recentHigh, recentLow:result.recentLow, lastClose:result.lastClose, confirmedAt:result.confirmedAt });
+            if (result.direction) state.trending++;
             if (result.pending) { candidates.push(result.pending); observation.status = "CANDIDATE"; }
           } catch (error) {
             observation.status = "ERROR"; observation.reason = error.message;

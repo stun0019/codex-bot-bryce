@@ -5,6 +5,7 @@
   const Account = root.AccountRisk || (typeof require === "function" ? require("./account-risk.js") : null);
   const Single=root.SmcEntry||(typeof require==='function'?require('./smc-entry.js'):null);
   const single=trade=>Single.isSingle(trade);
+  const manualOnly=()=> (root.MacdStrategy||(typeof require==='function'?require('./macd-engine.js'):null))?.MODE==='CANDIDATES_ONLY';
   const smc=single;
   const DEFAULTS = Object.freeze({ enabled: true, feeRate: 0.0005, slippage: 0.0002 });
   const ACTIVE = new Set(["WAITING_PRICE", "OPEN"]), CLOSED = new Set(["TAKE_PROFIT", "STOP_LOSS"]);
@@ -56,6 +57,7 @@
     }
     function previewCandidates(candidates, capital = 200, at = Date.now()) {
       const result = new Map(), extra = [];
+      if(manualOnly())return new Map(candidates.map(c=>[key(c),{ok:false,reason:"目前只列候選，進場由你自行判斷"}]));
       for (const candidate of [...candidates].sort(priority)) {
         const id = key(candidate), recorded = trades.find(t => t.id === id); let plan;
         if (recorded) {
@@ -91,7 +93,7 @@
       return Engine.quantize(price * (buying ? 1 + trade.slippage : 1 - trade.slippage), trade.tickSize, buying ? "ceil" : "floor");
     }
     function addCandidates(candidates, capital, now) {
-      if (!config.enabled || !(capital > 0) || !finite(capital)) return 0;
+      if (manualOnly() || !config.enabled || !(capital > 0) || !finite(capital)) return 0;
       let added = 0;
       if (account) enforceAccount(now);
       for (const candidate of (account ? [...candidates].sort(priority) : candidates)) {
@@ -155,6 +157,7 @@
     function executeSingle(t,price,at,source){if(t.status!=="OPEN")return false;const long=t.direction==="LONG",stop=long?price<=t.stopLoss:price>=t.stopLoss,hit=long?price>=t.target:price<=t.target;t.lastPrice=price;t.lastQuoteAt=at;if(!stop&&!hit)return false;const result=netAt(t,price),label=stop?"STOP":"TP1";t.exitFills=[{label,quantity:t.quantity,price:result.exit,fee:result.exitFee,at,source}];t.remainingQuantity=0;t.realizedGross=result.gross;t.realizedExitFees=result.exitFee;t.exitLegs[0].status=stop?"CANCELLED":"FILLED";if(!stop)t.exitLegs[0].at=at;Object.assign(t,{status:stop?"STOP_LOSS":"TAKE_PROFIT",closedAt:at,exit:result.exit,observedExit:price,grossPnl:result.gross,exitFee:result.exitFee,netPnl:result.net,exitReason:label,exitSource:source,reason:stop?"觸及OB停損，全部出場":"觸及2R目標，全部出場"});return true;}
     function executeSmc(trade,price,at,source="live"){return executeSingle(trade,price,at,source);}
     function tryLimitFill(trade, price, at, frozenState=null) {
+      if(manualOnly()){if(trade.status==="WAITING_PRICE")skip(trade,"已改為主觀進場，不再自動成交",at);return false;}
       if (!smc(trade) || trade.status !== "WAITING_PRICE" || !(price > 0) || !finite(price) || !finite(at) || at < trade.detectedAt) return false;
       const long = trade.direction === "LONG";
       if (at >= trade.expiresAt) skip(trade, "進場候選到期", at);
@@ -258,6 +261,7 @@
           if (!hasId || metadata.aggregateId <= trade.checkpoint.id) continue;
           if (metadata.aggregateId !== trade.checkpoint.id + 1 || at - Math.max(trade.checkpoint.at, trade.recovery?.lastCheckedAt || 0) > MAX_GAP_MS) { queueRecovery(trade, "成交序列中斷，等待自動核對", at); changed = true; continue; }
         }
+        if (trade.status === "WAITING_PRICE" && manualOnly()){skip(trade,"已改為主觀進場，不再自動成交",at);changed=true;continue;}
         if (trade.status === "WAITING_PRICE" && smc(trade)) {
           const long = trade.direction === "LONG";
           if (at >= trade.expiresAt || at - (trade.lastQuoteAt || trade.detectedAt) > MAX_GAP_MS) skip(trade, "進場候選到期或行情中斷；不回填進場", at);

@@ -78,7 +78,7 @@
     }
 
     async function candles(symbol, interval, asOf, signal) {
-      if (!Object.hasOwn(Engine.INTERVALS, interval)) throw new Error("只允許 EMA 的 4H／15M、1H／5M K 線");
+      if (!Object.hasOwn(Engine.INTERVALS, interval)) throw new Error("只允許 4H／15M、1H／5M K 線");
       const bucket = Math.floor(asOf / Engine.INTERVALS[interval]), key = symbol + ":" + interval;
       const previous = cache.get(key);
       if (previous?.bucket === bucket) return previous.bars;
@@ -94,19 +94,19 @@
       if (!Number.isFinite(asOf) || asOf <= 0) throw new Error("幣安時間無效");
       const localAt = clock(), universe = await topMarkets(signal), candidates = [], profiles = Object.values(Signal.PROFILES);
       const tasks = universe.flatMap(market => profiles.map(profile => ({ market, profile })));
-      const state = { strategyVersion: Signal.VERSION, filters: {macd:[12,26,9],entryPolicy:"manual-entry-macd-alignment",rsiFilter:!!rsiFilter}, total: tasks.length, completed: 0, trending: 0, errors: 0, candidates, asOf,
+      const state = { strategyVersion: Signal.VERSION, filters: {higherDirection:"SMA83_VS_EMA200",entryPolicy:"manual-entry",profiles:profiles.map(p=>p.id)}, total: tasks.length, completed: 0, trending: 0, errors: 0, candidates, asOf,
         serverOffset: asOf - localAt, symbols: universe.map(m => m.symbol), rankedMarkets: universe.map(m => ({ ...m })), observations: [], failures: [] };
       onProgress({ ...state }); let cursor = 0, fatal = null;
       await Promise.all(Array.from({ length: Math.min(concurrency, tasks.length) }, async () => {
         while (cursor < tasks.length && !fatal) {
           if (signal?.aborted) { fatal = new DOMException("Aborted", "AbortError"); break; }
           const { market, profile } = tasks[cursor++];
-          const observation = { symbol: market.symbol, profileId: profile.id, timeframeLabel: profile.label, contractType:market.contractType, underlyingType:market.underlyingType, quoteVolume24h: market.quoteVolume24h, status: "WAIT_PULLBACK", direction: null, reason: "等待4H與15M MACD同向" };
+          const observation = { symbol: market.symbol, profileId: profile.id, timeframeLabel: profile.label, contractType:market.contractType, underlyingType:market.underlyingType, quoteVolume24h: market.quoteVolume24h, status: "WAIT_PULLBACK", direction: null, reason: "等待大框架均線方向" };
           try {
             const higher = await candles(market.symbol, profile.high, asOf, signal);
             const lower = await candles(market.symbol, profile.low, asOf, signal);
             const result = Signal.analyze(market, higher, lower, asOf, capital, profile.id, {rsiFilter});
-            Object.assign(observation, { emaTrend: result.trend, macdLow: result.macdLow, entryFilter: result.entryFilter, status: result.status, reason: result.reason, direction: result.direction || null, recentHigh:result.recentHigh, recentLow:result.recentLow, lastClose:result.lastClose, confirmedAt:result.confirmedAt });
+            Object.assign(observation, { emaTrend: result.trend, entryFilter: result.entryFilter, status: result.status, reason: result.reason, direction: result.direction || null, recentHigh:result.recentHigh, recentLow:result.recentLow, structure:result.structure, lastClose:result.lastClose, confirmedAt:result.confirmedAt });
             if (result.direction) state.trending++;
             if (result.pending) { candidates.push(result.pending); observation.status = "CANDIDATE"; }
           } catch (error) {

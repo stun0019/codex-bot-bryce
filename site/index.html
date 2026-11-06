@@ -10,7 +10,7 @@
   <link rel="icon" type="image/svg+xml" href="favicon.svg?v=pullback-4">
   <link rel="stylesheet" href="styles.css?v=pullback-4">
   <link rel="stylesheet" href="dashboard.css?v=pullback-4">
-  <link rel="stylesheet" href="trade-cards.css?v=watch-levels-1">
+  <link rel="stylesheet" href="trade-cards.css?v=sma83-dual-1">
   <link rel="stylesheet" href="news-radar.css?v=1">
   <link rel="stylesheet" href="market-groups.css?v=tradfi-1">
 </head>
@@ -21,7 +21,7 @@
       <div class="desk-header-right"><span class="strategy-exchange"><i class="desk-exchange-dot"></i>BINANCE · USDT 永續</span></div>
     </header>
     <main id="overview" class="terminal-shell">
-      <div class="desk-intro"><div><p class="desk-eyebrow">BINANCE FUTURES · STRATEGY DESK</p><h2>交易策略工作台<span class="desk-version">MACD · 4H＋15M</span></h2><p>順勢掃描，讓每一筆決策都有依據。</p></div><span class="desk-local"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="3"/><path d="M10 17h4"/></svg>瀏覽器本機紀錄</span></div>
+      <div class="desk-intro"><div><p class="desk-eyebrow">BINANCE FUTURES · STRATEGY DESK</p><h2>交易策略工作台<span class="desk-version">SMA83／EMA200 · 雙週期</span></h2><p>順勢掃描，讓每一筆決策都有依據。</p></div><span class="desk-local"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="3"/><path d="M10 17h4"/></svg>瀏覽器本機紀錄</span></div>
       <div id="accountHomeSlot"></div>
       <details id="sharedAccount" class="shared-account" aria-labelledby="accountTitle">
         <summary class="account-heading"><h3 id="accountTitle">資金帳戶</h3></summary><p id="accountStatus" role="status" hidden></p>
@@ -44,9 +44,9 @@
       <section id="signals" data-desk-panel="signals" class="signals-dashboard" aria-labelledby="scannerTitle">
         <div id="signalsView" class="view-panel">
           <div class="list-head">
-            <div><p class="strategy-kicker">加密＋TradFi 合併成交額 TOP20 · MACD(12,26,9) · 4H＋15M</p><h1 id="scannerTitle">策略掃描 <span id="candidateCount">(0 / 0)</span></h1></div>
+            <div><p class="strategy-kicker">加密＋TradFi 合併成交額 TOP20 · SMA83／EMA200 · 4H＋15M、1H＋5M</p><h1 id="scannerTitle">策略掃描 <span id="candidateCount">(0 / 0)</span></h1></div>
             <div class="list-actions">
-              <select id="timeframeFilter" aria-label="策略週期"><option value="4h15m">4H＋15M</option></select><select id="directionFilter" aria-label="策略方向"><option value="all">全部方向</option><option value="LONG">做多候選</option><option value="SHORT">做空候選</option></select>
+              <select id="timeframeFilter" aria-label="策略週期"><option value="all">全部週期</option><option value="4h15m">4H＋15M</option><option value="1h5m">1H＋5M</option></select><select id="directionFilter" aria-label="策略方向"><option value="all">全部方向</option><option value="LONG">做多候選</option><option value="SHORT">做空候選</option></select>
               <button class="refresh-button" id="refreshBtn" type="button">更新</button>
               <label class="entry-filter-toggle" hidden style="display:none"><input id="rsiEntryFilter" type="checkbox"><span>RSI＋放量過濾</span></label>
             </div>
@@ -62,7 +62,7 @@
           <p id="scanProgress" class="strategy-progress" role="status">等待幣安資料</p>
           <p id="candidateRecordStatus" class="lab-help" role="status"></p>
           <div id="strategyList" class="strategy-list" aria-live="off"></div>
-          <p class="strategy-note">4H與15M MACD DIF及訊號線全部＞0列做多候選、全部＜0列做空候選；進場由你自行判斷。加密與TradFi合併成交額Top20，每5分鐘掃描。</p><details class="strategy-rules"><summary>MACD方向與M15高低點</summary><p>僅使用已收盤K線。M15近期高點／低點為最近已確認的轉折：高點嚴格高於左右各2根K的最高價，低點嚴格低於左右各2根K的最低價；右側2根收盤後才成立。卡片時間是該轉折K的時間，不是進場訊號。</p><p>不自動判斷進場，不建立新的模擬單。已有持倉仍依原設定追蹤。</p></details>
+          <p class="strategy-note">4H SMA83＞EMA200，15M找多；反向找空。1H SMA83＞EMA200，5M找多；反向找空。價格位置不影響方向，兩線相等則觀望；進場由你自行判斷。加密與TradFi合併成交額Top20，每5分鐘掃描。</p><details class="strategy-rules"><summary>大框架方向與小框架高低點</summary><p>僅使用已收盤K線。15M／5M近期高點／低點為最近已確認的轉折：高點嚴格高於左右各2根K的最高價，低點嚴格低於左右各2根K的最低價；右側2根收盤後才成立。卡片時間是該轉折K的時間，不是進場訊號。15M／5M結構用最近兩個已確認高點與低點比較：兩者都提高顯示抬高、都降低顯示降低，其餘不一致；不足兩組則顯示資料不足。結構僅供你判斷，不額外過濾候選。</p><p>不自動判斷進場，不建立新的模擬單。已有持倉仍依原設定追蹤。</p></details>
         </div>
       </section>
       <section id="paper" data-desk-panel="paper" class="paper-panel signals-dashboard" aria-labelledby="paperTitle">
@@ -71,7 +71,7 @@
           <div class="list-actions"><button id="paperPause" type="button" disabled>暫停新增</button><button id="paperClear" type="button" disabled>清空</button><button id="paperRecover" type="button" disabled>重新核對</button><button id="paperExport" type="button">匯出紀錄</button></div>
         </div>
         <div class="paper-summary-folds">
-          <details class="paper-summary-fold"><summary>帳戶與風控說明</summary><div class="paper-fold-content"><div id="paperAccountSlot"></div>        <p class="paper-intro">目前只列MACD同向候選，進場由你自行判斷，不再新增模擬單。以下只顯示既有交易紀錄與持倉追蹤；未成交計畫取消，已進場持倉沿用原停損與目標，不會因改為手動判斷而失去追蹤。</p>
+          <details class="paper-summary-fold"><summary>帳戶與風控說明</summary><div class="paper-fold-content"><div id="paperAccountSlot"></div>        <p class="paper-intro">目前只列均線方向候選，進場由你自行判斷，不再新增模擬單。以下只顯示既有交易紀錄與持倉追蹤；未成交計畫取消，已進場持倉沿用原停損與目標，不會因改為手動判斷而失去追蹤。</p>
 <p class="lab-help">累積盈虧以本期起算帳戶淨值計算，包含已實現與未實現損益，並非獨立訊號損益相加後除以本金；持倉核對中使用最後可確認估值。</p></div></details>
           <details class="paper-summary-fold"><summary>詳細績效與計算方式</summary><div class="paper-fold-content">        <div class="paper-stats" aria-label="模擬交易績效">
           <div><span>已平倉</span><strong id="paperClosed">0</strong><small id="paperOpen">0 持倉 · 0 待報價</small></div>
@@ -108,22 +108,22 @@
       </section>
 
       <section id="backtest" data-desk-panel="backtest" class="signals-dashboard" aria-labelledby="backtestTitle" hidden>
-        <div class="list-head"><div><p class="strategy-kicker">MACD · 4H＋15M · 2026 月度回測</p><h2 id="backtestTitle">歷史回測</h2></div><div class="quarter-tabs" role="group" aria-label="回測月份"><button type="button" data-month="2026-08" aria-pressed="true">8 月</button><button type="button" data-month="2026-09" aria-pressed="false">9 月</button><button type="button" data-month="2026-10" aria-pressed="false">10 月</button></div></div>
+        <div class="list-head"><div><p class="strategy-kicker">SMA83／EMA200 · 雙週期 · 2026 月度回測</p><h2 id="backtestTitle">歷史回測</h2></div><div class="quarter-tabs" role="group" aria-label="回測月份"><button type="button" data-month="2026-08" aria-pressed="true">8 月</button><button type="button" data-month="2026-09" aria-pressed="false">9 月</button><button type="button" data-month="2026-10" aria-pressed="false">10 月</button></div></div>
         <div class="list-actions"><button id="monthUpdate" type="button">更新回測</button><button id="monthCancel" type="button" hidden>取消</button></div><p id="quarterStatus" class="lab-help" role="status">載入2026年月度回測報告</p>
         <div class="paper-summary-folds"><details class="paper-summary-fold"><summary>回測範圍與成交假設</summary><div class="paper-fold-content"><p id="quarterScope"></p><ul id="quarterAssumptions"></ul></div></details><details class="paper-summary-fold"><summary>帳戶淨值與詳細績效</summary><div class="paper-fold-content"><div id="quarterAccount" class="account-grid"></div></div></details></div>
         <p class="lab-help monthly-scope">固定樣本歷史估算：每月獨立200 USDT，費用及滑價已計；非當時歷史Top20，未計資金費率與強平。</p><div class="paper-table-wrap"><table class="quarter-profile-table"><thead><tr><th>2026月份</th><th>報酬率</th><th>淨損益 USDT</th><th>費後勝率</th><th>已平倉</th><th>最大回撤</th></tr></thead><tbody id="monthlyComparison"></tbody></table></div><div id="quarterSummary" class="paper-summary-grid" aria-label="月度回測績效摘要"></div>
-        <div class="quarter-panel"><h3>MACD 策略績效</h3><div class="paper-table-wrap"><table class="quarter-profile-table"><thead><tr><th>週期</th><th>已平倉</th><th>費後勝率</th><th>已實現淨損益</th></tr></thead><tbody id="quarterProfiles"></tbody></table></div><p class="lab-help">下列為已平倉交易績效；月度報酬另含月末未平倉估值。</p></div>
+        <div class="quarter-panel"><h3>策略績效</h3><div class="paper-table-wrap"><table class="quarter-profile-table"><thead><tr><th>週期</th><th>已平倉</th><th>費後勝率</th><th>已實現淨損益</th></tr></thead><tbody id="quarterProfiles"></tbody></table></div><p class="lab-help">下列為已平倉交易績效；月度報酬另含月末未平倉估值。</p></div>
         <details class="paper-assumptions"><summary>交易紀錄與目標觸及統計</summary><div id="quarterTargets" class="target-stats"></div><div class="paper-table-wrap"><table class="quarter-trade-table"><thead><tr><th>幣種／週期</th><th>進場時間</th><th>方向</th><th>進場</th><th>原停損</th><th>狀態</th><th>淨損益 USDT</th></tr></thead><tbody id="quarterTrades"></tbody></table></div></details>
       </section>
-      <footer class="desk-footer"><span>CODEX BOT / STRATEGY DESK</span><span>BINANCE USDT 永續 · MACD 4H＋15M · 瀏覽器本機保存</span></footer>
+      <footer class="desk-footer"><span>CODEX BOT / STRATEGY DESK</span><span>BINANCE USDT 永續 · SMA83／EMA200 雙週期 · 瀏覽器本機保存</span></footer>
     </main>
   </div>
   <script src="market-groups.js?v=tradfi-1"></script>
   <script src="strategy-engine.js?v=smc-2r-1"></script>
   <script src="smc-entry.js?v=smc-2r-1"></script>
   <script src="account-risk.js?v=smc-2r-1"></script>
-  <script src="macd-engine.js?v=watch-levels-1"></script>
-  <script src="strategy-data.js?v=watch-levels-1"></script>
+  <script src="macd-engine.js?v=sma83-dual-1"></script>
+  <script src="strategy-data.js?v=sma83-dual-1"></script>
   <script src="price-feed.js?v=tradfi-1"></script>
   <script src="target-engine.js?v=smc-2r-1"></script>
   <script src="target-view.js?v=smc-2r-1"></script>
@@ -131,10 +131,10 @@
   <script src="dashboard-ui.js?v=news-1"></script>
   <script src="paper-recovery.js?v=smc-2r-1"></script>
   <script src="candidate-records.js?v=smc-2r-1"></script>
-  <script src="trade-cards.js?v=watch-levels-1"></script>
+  <script src="trade-cards.js?v=sma83-dual-1"></script>
   <script src="paper-panel.js?v=watch-levels-1"></script>
   <script src="news-radar-data.js?v=1"></script><script src="news-radar.js?v=1"></script>
-  <script src="strategy-scanner.js?v=watch-levels-1"></script>
-  <script src="macd-history.js?v=watch-levels-1"></script>
+  <script src="strategy-scanner.js?v=sma83-dual-1"></script>
+  <script src="macd-history.js?v=sma83-dual-1"></script>
 </body>
 </html>

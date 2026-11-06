@@ -4,7 +4,7 @@
   const finite=Number.isFinite,price=v=>finite(v)?v.toLocaleString('en-US',{maximumSignificantDigits:9}):'—';
   const signed=(v,decimals=2)=>finite(v)?(v>0?'+':'')+v.toFixed(decimals):'—';
   const date=v=>v?new Date(v).toLocaleString('zh-TW',{timeZone:'Asia/Taipei',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false}):'—';
-  const labels={OPEN:'持倉中',WAITING_PRICE:'待進場',NOT_ENTERED:'未進場',SKIPPED:'已取消',TAKE_PROFIT:'已平倉',STOP_LOSS:'已平倉',REVIEW:'待核對',WATCH:'MACD同向候選'};
+  const labels={OPEN:'持倉中',WAITING_PRICE:'待進場',NOT_ENTERED:'未進場',SKIPPED:'已取消',TAKE_PROFIT:'已平倉',STOP_LOSS:'已平倉',REVIEW:'待核對',WATCH:'方向候選'};
   function render(t,{plan=null,pnl=null,watch=false,retained=false,now=Date.now()}={}){
     const long=t.direction==='LONG',closed=['TAKE_PROFIT','STOP_LOSS'].includes(t.status),status=watch?'WATCH':t.status||'NOT_ENTERED';
     const card=el('article','trade-glass strategy-card');card.dataset.direction=t.direction;card.dataset.status=status;card.dataset.key=t.id||[t.symbol,t.profileId,t.setupId||'watch'].join(':');
@@ -15,10 +15,12 @@
     identity.append(el('span','tg-direction '+(long?'is-long':'is-short'),long?'做多':'做空'),name);head.append(identity,el('span','tg-state',state));card.append(head);
 
     if(watch){
-      card.classList.add('macd-watch-card');card.append(el('p','tg-meta','MACD同向 · 4H＋15M · '+date(t.confirmedAt)));
-      const quote=window.CatPriceFeed?.get?.(t.symbol),quoteValue=quote?.fresh?quote.price:t.lastClose;card.append(el('p','watch-quote',(quote?.fresh?'現價 ':'M15收盤 ')+price(quoteValue)));
-      const levels=el('dl','watch-levels');for(const [label,p,cls]of [['M15近期高點',t.recentHigh,'watch-high'],['M15近期低點',t.recentLow,'watch-low']]){const box=el('div','watch-level '+cls);box.append(el('dt','',label),el('dd','',price(p?.price)),el('small','',p?date(p.openTime):'尚無已確認轉折'));if(p)box.title='轉折K：'+date(p.openTime)+' · 確認時間：'+date(p.confirmedAt);levels.append(box);}card.append(levels);
-      const details=el('details','tg-details');details.append(el('summary','','MACD數值與高低點定義'));for(const [label,m]of [['4H',t.emaTrend],['15M',t.macdLow]])if(m)details.append(el('p','',label+' DIF '+price(m.dif)+' · 訊號線 '+price(m.signal)));details.append(el('p','','近期高低點為左右各2根已收盤K確認的最近轉折；時間為轉折K時間。僅供主觀判斷，未設定進場、停損或止盈。'));card.append(details);return card;
+      const profile=window.MacdStrategy.PROFILES[t.profileId],highLabel=profile.high.toUpperCase(),lowLabel=profile.low==='15m'?'M15':'M5';
+      card.classList.add('ma-watch-card');card.append(el('p','tg-meta',(t.timeframeLabel||profile.label)+' · SMA83／EMA200 · '+date(t.confirmedAt)));
+      const quote=window.CatPriceFeed?.get?.(t.symbol),quoteValue=quote?.fresh?quote.price:t.lastClose;card.append(el('p','watch-quote',(quote?.fresh?'現價 ':lowLabel+'收盤 ')+price(quoteValue)));
+      const structure=t.structure||{state:'INSUFFICIENT'},states={RISING:'高低點抬高',FALLING:'高低點降低',MIXED:'高低點不一致',INSUFFICIENT:'資料不足'},structureRow=el('div','watch-structure');structureRow.dataset.state=structure.state;structureRow.append(el('span','watch-structure-label',lowLabel+' 結構'),el('strong','',states[structure.state]||states.INSUFFICIENT));const explanation=structure.state==='INSUFFICIENT'?'需各2個已確認高點、低點':structure.state==='MIXED'?((structure.highChange==='EQ'?'高點持平':structure.highChange)+'／'+(structure.lowChange==='EQ'?'低點持平':structure.lowChange)):[structure.highChange,structure.lowChange].join('／');structureRow.append(el('small','',explanation+(structure.aligned===false?' · 與候選方向不一致':'')));card.append(structureRow);
+      const levels=el('dl','watch-levels');for(const [label,p,cls]of [[lowLabel+'近期高點',t.recentHigh,'watch-high'],[lowLabel+'近期低點',t.recentLow,'watch-low']]){const box=el('div','watch-level '+cls);box.append(el('dt','',label),el('dd','',price(p?.price)),el('small','',p?date(p.openTime):'尚無已確認轉折'));if(p)box.title='轉折K：'+date(p.openTime)+' · 確認時間：'+date(p.confirmedAt);levels.append(box);}card.append(levels);
+      const details=el('details','tg-details');details.append(el('summary','','均線數值與高低點定義'));if(t.emaTrend)details.append(el('p','',highLabel+' SMA83 '+price(t.emaTrend.sma83)+' · EMA200 '+price(t.emaTrend.ema200)));details.append(el('p','','SMA83＞EMA200找多，SMA83＜EMA200找空；價格位置與小框架結構不影響候選方向。'));if(structure.previousHigh)details.append(el('p','','前一高點 '+price(structure.previousHigh.price)+' · '+date(structure.previousHigh.openTime)));if(structure.previousLow)details.append(el('p','','前一低點 '+price(structure.previousLow.price)+' · '+date(structure.previousLow.openTime)));details.append(el('p','','結構依最近2個已確認高點與2個已確認低點比較，僅為當時狀態，不代表反轉已確認。近期高低點為左右各2根已收盤K確認的最近轉折；時間為轉折K時間。僅供主觀判斷，未設定進場、停損或止盈。'));card.append(details);return card;
     }
     const strategy='MACD＋SMC';
     card.append(el('p','tg-meta',strategy+' · '+(t.timeframeLabel||'4H＋15M')+' · '+date(t.openedAt||t.confirmedAt||t.detectedAt)+(retained?' · 保留紀錄':'')));

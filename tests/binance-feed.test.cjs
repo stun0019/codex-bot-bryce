@@ -215,3 +215,8 @@ test('aggregate observers retain native trade IDs and trade time even when ticke
   h.emit('market',{e:'aggTrade',s:'BTCUSDT',E:h.now,T:h.now-10,a:123,p:'101'});
   const q=observed.at(-1);assert.equal(q.aggregateId,123);assert.equal(q.timestamp,h.now-10);assert.equal(q.nativeSymbol,'BTCUSDT');assert.equal(q.kind,'aggTrade');assert.equal(q.price,101);
 });
+
+test('TradFi gold and ETF contracts receive native aggregate quotes',async()=>{
+ const h=harness({fetch:async(url,init,now,symbols)=>({ok:true,json:async()=>url.endsWith('/exchangeInfo')?{symbols:[...symbols,...['XAUUSDT','MUUUSDT'].map(symbol=>({symbol,quoteAsset:'USDT',contractType:'TRADIFI_PERPETUAL',status:'TRADING'}))]}:{price:'100',time:now}})});
+ await h.start(['XAU-USDT','MUU-USDT']);const quotes=[];h.feed.subscribeTicks(q=>quotes.push(q));h.emit('market',{e:'aggTrade',s:'XAUUSDT',p:'4000',E:h.now,T:h.now,a:12});h.emit('market',{e:'aggTrade',s:'MUUUSDT',p:'20',E:h.now,T:h.now,a:13});assert.equal(h.feed.get('XAU').price,4000);assert.equal(h.feed.get('MUU').price,20);assert.equal(h.feed.isUnsupported('XAU'),false);assert.equal(quotes.length,2);
+});

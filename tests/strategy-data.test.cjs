@@ -102,3 +102,14 @@ test('missing or malformed turnover data stops scanning rather than widening its
     assert.ok(!calls.some(url=>url.includes('/klines')));
   }
 });
+
+test('crypto and TradFi share ONE Top20 ranking with official contract types',async()=>{
+ const names=Array.from({length:24},(_,i)=>'M'+i+'USDT'),info=exchange(names);info.symbols.forEach((m,i)=>m.contractType=i%2?'TRADIFI_PERPETUAL':'PERPETUAL');info.symbols.push({...info.symbols[0],symbol:'QUARTERUSDT',contractType:'CURRENT_QUARTER'});
+ const client=createClient({intervalMs:0,fetcher:async url=>({ok:true,status:200,json:async()=>url.endsWith('exchangeInfo')?info:url.endsWith('/ticker/24hr')?[...names.map((symbol,i)=>({symbol,quoteVolume:String(i+1)})),{symbol:'QUARTERUSDT',quoteVolume:'999999'}]:{serverTime:NOW}})});
+ const ranked=await client.topMarkets();assert.equal(ranked.length,20);assert.deepEqual(ranked.map(m=>m.symbol),names.slice(4).reverse());assert.equal(ranked.filter(m=>m.contractType==='PERPETUAL').length,10);assert.equal(ranked.filter(m=>m.contractType==='TRADIFI_PERPETUAL').length,10);
+});
+test('TradFi candidates and observations retain their classification',async()=>{
+ const {fixture,NOW:time}=require('./macd-fixtures.cjs'),f=fixture(),pairs={'4h':f.higher,'15m':f.lower},info=exchange(['XAUUSDT']);info.symbols[0].contractType='TRADIFI_PERPETUAL';
+ const client=createClient({intervalMs:0,clock:()=>time,fetcher:async url=>{const u=new URL(url);return{ok:true,status:200,json:async()=>u.pathname.endsWith('/time')?{serverTime:time}:u.pathname.endsWith('exchangeInfo')?info:u.pathname.endsWith('/ticker/24hr')?[{symbol:'XAUUSDT',quoteVolume:'10000'}]:pairs[u.searchParams.get('interval')]};}});
+ const r=await client.scan();assert.equal(r.errors,0);assert.equal(r.candidates.length,1);assert.equal(r.observations[0].contractType,'TRADIFI_PERPETUAL');assert.equal(r.candidates[0].market.contractType,'TRADIFI_PERPETUAL');
+});

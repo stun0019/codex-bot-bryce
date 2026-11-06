@@ -59,7 +59,7 @@
       try {
         const data = await request("/fapi/v1/exchangeInfo");
         if (!Array.isArray(data.symbols) || !data.symbols.length) throw new Error("Binance contract list missing");
-        catalog = new Map(data.symbols.filter(item => item.contractType === "PERPETUAL" &&
+        catalog = new Map(data.symbols.filter(item => ["PERPETUAL","TRADIFI_PERPETUAL"].includes(item.contractType) &&
           item.quoteAsset === "USDT" && item.status === "TRADING").map(item => [item.symbol, item]));
         catalogAt = Date.now();
         catalogRetryAt = 0;

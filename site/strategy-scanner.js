@@ -56,21 +56,21 @@
     const candidateTotal=confirmed+watches.length;
     count.textContent="("+candidateTotal+" 候選 · "+confirmed+" 已確認進場)";
     window.DashboardUI?.setCandidates(candidateTotal);
-    for(const o of watches)list.append(window.TradeCards.render({...o,strategyVersion:window.MacdStrategy.VERSION,timeframeLabel:'4H＋15M'},{watch:true,now:Date.now()+offset}));
+    
     if (!visible.length&&!watches.length) {
       const empty = node("div", "strategy-empty");
       empty.append(node("strong", "", busy ? "正在確認策略條件" : "目前沒有符合條件的候選"),
         node("p", "", busy ? "檢查4H與15M的MACD零軸方向、放量BOS及回抽確認。" :
           completed ? "等待MACD同向與15M回抽確認；每5分鐘更新。" : "請更新掃描，或等待連線恢復。"));
       list.append(empty);
-    } else visible.forEach(candidate => {
+    } else { const rows=[...watches.map(item=>({item,watch:true})),...visible.map(item=>({item,watch:false}))]; for(const group of window.MarketGroups.split(rows)){list.append(window.MarketGroups.heading(group));for(const row of group.items){const candidate=row.item;if(row.watch){list.append(window.TradeCards.render({...candidate,strategyVersion:window.MacdStrategy.VERSION,timeframeLabel:'4H＋15M'},{watch:true,now:Date.now()+offset}));continue;}
       const retained=!currentKeys.has(window.PaperEngine.key(candidate));
       let plan=plans.get(window.PaperEngine.key(candidate))||{ok:false,reason:"共用帳戶尚未就緒"};
       if(retained&&!window.PaperTrading?.recordStatus(candidate))plan={ok:false,reason:"保留紀錄，未建立模擬訂單"};
       const item = card(candidate,plan,retained);
       if (expanded.has(item.dataset.key)) item.querySelector("details").open = true;
       list.append(item);
-    });
+    }}}
   }
 
   async function run() {
@@ -82,7 +82,7 @@
     refresh.disabled = true; rsiToggle.disabled = true; refresh.textContent = "掃描中…";
     list.setAttribute("aria-busy", "true");
     status.textContent = "連接幣安"; status.dataset.state = "pending";
-    progress.textContent = "讀取 24H 成交額 Top20 與已收盤 K 線"; meter.value = 0; meter.max = 1;
+    progress.textContent = "讀取加密＋TradFi 合併成交額 Top20 與已收盤 K 線"; meter.value = 0; meter.max = 1;
     render();
     let scanState = null;
     try {
@@ -92,7 +92,8 @@
         candidates = state.candidates;
         window.PaperTrading?.acceptCandidates(state.candidates, capital, Date.now() + offset);
         status.textContent = "策略掃描中";
-        progress.textContent = "成交額 Top20 · 已掃描 " + state.completed + " / " + state.total + " · 趨勢方向已確認 " + state.trending +
+        const tradfi=state.rankedMarkets.filter(m=>m.contractType==='TRADIFI_PERPETUAL').length;
+        progress.textContent = "合併成交額 Top20（加密 "+(state.rankedMarkets.length-tradfi)+"／TradFi "+tradfi+"）· 已掃描 " + state.completed + " / " + state.total + " · 趨勢方向已確認 " + state.trending +
           (state.errors ? " · 資料不可用 " + state.errors : "");
         meter.max = state.total; meter.value = state.completed;
         if (visibleCandidates().map(c => c.symbol + c.profileId + c.setupId).join(",") !== lastVisibleKey) render();

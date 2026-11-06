@@ -45,11 +45,11 @@
       if (catalog && clock() - catalogAt < 1800000) return catalog;
       const data = await json("/fapi/v1/exchangeInfo", signal);
       if (!Array.isArray(data.symbols) || !data.symbols.length) throw new Error("無法取得幣安合約清單");
-      catalog = data.symbols.filter(item => item.quoteAsset === "USDT" && item.contractType === "PERPETUAL" && item.status === "TRADING")
+      catalog = data.symbols.filter(item => item.quoteAsset === "USDT" && ["PERPETUAL","TRADIFI_PERPETUAL"].includes(item.contractType) && item.status === "TRADING")
         .map(item => {
           const filter = type => (item.filters || []).find(f => f.filterType === type) || {};
           const lot = filter("LOT_SIZE"), notional = filter("MIN_NOTIONAL");
-          return { symbol: item.symbol, tickSize: Number(filter("PRICE_FILTER").tickSize), stepSize: Number(lot.stepSize),
+          return { symbol: item.symbol, contractType:item.contractType, underlyingType:item.underlyingType||null, tickSize: Number(filter("PRICE_FILTER").tickSize), stepSize: Number(lot.stepSize),
             minQty: Number(lot.minQty), maxQty: Number(lot.maxQty), minNotional: Number(notional.notional ?? notional.minNotional ?? 0) };
         }).filter(item => item.tickSize > 0 && item.stepSize > 0)
         .sort((a, b) => a.symbol.localeCompare(b.symbol));
@@ -101,7 +101,7 @@
         while (cursor < tasks.length && !fatal) {
           if (signal?.aborted) { fatal = new DOMException("Aborted", "AbortError"); break; }
           const { market, profile } = tasks[cursor++];
-          const observation = { symbol: market.symbol, profileId: profile.id, timeframeLabel: profile.label, quoteVolume24h: market.quoteVolume24h, status: "WAIT_PULLBACK", direction: null, reason: "等待MACD同向及15M回抽確認" };
+          const observation = { symbol: market.symbol, profileId: profile.id, timeframeLabel: profile.label, contractType:market.contractType, underlyingType:market.underlyingType, quoteVolume24h: market.quoteVolume24h, status: "WAIT_PULLBACK", direction: null, reason: "等待MACD同向及15M回抽確認" };
           try {
             const higher = await candles(market.symbol, profile.high, asOf, signal);
             const lower = await candles(market.symbol, profile.low, asOf, signal);

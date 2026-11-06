@@ -12,6 +12,7 @@
   <link rel="stylesheet" href="dashboard.css?v=pullback-4">
   <link rel="stylesheet" href="trade-cards.css?v=compact-1">
   <link rel="stylesheet" href="news-radar.css?v=1">
+  <link rel="stylesheet" href="market-groups.css?v=tradfi-1">
 </head>
 <body data-page="strategy">
   <div id="appShell">
@@ -43,7 +44,7 @@
       <section id="signals" data-desk-panel="signals" class="signals-dashboard" aria-labelledby="scannerTitle">
         <div id="signalsView" class="view-panel">
           <div class="list-head">
-            <div><p class="strategy-kicker">24H 成交額 TOP20 · MACD(12,26,9) · 4H＋15M</p><h1 id="scannerTitle">策略掃描 <span id="candidateCount">(0 / 0)</span></h1></div>
+            <div><p class="strategy-kicker">加密＋TradFi 合併成交額 TOP20 · MACD(12,26,9) · 4H＋15M</p><h1 id="scannerTitle">策略掃描 <span id="candidateCount">(0 / 0)</span></h1></div>
             <div class="list-actions">
               <select id="timeframeFilter" aria-label="策略週期"><option value="4h15m">4H＋15M</option></select><select id="directionFilter" aria-label="策略方向"><option value="all">全部方向</option><option value="LONG">做多候選</option><option value="SHORT">做空候選</option></select>
               <button class="refresh-button" id="refreshBtn" type="button">更新</button>
@@ -61,7 +62,7 @@
           <p id="scanProgress" class="strategy-progress" role="status">等待幣安資料</p>
           <p id="candidateRecordStatus" class="lab-help" role="status"></p>
           <div id="strategyList" class="strategy-list" aria-live="off"></div>
-          <p class="strategy-note">每5分鐘掃描Binance成交額Top20。只篩選4H與15M MACD快慢線均在零軸同側的候選；目前不啟用BOS或建立新模擬部位。</p>
+          <p class="strategy-note">每5分鐘將加密永續與TradFi永續合併按24H成交額取Top20，候選分類顯示。只篩選4H與15M MACD快慢線均在零軸同側的候選；目前不啟用BOS或建立新模擬部位。</p>
           <details class="strategy-rules"><summary>MACD 回調結構策略</summary><p>4H與15M MACD(12,26,9)快慢線同在零軸上方只多，下方只空。15M回調形成較低小前高（做空鏡像），其後出現已確認回調低點；收盤突破小前高才進場，不限制突破K開盤位置。轉折左右各2根收盤確認；不額外要求量能或第二次回抽。</p><p>下一個可成交報價進場，含不利滑價，費後TP1至少2R才成交。停損在回調極值外1tick；TP1為回調前波段極值，後續Fib−0.27／−0.618／−1，20%／30%／30%／20%出場，回撤上一TP全出。總風險5%，本金200USDT。</p></details>
         </div>
       </section>
@@ -118,23 +119,24 @@
       <footer class="desk-footer"><span>CODEX BOT / STRATEGY DESK</span><span>BINANCE USDT 永續 · MACD 4H＋15M · 瀏覽器本機保存</span></footer>
     </main>
   </div>
+  <script src="market-groups.js?v=tradfi-1"></script>
   <script src="strategy-engine.js?v=pullback-4"></script>
   <script src="account-risk.js?v=pullback-4"></script>
   <script src="smc-engine.js?v=pullback-4"></script>
   <script src="ema-engine.js?v=pullback-4"></script>
   <script src="bos-legacy.js?v=pullback-4"></script><script src="bos-engine.js?v=pullback-4"></script><script src="macd-legacy.js?v=pullback-4"></script><script src="macd-body-legacy.js?v=pullback-4"></script><script src="macd-engine.js?v=pullback-4"></script><script src="fib-engine.js?v=pullback-4"></script>
-  <script src="strategy-data.js?v=pullback-4"></script>
-  <script src="price-feed.js?v=pullback-4"></script>
+  <script src="strategy-data.js?v=tradfi-1"></script>
+  <script src="price-feed.js?v=tradfi-1"></script>
   <script src="target-engine.js?v=pullback-4"></script>
   <script src="target-view.js?v=pullback-4"></script>
   <script src="paper-engine.js?v=pullback-4"></script>
   <script src="dashboard-ui.js?v=news-1"></script>
   <script src="paper-recovery.js?v=pullback-4"></script>
   <script src="candidate-records.js?v=pullback-4"></script>
-  <script src="trade-cards.js?v=pullback-4"></script>
+  <script src="trade-cards.js?v=tradfi-1"></script>
   <script src="paper-panel.js?v=pullback-4"></script>
   <script src="news-radar-data.js?v=1"></script><script src="news-radar.js?v=1"></script>
-  <script src="strategy-scanner.js?v=news-1"></script>
+  <script src="strategy-scanner.js?v=tradfi-1"></script>
   <script src="macd-history.js?v=pullback-4"></script>
 </body>
 </html>

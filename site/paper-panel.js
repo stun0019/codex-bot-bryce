@@ -6,10 +6,10 @@
   const feeInput = $("paperFee"), slipInput = $("paperSlippage");
   let model = Engine.createModel(), isLeader = false, acquiring = false, releaseLock = null;
   let storageBlocked = false, storageMessage = "", dirty = true, changed = false, lastSave = 0;
-  let currentGeneration = null, symbolsKey = "", latest = { candidates: [], capital: 200, now: Date.now(), committed: false }, serverOffset = 0;
+  let currentGeneration = null, symbolsKey = "", latest = { candidates: [], capital: 100, now: Date.now(), committed: false }, serverOffset = 0;
   let coordinator = null, recoveryController = null, recoveryProgress = "";
   const recoveryClient = window.PaperRecovery.createClient({ clock: () => now() });
-  const labels = { NOT_ENTERED:"未進場", WAITING_PRICE: "待報價", OPEN: "持倉中", TAKE_PROFIT: "止盈", STOP_LOSS: "止損", SKIPPED: "略過", REVIEW: "待核對" };
+  const labels = { NOT_ENTERED:"未進場", WAITING_PRICE: "待報價", OPEN: "持倉中", TAKE_PROFIT: "止盈", STOP_LOSS: "止損", TIME_EXIT:"時間平倉", SKIPPED: "略過", REVIEW: "待核對" };
   const money = value => Number.isFinite(value) ? value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "—";
   const signed = value => Number.isFinite(value) ? (value > 0 ? "+" : "") + money(value) : "—";
   const price = value => Number.isFinite(value) ? value.toLocaleString("en-US", { maximumSignificantDigits: 10 }) : "—";
@@ -19,11 +19,24 @@
     recoveryController?.abort(); recoveryController = null;
     try { const raw = localStorage.getItem(ledgerKey); model = Engine.createModel(raw ? JSON.parse(raw) : null); if(window.MacdStrategy.MODE==='CANDIDATES_ONLY')for(const t of model.trades)if(t.status==='WAITING_PRICE')model.cancelOrder(t,'已改為主觀進場，不再自動成交',now()); }
     catch (error) { storageBlocked = true; storageMessage = "既有紀錄無法讀取，已暫停新增與覆寫；請先匯出保存。"; model = Engine.createModel(); }
-    if (activateAccount && !storageBlocked) model.enableAccount(200, now());
+    if (activateAccount && !storageBlocked) {model.enableAccount(100, now());model.startStrategySession(100,now());}
     coordinator = window.PaperRecovery.createCoordinator({ model, client: recoveryClient, clock: now,
       onChange(force) { changed = dirty = true; if (force) save(true); },
       onProgress(progress) { recoveryProgress = "核對 " + progress.symbol + " · " + progress.rows + " 筆成交"; dirty = true; } });
     feeInput.value = String(model.settings.feeRate * 100); slipInput.value = String(model.settings.slippage * 100); dirty = true;
+  }
+  let fundingBusy=false,lastFundingAt=0;
+  async function syncFunding(){
+    if(!isLeader||storageBlocked||fundingBusy||document.visibilityState==='hidden'||navigator.onLine===false||Date.now()-lastFundingAt<60000)return;
+    const cohort=model.trades.filter(t=>window.MacdStrategy.isVersion(t.strategyVersion)&&t.openedAt&&(!t.closedAt||!t.fundingCheckedAt||t.fundingCheckedAt<t.closedAt));
+    if(!cohort.length)return;fundingBusy=true;lastFundingAt=Date.now();
+    try{for(const symbol of [...new Set(cohort.map(t=>t.symbol))]){
+      let from=Math.min(...cohort.filter(t=>t.symbol===symbol).map(t=>t.openedAt)),checkedAt=now(),rows=[];
+      while(from<=checkedAt){const response=await fetch('https://fapi.binance.com/fapi/v1/fundingRate?symbol='+encodeURIComponent(symbol)+'&startTime='+from+'&endTime='+Math.floor(checkedAt)+'&limit=1000',{signal:AbortSignal.timeout(10000),cache:'no-store'});if(!response.ok)throw Error('HTTP '+response.status);const page=await response.json();if(!Array.isArray(page))throw Error('回應格式錯誤');rows.push(...page);if(page.length<1000)break;const next=Number(page.at(-1).fundingTime)+1;if(!(next>from))throw Error('資金費率分頁錯誤');from=next;}
+      model.applyFunding(symbol,rows,checkedAt);changed=dirty=true;save(true);
+    }$('paperFundingStatus').textContent='資金費率已同步 · '+time(now());}
+    catch(error){$('paperFundingStatus').textContent='資金費率待核對：'+error.message;}
+    finally{fundingBusy=false;}
   }
   function save(force = false) {
     if (!isLeader || storageBlocked || (!force && (!changed || Date.now() - lastSave < 5000))) return;
@@ -50,10 +63,11 @@
     finally { recoveryProgress = ""; dirty = true; }
   }
   function ingest() {
-    if (!isLeader || storageBlocked || !latest.committed) return;
+    if (!isLeader || storageBlocked || !latest.committed || document.visibilityState==='hidden') return;
     if (model.addCandidates(latest.candidates, latest.capital, now())) { changed = dirty = true; syncSymbols(); save(true); }
   }
   window.PaperTrading = {
+    marketSymbols(){return model.activeSymbols();},
     cardSnapshot(candidate){const t=model.trades.find(t=>t.id===Engine.key(candidate));if(!t)return null;return {...JSON.parse(JSON.stringify(t)),cardPnl:Engine.CLOSED.has(t.status)?t.netPnl:t.status==="OPEN"&&!t.recovery?.pending&&Number.isFinite(t.lastPrice)?model.netAt(t,t.lastPrice).net:null};},
     recordStatus(candidate) { const t=model.trades.find(t=>t.id===Engine.key(candidate)); return t?{status:t.status,entered:!!t.entry,recovering:!!t.recovery?.pending,reason:t.reason,quantity:t.quantity,estimatedStopRisk:t.estimatedStopRisk,remainingQuantity:t.remainingQuantity,exitGuard:t.exitGuard?{...t.exitGuard}:null,netPnl:t.netPnl}:null; },
     invalidatePending(reason) { latest.committed=false; if (!isLeader || storageBlocked) return; let count=0; for (const trade of model.trades) if (trade.status==="WAITING_PRICE") { model.cancelOrder(trade,reason,now()); count++; } if(count) {changed=dirty=true;syncSymbols();save(true);render();} },
@@ -93,9 +107,9 @@
     const records=window.CandidateRecords.create({getItem:key=>localStorage.getItem(key),setItem:(key,value)=>localStorage.setItem(key,value)}).list();
     const currentKeys=new Set(latest.committed?latest.candidates.map(Engine.key):[]),plans=model.previewCandidates(latest.committed?latest.candidates:[],latest.capital,now());
     const display=window.CandidateRecords.paperRows(records,model.trades,{now:now(),currentKeys,plans});
-    const cohort=model.trades.filter(match),displayCohort=display.filter(match);
-    const stats = model.stats(profileId);
-    window.DashboardUI?.updateSummary(model.stats("macd"));
+    const cohort=model.trades.filter(t=>window.MacdStrategy.isVersion(t.strategyVersion)),displayCohort=display.filter(match);
+    const stats = model.stats("current");
+    window.DashboardUI?.updateSummary(model.stats("current"));
     window.TargetView.stats($("paperTargets"), cohort, {targetMode:"SINGLE"});
     window.TargetView.paperSummary($("paperSummary"), {account: summaryAccount(account,cohort),stats,trades:cohort});
     $("paperClosed").textContent = String(stats.closed);
@@ -133,7 +147,7 @@
     }
     for (const trade of visible) {
       const row = node("tr", ""); row.dataset.status = trade.status; row.dataset.exit=trade.exitReason||""; row.dataset.targetMode=trade.targetMode||"R"; row.dataset.key = trade.id;
-      const identity = cell("幣種／訊號", ""); identity.append(node("strong", "", trade.symbol), node("span", "strategy-timeframe", trade.timeframeLabel ? 'MACD＋SMC · ' + trade.timeframeLabel : "MACD＋SMC"), node("small", "", time(trade.confirmedAt)));
+      const identity = cell("幣種／訊號", ""); identity.append(node("strong", "", trade.symbol), node("span", "strategy-timeframe", trade.timeframeLabel ? (trade.strategyName||'舊策略')+' · ' + trade.timeframeLabel : (trade.strategyName||'舊策略')), node("small", "", time(trade.confirmedAt)));
       let pnl = Engine.CLOSED.has(trade.status) ? trade.netPnl : trade.status === "OPEN" && !trade.recovery?.pending ? model.netAt(trade, trade.lastPrice).net : null;
       const pnlCell = cell("淨損益 USDT", signed(pnl), "paper-pnl"); pnlCell.dataset.tone = pnl == null ? "neutral" : pnl >= 0 ? "positive" : "negative";
       if (trade.status === "OPEN" && !trade.recovery?.pending) pnlCell.append(node("small", "", "未實現估算"));
@@ -149,11 +163,11 @@
       }
       stateCell.append(statusLine);
       const reason = cell("", ""), explanation = node("details", "card-explanation");
-      explanation.append(node("summary", "", "詳細資訊"), node("p", "", (trade.recovery?.pending ? trade.recovery.lastError || trade.recovery.reason : trade.reason) + (trade.recovery?.recovered ? " · 已核對至 " + time(trade.recovery.lastVerifiedAt) : "") + " · TP1 基準 " + price(trade.target)+" · 單一2R全部出場"),
+      explanation.append(node("summary", "", "詳細資訊"), node("p", "", (trade.recovery?.pending ? trade.recovery.lastError || trade.recovery.reason : trade.reason) + (trade.recovery?.recovered ? " · 已核對至 " + time(trade.recovery.lastVerifiedAt) : "") + " · TP1 基準 " + price(trade.target)+" · 單一結構目標全部出場"),
         node("small", "", trade.closedAt ? "出場 " + time(trade.closedAt) : trade.openedAt ? "進場 " + time(trade.openedAt) : "發現 " + time(trade.detectedAt)));
       if (trade.exitFills) explanation.append(node("p", "", "已出場：" + (trade.exitFills.map(f => f.label + " " + price(f.quantity) + " @ " + price(f.price)).join("；") || "尚無") + " · 初始部位 " + price(trade.quantity)));
       explanation.open = expanded.has(trade.id); reason.append(explanation);
-      const targetCell = cell("2R 目標", ""); targetCell.append(window.TargetView.detail(trade));
+      const targetCell = cell("結構目標", ""); targetCell.append(window.TargetView.detail(trade));
       if (trade.recovery?.recovered && !trade.recovery.pending && trade.status === "OPEN") stateCell.append(node("small", "", "已核對恢復"));
       if (window.TargetEngine.pending(trade)) stateCell.append(node("small", "", trade.recovery?.pending ? "目標核對中" : "目標繼續追蹤"));
       row.append(identity, cell("方向", trade.direction === "LONG" ? "做多" : "做空"), cell("模擬進場", price(trade.entry)),
@@ -185,6 +199,7 @@
     if (coordinator.accept(quote)) {
       changed = dirty = true;
       if (model.trades.some(t => t.openedAt === quote.timestamp || t.closedAt === quote.timestamp || t.targets?.some(target => target.at === quote.timestamp))) save(true);
+      if(model.trades.some(t=>t.closedAt===quote.timestamp)){lastFundingAt=0;void syncFunding();}
       if (model.recoveryTasks(now()).length) { save(true); void pumpRecovery(); }
     }
   });
@@ -196,7 +211,7 @@
     if (!isLeader || storageBlocked) return;
     if (!window.confirm("清空此瀏覽器全部模擬交易與持倉紀錄，並將共用模擬帳戶重設為初始資金？此操作無法還原。費率設定會保留。")) return;
     const next = Engine.createModel({ version: 1, settings: { ...model.settings }, trades: [], ignoreBefore: now() });
-    const currentAccount = model.accountSnapshot(); next.enableAccount(currentAccount?.initialCapital || 200, now(), currentAccount?.limits || window.AccountRisk.DEFAULTS);
+    const currentAccount = model.accountSnapshot(); next.enableAccount(100, now(), currentAccount?.limits || window.AccountRisk.DEFAULTS);next.startStrategySession(100,now());
     try { localStorage.setItem(ledgerKey, JSON.stringify(next.snapshot())); }
     catch (_) { storageMessage = "清空失敗，原有紀錄仍保留。"; dirty = true; render(); return; }
     window.dispatchEvent(new Event("paper-records-cleared"));
@@ -234,6 +249,10 @@
     recoveryController?.abort();
     if (isLeader && model.suspend("網路中斷，期間觸價順序需核對", now())) { changed = dirty = true; save(true); syncSymbols(); render(); }
   });
+  document.addEventListener('visibilitychange',()=>{
+    if(document.visibilityState==='hidden'&&isLeader){model.suspend('手機進入背景，返回後自動核對既有持倉',now());changed=dirty=true;save(true);}
+    else if(document.visibilityState==='visible'&&isLeader){void pumpRecovery();lastFundingAt=0;void syncFunding();}
+  });
   window.addEventListener("pagehide", () => {
     recoveryController?.abort();
     if (isLeader) { model.suspend("頁面已離開，離線期間需核對", now()); changed = true; save(true); }
@@ -243,7 +262,7 @@
     if (!isLeader) { void acquire(); render(); return; }
     checkConnection();
     if (model.expire(now())) changed = dirty = true;
-    ingest(); syncSymbols(); save(); render(); void pumpRecovery();
+    ingest(); syncSymbols(); save(); render(); void pumpRecovery(); void syncFunding();
   }, 1000);
   render(); void acquire();
 })();

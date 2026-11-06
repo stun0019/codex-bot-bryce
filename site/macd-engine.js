@@ -1,125 +1,45 @@
 (function (root) {
   'use strict';
-  const Engine = root.StrategyEngine || (typeof require === 'function' ? require('./strategy-engine.js') : null);
-  const VERSION = 'sma83-ema200-dual-watch-v1';
-  const PROFILES = Object.freeze({
-    '4h15m': Object.freeze({ id: '4h15m', label: '4H＋15M', high: '4h', low: '15m' }),
-    '1h5m': Object.freeze({ id: '1h5m', label: '1H＋5M', high: '1h', low: '5m' })
-  });
-  const clone = value => JSON.parse(JSON.stringify(value));
-
-  function trend(bars) {
-    if (bars.length < 200) return null;
-    const closes = bars.slice(-499).map(bar => bar.close);
-    if (!closes.every(value => Number.isFinite(value) && value > 0)) throw Error('均線收盤價無效');
-    const sma83 = closes.slice(-83).reduce((sum, value) => sum + value, 0) / 83;
-    let ema200 = closes.slice(0, 200).reduce((sum, value) => sum + value, 0) / 200;
-    for (let i = 200; i < closes.length; i++) ema200 += (closes[i] - ema200) * 2 / 201;
-    // Price position and lower-timeframe indicators do not change the direction.
-    return {
-      sma83, ema200, close: closes.at(-1),
-      direction: sma83 > ema200 ? 'LONG' : sma83 < ema200 ? 'SHORT' : null,
-      at: bars.at(-1).closeTime + 1
-    };
+  const E = root.StrategyEngine || (typeof require === 'function' ? require('./strategy-engine.js') : null);
+  const VERSION = 'structure-pullback-4h15m-v1';
+  const PROFILES = Object.freeze({'4h15m':Object.freeze({id:'4h15m',label:'4H＋15M',high:'4h',low:'15m'})});
+  const SETTINGS = Object.freeze({capital:100,riskFraction:.05,leverage:50,maxHoldMs:43200000,signalLifeMs:60000});
+  const clone=x=>JSON.parse(JSON.stringify(x)),finite=Number.isFinite;
+  const closeEnough=(a,b)=>finite(a)&&finite(b)&&Math.abs(a-b)<=1e-8*Math.max(1,Math.abs(a),Math.abs(b));
+  function ema(bars,n){const out=Array(bars.length).fill(null);if(bars.length<n)return out;out[n-1]=bars.slice(0,n).reduce((s,b)=>s+b.close,0)/n;for(let i=n;i<bars.length;i++)out[i]=out[i-1]+(bars[i].close-out[i-1])*2/(n+1);return out;}
+  function indicators(bars){const rows=[];let gain=0,loss=0,atr=0;for(let i=0;i<bars.length;i++){const b=bars[i],change=i?b.close-bars[i-1].close:0,g=Math.max(change,0),l=Math.max(-change,0),tr=i?Math.max(b.high-b.low,Math.abs(b.high-bars[i-1].close),Math.abs(b.low-bars[i-1].close)):b.high-b.low;
+    if(i>0){if(i<=2){gain+=g;loss+=l;if(i===2){gain/=2;loss/=2;}}else{gain=(gain+g)/2;loss=(loss+l)/2;}}
+    if(i<14){atr+=tr;if(i===13)atr/=14;}else atr=(atr*13+tr)/14;
+    rows.push({gain,loss,rsi:i<2?null:loss===0?gain===0?50:100:100-100/(1+gain/loss),atr:i<13?null:atr});
+  }return rows;}
+  function trend(bars){if(bars.length<53)return null;const a=ema(bars.slice(-499),50),last=bars.at(-1),current=a.at(-1),previous=a.at(-4);return{ema50:current,ema50Previous:previous,close:last.close,direction:last.close>current&&current>previous?'LONG':last.close<current&&current<previous?'SHORT':null,at:last.closeTime+1};}
+  function check(b,p,d){if(!b||![b.openTime,b.closeTime,b.open,b.high,b.low,b.close,b.volume].every(finite)||b.openTime%d||b.closeTime!==b.openTime+d-1||b.low<=0||b.volume<0||b.low>Math.min(b.open,b.close)||b.high<Math.max(b.open,b.close)||(p&&b.openTime!==p.openTime+d))throw Error('K線格式錯誤或不連續');}
+  function swingState(){return{bars:[],highs:[],lows:[]};}
+  function pushSwing(s,b){s.bars.push(clone(b));if(s.bars.length>499)s.bars.shift();s.highs=s.highs.filter(p=>p.openTime>=s.bars[0].openTime&&b.high<p.price);s.lows=s.lows.filter(p=>p.openTime>=s.bars[0].openTime&&b.low>p.price);if(s.bars.length<5)return;const center=s.bars.at(-3),near=[s.bars.at(-5),s.bars.at(-4),s.bars.at(-2),s.bars.at(-1)],point=(side,price)=>({side,price,openTime:center.openTime,confirmedAt:b.closeTime+1,bars:clone(s.bars.slice(-5))});if(near.every(n=>n.high<center.high))s.highs.push(point('HIGH',center.high));if(near.every(n=>n.low>center.low))s.lows.push(point('LOW',center.low));}
+  function planAt(c,entry){const long=c.direction==='LONG',stopLoss=E.quantize(entry+(long?-1:1)*2*c.intradayEntry.atr14,c.tickSize,long?'floor':'ceil'),target=E.quantize(c.intradayEntry.target.price,c.tickSize,long?'floor':'ceil');return{entry,stopLoss,target,targets:[target]};}
+  function deadline(t){const midnight=Math.floor((t.openedAt+8*3600000)/86400000+1)*86400000-8*3600000;return Math.min(t.openedAt+SETTINGS.maxHoldMs,midnight);}
+  function candidate(market,bars,bias,at,capital){const indicator=indicators(bars),current=indicator.at(-1),prior=indicator.at(-2),signal=bars.at(-1),previous=bars.at(-2),direction=bias?.direction,long=direction==='LONG';
+    if(!direction||!prior||prior.rsi===null||!(current.atr>0))return{candidate:null,reason:'等待4H趨勢及15M回調'};
+    const recovery=long?prior.rsi<10&&current.rsi>=10:prior.rsi>90&&current.rsi<=90;
+    if(!recovery||!(long?signal.close>previous.high:signal.close<previous.low))return{candidate:null,reason:'等待15M RSI(2)恢復及收盤突破前根高／低'};
+    const state=swingState();for(const b of bars)pushSwing(state,b);
+    const target=(long?state.highs:state.lows).filter(p=>long?p.price>signal.close:p.price<signal.close).at(-1);
+    if(!target)return{candidate:null,reason:'上方／下方沒有可用的已確認15M結構目標'};
+    const entry=E.quantize(signal.close,market.tickSize,long?'ceil':'floor'),c={symbol:market.symbol,direction,strategyVersion:VERSION,strategyName:'4H趨勢＋15M回調結構',profileId:'4h15m',timeframeLabel:'4H＋15M',setupId:'m15-'+signal.openTime,confirmedAt:at,expiresAt:at+SETTINGS.signalLifeMs,entryType:'MARKET_NEXT',targetMode:'SINGLE',partialExit:false,targetCount:1,riskFraction:.05,capital,tickSize:market.tickSize,market:{...market},intradayEntry:{signal:clone(signal),previous:clone(previous),priorGain:prior.gain,priorLoss:prior.loss,priorAtr:prior.atr,rsiPrevious:prior.rsi,rsi:current.rsi,atr14:current.atr,trend:clone(bias),target:clone(target),unbrokenExtreme:long?Math.max(...bars.filter(b=>b.openTime>target.openTime).map(b=>b.high)):Math.min(...bars.filter(b=>b.openTime>target.openTime).map(b=>b.low))}};
+    Object.assign(c,planAt(c,entry));return{candidate:c,reason:'4H同向、15M回調恢復與價格確認成立'};
   }
-
-  function check(bar, previous, duration) {
-    if (!bar || ![bar.openTime, bar.closeTime, bar.open, bar.high, bar.low, bar.close, bar.volume].every(Number.isFinite) ||
-        bar.openTime % duration || bar.closeTime !== bar.openTime + duration - 1 ||
-        bar.low <= 0 || bar.volume < 0 || bar.low > Math.min(bar.open, bar.close) ||
-        bar.high < Math.max(bar.open, bar.close) || bar.high < bar.low ||
-        (previous && bar.openTime !== previous.openTime + duration)) throw Error('K 線不連續或格式錯誤');
+  function createAnalyzer(id='4h15m'){if(!PROFILES[id])throw Error('只使用4H＋15M');const high=[],low=[],lowState=swingState();let bias=null;
+    return{pushHigh(b){check(b,high.at(-1),14400000);high.push(clone(b));if(high.length>499)high.shift();bias=trend(high);},pushLow(b,market=null,capital=100){check(b,low.at(-1),900000);if(bias?.at>b.closeTime+1)throw Error('大框架資料晚於小框架');low.push(clone(b));if(low.length>499)low.shift();pushSwing(lowState,b);const at=b.closeTime+1,result=market?candidate(market,low,bias,at,capital):{candidate:null,reason:'等待市場規格'},state=lowState;return{candidate:result.candidate,pending:result.candidate,status:result.candidate?'CANDIDATE':'WAIT_PULLBACK',direction:bias?.direction||null,trend:bias,reason:result.reason,lastClose:b.close,confirmedAt:at,recentHigh:state.highs.at(-1)||null,recentLow:state.lows.at(-1)||null};}};
   }
-
-  function pivots(bars) {
-    if (bars.length < 5) return [];
-    const bar = bars.at(-3), neighbors = [bars.at(-5), bars.at(-4), bars.at(-2), bars.at(-1)];
-    const point = (side, price) => ({ side, price, bar: clone(bar), openTime: bar.openTime,
-      confirmedAt: bars.at(-1).closeTime + 1 });
-    const result = [];
-    if (neighbors.every(b => b.high < bar.high)) result.push(point('HIGH', bar.high));
-    if (neighbors.every(b => b.low > bar.low)) result.push(point('LOW', bar.low));
-    return result;
-  }
-
-  function structure(highs, lows, direction) {
-    const high = highs.at(-1), previousHigh = highs.at(-2), low = lows.at(-1), previousLow = lows.at(-2);
-    let state = 'INSUFFICIENT', highChange = null, lowChange = null;
-    if (high && previousHigh && low && previousLow) {
-      highChange = high.price > previousHigh.price ? 'HH' : high.price < previousHigh.price ? 'LH' : 'EQ';
-      lowChange = low.price > previousLow.price ? 'HL' : low.price < previousLow.price ? 'LL' : 'EQ';
-      state = highChange === 'HH' && lowChange === 'HL' ? 'RISING' :
-        highChange === 'LH' && lowChange === 'LL' ? 'FALLING' : 'MIXED';
-    }
-    return {
-      state, highChange, lowChange,
-      previousHigh: previousHigh ? clone(previousHigh) : null,
-      previousLow: previousLow ? clone(previousLow) : null,
-      aligned: state === 'RISING' ? direction === 'LONG' : state === 'FALLING' ? direction === 'SHORT' : null
-    };
-  }
-
-  function createAnalyzer(id = '4h15m') {
-    const profile = PROFILES[id];
-    if (!profile) throw Error('未知週期');
-    const higher = [], lower = [], highs = [], lows = [];
-    let bias = null;
-    function pushHigh(bar) {
-      check(bar, higher.at(-1), Engine.INTERVALS[profile.high]);
-      higher.push(clone(bar));
-      if (higher.length > 499) higher.shift();
-      bias = trend(higher);
-    }
-    function pushLow(bar) {
-      check(bar, lower.at(-1), Engine.INTERVALS[profile.low]);
-      if (bias && bias.at > bar.closeTime + 1) throw Error('大框架資料晚於小框架');
-      lower.push(clone(bar));
-      if (lower.length > 499) lower.shift();
-      for (const point of pivots(lower)) {
-        const points = point.side === 'HIGH' ? highs : lows;
-        points.push(point);
-        if (points.length > 2) points.shift();
-      }
-      for (const points of [highs, lows]) {
-        while (points.length && points[0].openTime < lower[0].openTime) points.shift();
-      }
-      const direction = bias?.direction || null;
-      return {
-        candidate: null, pending: null,
-        status: direction ? 'WATCH' : bias ? 'NO_DIRECTION' : 'INSUFFICIENT',
-        reason: direction ? '大框架均線方向候選，進場由你自行判斷' :
-          bias ? 'SMA83與EMA200相等，觀望' : '大框架不足200根已收盤K線',
-        trend: bias ? clone(bias) : null, direction,
-        recentHigh: highs.length ? clone(highs.at(-1)) : null,
-        recentLow: lows.length ? clone(lows.at(-1)) : null,
-        structure: structure(highs, lows, direction),
-        lastClose: bar.close, confirmedAt: bar.closeTime + 1, entryFilter: { enabled: false }
-      };
-    }
-    return { pushHigh, pushLow };
-  }
-
-  function analyze(market, higher, lower, asOf, capital = 200, id = '4h15m') {
-    const profile = PROFILES[id];
-    if (!profile) throw Error('未知週期');
-    if (!Number.isFinite(asOf)) throw Error('掃描時間無效');
-    for (const [bars, duration] of [[higher, Engine.INTERVALS[profile.high]], [lower, Engine.INTERVALS[profile.low]]]) {
-      if (!Array.isArray(bars) || !bars.length || bars.at(-1).closeTime !== Math.floor(asOf / duration) * duration - 1)
-        throw Error('需要最新已收盤K線');
-    }
-    const analyzer = createAnalyzer(id);
-    let cursor = 0, result = { candidate: null, pending: null, direction: null, status: 'INSUFFICIENT' };
-    for (const bar of lower) {
-      // Only feed higher candles that were already closed at this lower candle.
-      while (cursor < higher.length && higher[cursor].closeTime <= bar.closeTime) analyzer.pushHigh(higher[cursor++]);
-      result = analyzer.pushLow(bar);
-    }
-    return result;
-  }
-
-  const api = { MODE: 'CANDIDATES_ONLY', VERSION, PROFILES, trend, structure, createAnalyzer, analyze,
-    valid: () => false, isVersion: version => version === VERSION };
-  if (typeof module !== 'undefined' && module.exports) module.exports = api;
-  // Keep this integration name so existing stored positions retain their tracking safeguards.
-  root.MacdStrategy = api;
-})(typeof window !== 'undefined' ? window : globalThis);
+  function analyze(market,higher,lower,asOf,capital=100,id='4h15m'){if(!PROFILES[id]||!finite(asOf))throw Error('週期或掃描時間無效');for(const[bars,d]of[[higher,14400000],[lower,900000]])if(!Array.isArray(bars)||!bars.length||bars.at(-1).closeTime!==Math.floor(asOf/d)*d-1)throw Error('需要最新已收盤K線');const a=createAnalyzer(id);let h=0,r={candidate:null,pending:null};for(let i=0;i<lower.length;i++){const b=lower[i];while(h<higher.length&&higher[h].closeTime<=b.closeTime)a.pushHigh(higher[h++]);r=a.pushLow(b,i===lower.length-1?market:null,capital);}if(r.pending&&asOf>=r.pending.expiresAt)return{...r,candidate:null,pending:null,status:'EXPIRED',reason:'訊號超過60秒，不追價或補進場'};return r;}
+  function valid(c){try{const f=c.intradayEntry,long=c.direction==='LONG',at=f.signal.closeTime+1;if(c.strategyVersion!==VERSION||!/^[A-Z0-9]+USDT$/.test(c.symbol)||c.profileId!=='4h15m'||!['LONG','SHORT'].includes(c.direction)||c.entryType!=='MARKET_NEXT'||c.targetMode!=='SINGLE'||c.partialExit!==false||c.targetCount!==1||c.riskFraction!==.05||c.confirmedAt!==at||c.expiresAt!==at+SETTINGS.signalLifeMs||c.market?.symbol!==c.symbol||!(c.tickSize>0)||!(c.market.stepSize>0))return false;
+    check(f.signal,f.previous,900000);check(f.previous,null,900000);const priorRsi=f.priorLoss===0?f.priorGain===0?50:100:100-100/(1+f.priorGain/f.priorLoss),gain=(f.priorGain+Math.max(f.signal.close-f.previous.close,0))/2,loss=(f.priorLoss+Math.max(f.previous.close-f.signal.close,0))/2,rsi=loss===0?gain===0?50:100:100-100/(1+gain/loss),tr=Math.max(f.signal.high-f.signal.low,Math.abs(f.signal.high-f.previous.close),Math.abs(f.signal.low-f.previous.close));
+    if(![f.priorGain,f.priorLoss,f.priorAtr,f.atr14].every(finite)||f.priorGain<0||f.priorLoss<0||!(f.priorAtr>0)||!closeEnough(f.rsiPrevious,priorRsi)||!closeEnough(f.rsi,rsi)||!closeEnough(f.atr14,(f.priorAtr*13+tr)/14))return false;
+    const h=f.trend;if(![h.close,h.ema50,h.ema50Previous,h.at,f.unbrokenExtreme].every(finite))return false;if(h.direction!==c.direction||h.at>at||h.at%14400000||h.at!==Math.floor(at/14400000)*14400000||!(long?h.close>h.ema50&&h.ema50>h.ema50Previous:h.close<h.ema50&&h.ema50<h.ema50Previous)||!(long?priorRsi<10&&rsi>=10&&f.signal.close>f.previous.high:priorRsi>90&&rsi<=90&&f.signal.close<f.previous.low))return false;
+    const p=f.target;if(p.side!==(long?'HIGH':'LOW')||p.bars.length!==5||p.openTime!==p.bars[2].openTime||p.confirmedAt!==p.bars[4].closeTime+1||p.confirmedAt>at)return false;for(let i=0;i<5;i++)check(p.bars[i],p.bars[i-1],900000);if(p.price!==(long?p.bars[2].high:p.bars[2].low)||![0,1,3,4].every(i=>long?p.bars[i].high<p.price:p.bars[i].low>p.price)||!(long?f.unbrokenExtreme<p.price:f.unbrokenExtreme>p.price))return false;
+    const reference=c.referenceEntry??c.entry,expectedReference=E.quantize(f.signal.close,c.tickSize,long?'ceil':'floor'),planned=planAt(c,c.quantity>0?c.entry:reference);return reference===expectedReference&&c.stopLoss===planned.stopLoss&&c.target===planned.target&&(c.plannedTargets||c.targets)?.length===1&&(c.plannedTargets||c.targets)[0]===planned.target&&(long?planned.stopLoss<planned.entry&&planned.target>planned.entry:planned.stopLoss>planned.entry&&planned.target<planned.entry);
+  }catch{return false;}}
+  function validTrade(t){try{if(!valid(t))return false;if(!(t.entry>0))return !t.exitGuard;const near=closeEnough;if(!near(t.entryFee,t.entry*t.quantity*t.feeRate))return false;const funding=t.fundingFills||[];if(!Array.isArray(funding)||new Set(funding.map(f=>f.at)).size!==funding.length||funding.some(f=>![f.at,f.rate,f.mark,f.amount].every(finite)||f.at<=t.openedAt||(t.closedAt&&f.at>t.closedAt)||!(f.mark>0)||!near(f.amount,f.mark*t.quantity*f.rate*(t.direction==='LONG'?1:-1)))||!near(t.fundingPaid||0,funding.reduce((sum,f)=>sum+f.amount,0)))return false;if(t.exitGuard||t.exitLegs?.length!==1||!Array.isArray(t.exitFills)||!finite(t.remainingQuantity)||t.remainingQuantity<0||t.remainingQuantity>t.quantity)return false;const leg=t.exitLegs[0];if(leg.label!=='TP1'||leg.price!==t.target||leg.quantity!==t.quantity||!['PENDING','FILLED','CANCELLED'].includes(leg.status)||t.exitFills.length>1)return false;for(const f of t.exitFills)if(!['STOP','TP1','TIME_12H','DAY_FLAT'].includes(f.label)||f.quantity!==t.quantity||!finite(f.at)||!near(f.fee,f.price*f.quantity*t.feeRate))return false;const gross=t.exitFills.reduce((s,f)=>s+(f.price-t.entry)*f.quantity*(t.direction==='LONG'?1:-1),0),fees=t.exitFills.reduce((s,f)=>s+f.fee,0),out=t.exitFills.reduce((s,f)=>s+f.quantity,0);if(!near(gross,t.realizedGross)||!near(fees,t.realizedExitFees)||!near(out+t.remainingQuantity,t.quantity))return false;const closed=['TAKE_PROFIT','STOP_LOSS','TIME_EXIT'].includes(t.status);if(closed&&(!near(t.netPnl,gross-t.entryFee-fees-(t.fundingPaid||0))||t.remainingQuantity!==0||leg.status==='PENDING'))return false;if(t.status==='OPEN'&&(t.exitFills.length||leg.status!=='PENDING'))return false;return true;}catch{return false;}}
+  const api={MODE:'STRUCTURE_ENTRY',VERSION,PROFILES,SETTINGS,trend,ema,indicators,swingState,pushSwing,createAnalyzer,analyze,planAt,deadline,valid,validTrade,isVersion:v=>v===VERSION};
+  if(typeof module!=='undefined'&&module.exports)module.exports=api;root.MacdStrategy=api;
+})(typeof window!=='undefined'?window:globalThis);

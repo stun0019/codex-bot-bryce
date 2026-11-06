@@ -1,7 +1,7 @@
 (function (root) {
   "use strict";
   const INTERVALS = Object.freeze({ "4h": 14400000, "1h": 3600000, "15m": 900000, "5m": 300000 });
-  const SETTINGS = Object.freeze({ capital: 200, riskFraction: 0.05, rewardRisk: 2, klineLimit: 499 });
+  const SETTINGS = Object.freeze({ capital: 100, riskFraction: 0.05, rewardRisk: 2, klineLimit: 499 });
 
   function closedBars(rows, interval, now) {
     const duration = INTERVALS[interval];
@@ -71,7 +71,7 @@
     const target = Number(candidate.target), distance = Math.abs(entry - stop);
     if (!Number.isFinite(target) || (candidate.direction && !["LONG","SHORT"].includes(candidate.direction)) || !(distance > 0) || (long ? stop >= entry || target <= entry : stop <= entry || target >= entry)) return blocked("進場報價已越過停損或目標");
     const rewardRisk = Math.abs(target - entry) / distance;
-    if (rewardRisk < 2) return blocked("實際模擬進場的價差盈虧比不足 1:2");
+    if (rewardRisk <= 0 || (candidate.strategyVersion !== 'structure-pullback-4h15m-v1' && rewardRisk < 2)) return blocked("實際模擬進場的價差盈虧比不足 1:2");
     const stopFill = quantize(stop * (long ? 1 - slippage : 1 + slippage), tick, long ? "floor" : "ceil");
     if (!(stopFill > 0)) return blocked("估算停損成交價無效");
     const riskPerUnit = Math.abs(entry - stopFill) + (entry + stopFill) * feeRate;

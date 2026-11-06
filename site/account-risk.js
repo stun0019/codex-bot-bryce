@@ -8,9 +8,9 @@
   const remaining=t=>opened(t)&&["OPEN","REVIEW"].includes(t.status)?(finite(t.remainingQuantity)?t.remainingQuantity:t.quantity):0;
   function realized(t){
     if(!opened(t))return 0;
-    if(Array.isArray(t.exitFills))return t.exitFills.reduce((sum,f)=>sum+(f.price-t.entry)*f.quantity*(t.direction==="LONG"?1:-1)-f.fee,0)-t.entryFee;
+    if(Array.isArray(t.exitFills))return t.exitFills.reduce((sum,f)=>sum+(f.price-t.entry)*f.quantity*(t.direction==="LONG"?1:-1)-f.fee,0)-t.entryFee-(t.fundingPaid||0);
     if(["TAKE_PROFIT","STOP_LOSS"].includes(t.status))return t.netPnl;
-    return -t.entryFee;
+    return -t.entryFee-(t.fundingPaid||0);
   }
   function unrealized(t){const q=remaining(t);return q?(t.lastPrice-t.entry)*q*(t.direction==="LONG"?1:-1):0;}
   function validLimits(l){return l&&[l.singleRisk,l.totalRisk,l.directionRisk,l.leverage].every(finite)&&l.singleRisk>0&&l.singleRisk<=.05&&l.totalRisk>0&&l.totalRisk<=.05&&l.directionRisk>0&&l.directionRisk<=.05&&l.leverage>=1&&l.leverage<=50;}
@@ -30,6 +30,7 @@
     const directions={LONG:{risk:0,notional:0},SHORT:{risk:0,notional:0}},uncertain=[];
     for(const t of trades){
       balance+=realized(t)-(account.baselines[t.id]??0);unrealizedPnl+=unrealized(t);
+      if(t.strategyVersion==='structure-pullback-4h15m-v1'&&t.closedAt&&(!t.fundingCheckedAt||t.fundingCheckedAt<t.closedAt))uncertain.push(t.symbol+' 資金費率待核對');
       if(t.id===excludeId)continue;
       let risk=0,nom=0;
       if(t.status==="WAITING_PRICE"&&t.reservedPlan){const p=t.reservedPlan;risk=p.risk;nom=p.notional;orderMargin+=p.initialMargin;feeReserve+=p.feeReserve;pendingCount++;}
@@ -50,7 +51,7 @@
     return {accountId:account.id,initialCapital:account.initialCapital,startedAt:account.startedAt,startingEquity:account.startingEquity,balance,equity,unrealizedPnl,periodPnl:equity-account.startingEquity,
       returnPct:account.startingEquity>0?(equity/account.startingEquity-1)*100:null,riskCapital,positionMargin,orderMargin,feeReserve,rawAvailable,availableMargin:Math.max(0,rawAvailable),
       usedRisk,riskPct:riskCapital>0?usedRisk/riskCapital*100:null,totalLimit,directionLimit,notional,directions,openCount,pendingCount,limits:{...account.limits},breach,
-      uncertain,blockedReason:invalidFinancials?"帳戶數值無效，暫停新增並保留紀錄":uncertain.length?"既有持倉待核對，暫停預留與進場":riskCapital<=0?"帳戶淨值不足":breach?"共用帳戶超限，暫停新增並取消待成交計畫":""};
+      uncertain,blockedReason:invalidFinancials?"帳戶數值無效，暫停新增並保留紀錄":uncertain.length?uncertain.join("、")+"，暫停預留與進場":riskCapital<=0?"帳戶淨值不足":breach?"共用帳戶超限，暫停新增並取消待成交計畫":""};
   }
   function plan(candidate,settings,state){
     if(state.blockedReason)return {ok:false,reason:state.blockedReason};

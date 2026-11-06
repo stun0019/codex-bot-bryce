@@ -7,8 +7,9 @@
   const single=trade=>Single.isSingle(trade);
   const manualOnly=()=> (root.MacdStrategy||(typeof require==='function'?require('./macd-engine.js'):null))?.MODE==='CANDIDATES_ONLY';
   const smc=single;
+  const strategy=()=>root.MacdStrategy||(typeof require==='function'?require('./macd-engine.js'):null),current=t=>strategy().isVersion(t?.strategyVersion);
   const DEFAULTS = Object.freeze({ enabled: true, feeRate: 0.0005, slippage: 0.0002 });
-  const ACTIVE = new Set(["WAITING_PRICE", "OPEN"]), CLOSED = new Set(["TAKE_PROFIT", "STOP_LOSS"]);
+  const ACTIVE = new Set(["WAITING_PRICE", "OPEN"]), CLOSED = new Set(["TAKE_PROFIT", "STOP_LOSS", "TIME_EXIT"]);
   const STATUSES = new Set([...ACTIVE, ...CLOSED, "SKIPPED", "REVIEW"]);
   const MAX_GAP_MS = 30000;
   function settings(value = {}) {
@@ -40,10 +41,27 @@
     }
     let account = saved?.account ? Account.validate(saved.account, trades) : null;
     for (const trade of trades) if (trade.accountId && (!account || trade.accountId !== account.id || !validReservedPlan(trade))) throw new Error("共用帳戶預留計畫無效");
-    function enableAccount(capital = 200, at = Date.now(), limits = Account.DEFAULTS) {
+    function enableAccount(capital = 100, at = Date.now(), limits = Account.DEFAULTS) {
       if (account) return false;
       for (const trade of trades) if (trade.status === "WAITING_PRICE") skip(trade, "升級共用帳戶，舊待成交計畫不回填；等待新掃描預留", at);
       account = Account.create(trades, capital, at, limits); return true;
+    }
+    function startStrategySession(capital=100,at=Date.now()){
+      if(account?.strategyVersion===strategy().VERSION)return false;
+      for(const t of trades)if(t.status==='WAITING_PRICE')skip(t,'策略更換，取消舊待成交計畫',at);
+      const previous=account;account=Account.create(trades,capital,at,previous?.limits||Account.DEFAULTS);
+      if(previous)account.id=previous.id;account.strategyVersion=strategy().VERSION;return true;
+    }
+    function applyFunding(symbol,rows,checkedAt){
+      if(!Array.isArray(rows)||!finite(checkedAt))throw Error('資金費率資料無效');let changed=false;
+      for(const t of trades)if(current(t)&&t.symbol===symbol&&t.entry>0){
+        t.fundingFills=t.fundingFills||[];const seen=new Set(t.fundingFills.map(f=>f.at));
+        for(const f of rows){const at=Number(f.fundingTime),rate=Number(f.fundingRate),mark=Number(f.markPrice);if(!finite(at)||!finite(rate)||!(mark>0))throw Error('資金費率欄位無效');if(at<=t.openedAt||at>checkedAt||(t.closedAt&&at>t.closedAt)||seen.has(at))continue;
+          t.fundingFills.push({at,rate,mark,amount:mark*t.quantity*rate*(t.direction==='LONG'?1:-1)});seen.add(at);changed=true;
+        }
+        t.fundingPaid=t.fundingFills.reduce((sum,f)=>sum+f.amount,0);t.fundingCheckedAt=checkedAt;changed=true;
+        if(CLOSED.has(t.status))t.netPnl=t.realizedGross-t.entryFee-t.realizedExitFees-t.fundingPaid;
+      }return changed;
     }
     function accountState(at = Date.now(), excludeId = null) { return account ? Account.metrics(trades, account, at, excludeId) : null; }
     const priority = (a, b) => (Number(b.market?.quoteVolume24h) || 0) - (Number(a.market?.quoteVolume24h) || 0) || (a.profileId === b.profileId ? 0 : a.profileId === "4h15m" ? -1 : 1) || a.symbol.localeCompare(b.symbol) || a.confirmedAt - b.confirmedAt;
@@ -59,6 +77,7 @@
       const result = new Map(), extra = [];
       if(manualOnly())return new Map(candidates.map(c=>[key(c),{ok:false,reason:"目前只列候選，進場由你自行判斷"}]));
       for (const candidate of [...candidates].sort(priority)) {
+        if(strategy().MODE==='STRUCTURE_ENTRY'&&!current(candidate)){result.set(key(candidate),{ok:false,reason:'舊策略不再新增'});continue;}
         const id = key(candidate), recorded = trades.find(t => t.id === id); let plan;
         if (recorded) {
           plan = recorded.status === "WAITING_PRICE" && recorded.reservedPlan ? { ...recorded.reservedPlan, status: "RESERVED", reason: "已預留；成交前重新核驗" } :
@@ -97,7 +116,7 @@
       let added = 0;
       if (account) enforceAccount(now);
       for (const candidate of (account ? [...candidates].sort(priority) : candidates)) {
-        if (!candidate || !Single.valid(candidate) || !/^[A-Z0-9]+USDT$/.test(candidate.symbol) || !["LONG", "SHORT"].includes(candidate.direction) ||
+        if (!candidate || !Single.valid(candidate) || (strategy().MODE==="STRUCTURE_ENTRY"&&!current(candidate)) || !/^[A-Z0-9]+USDT$/.test(candidate.symbol) || !["LONG", "SHORT"].includes(candidate.direction) ||
             !finite(candidate.confirmedAt) || candidate.confirmedAt <= ignoreBefore || !finite(candidate.expiresAt) || candidate.confirmedAt > now || candidate.expiresAt <= now ||
             !(candidate.stopLoss > 0) || !(candidate.target > 0) || !(candidate.tickSize > 0) ||
             !(candidate.market?.stepSize > 0) || seen.has(key(candidate))) continue;
@@ -106,11 +125,11 @@
         const trade = { id: key(candidate), symbol: candidate.symbol, direction: candidate.direction,
           confirmedAt: candidate.confirmedAt, detectedAt: now, expiresAt: candidate.expiresAt,
           referenceEntry: candidate.entry, stopLoss: candidate.stopLoss, target: candidate.target,
-          strategyVersion:candidate.strategyVersion,profileId:candidate.profileId,timeframeLabel:candidate.timeframeLabel,setupId:candidate.setupId,entryType:'MARKET_NEXT',strategyName:candidate.strategyName,targetMode:'SINGLE',smcEntry:JSON.parse(JSON.stringify(candidate.smcEntry)),partialExit:false,targetCount:1,riskFraction:.05,plannedTargets:[...candidate.targets],entryFilter:{enabled:false},
+          strategyVersion:candidate.strategyVersion,profileId:candidate.profileId,timeframeLabel:candidate.timeframeLabel,setupId:candidate.setupId,entryType:'MARKET_NEXT',strategyName:candidate.strategyName,targetMode:'SINGLE',...(candidate.intradayEntry?{intradayEntry:JSON.parse(JSON.stringify(candidate.intradayEntry))}:{smcEntry:JSON.parse(JSON.stringify(candidate.smcEntry))}),partialExit:false,targetCount:1,riskFraction:.05,plannedTargets:[...candidate.targets],entryFilter:{enabled:false},
           ...(reservedPlan ? { accountId: account.id, reservedPlan: { ...reservedPlan } } : {}),
           tickSize: candidate.tickSize, capital: reservedPlan ? reservedPlan.capital : capital, budget: reservedPlan ? reservedPlan.budget : capital * (candidate.strategyVersion ? .05 : 0.03),
           market: { ...candidate.market }, feeRate: config.feeRate, slippage: config.slippage,
-          status: "WAITING_PRICE", reason: "15M SMC回踩確認，等待下一筆新成交報價" };
+          status: "WAITING_PRICE", reason: current(candidate)?"15M回調確認，等待下一筆即時成交報價":"15M SMC回踩確認，等待下一筆新成交報價" };
         trades.push(trade); seen.add(trade.id); added++;
       }
       return added;
@@ -122,7 +141,7 @@
       }
       const proposed=Single.planAt(trade,entry);
       const distance = Math.abs(entry - trade.stopLoss), rr = Math.abs(proposed.target - entry) / distance;
-      if (rr < 2) { skip(trade, "實際模擬進場的價差盈虧比不足 1:2", at); return; }
+      if (rr <= 0 || (!current(trade) && rr < 2)) { skip(trade, "實際模擬進場的價差盈虧比不足 1:2", at); return; }
       const candidate = { ...trade, ...proposed, targets: proposed.targets };
       const plan = Engine.position(candidate, trade.market, trade.capital, { entry, budget: trade.budget, riskFraction: smc(trade) ? .05 : .03, feeRate: trade.feeRate, slippage: trade.slippage,
         partialExit: smc(trade)&&!single(trade), leverage: trade.reservedPlan?.leverage || 50, ...(trade.reservedPlan ? { quantity: trade.reservedPlan.quantity } : {}) });
@@ -131,7 +150,7 @@
         const reason = Account.canOpen(plan, frozenState||accountState(at, trade.id), trade.direction, price);
         if (reason) { skip(trade, reason, at); return; }
       }
-      const quantity = plan.quantity;trade.target=proposed.target;trade.plannedTargets=proposed.targets;trade.executionPlan = { ...plan };
+      const quantity = plan.quantity;trade.stopLoss=proposed.stopLoss;trade.target=proposed.target;trade.plannedTargets=proposed.targets;trade.executionPlan = { ...plan };
       if (smc(trade)) {
         trade.remainingQuantity = quantity; trade.realizedGross = 0; trade.realizedExitFees = 0; trade.exitFills = [];
         trade.exitLegs = plan.exitQuantities.map((quantity, i) => ({ label: "TP" + (i + 1), price: trade.plannedTargets[i], quantity, status: "PENDING" }));
@@ -147,14 +166,23 @@
         const gross = trade.realizedGross + (exit - trade.entry) * remaining * (trade.direction === "LONG" ? 1 : -1);
         const exitFee = trade.realizedExitFees + exit * remaining * trade.feeRate;
         const average = remaining === 0 && trade.exitFills.length ? trade.exitFills.reduce((sum, f) => sum + f.price * f.quantity, 0) / trade.quantity : exit;
-        return { exit: average, gross, exitFee, net: gross - trade.entryFee - exitFee };
+        return { exit: average, gross, exitFee, net: gross - trade.entryFee - exitFee - (trade.fundingPaid||0) };
       }
       const exit = fill(trade, price, false), gross = (exit - trade.entry) * trade.quantity * (trade.direction === "LONG" ? 1 : -1);
       return { exit, gross, exitFee: exit * trade.quantity * trade.feeRate,
         net: gross - trade.entryFee - exit * trade.quantity * trade.feeRate };
     }
     function validSmc(trade){return Single.validTrade(trade);}
-    function executeSingle(t,price,at,source){if(t.status!=="OPEN")return false;const long=t.direction==="LONG",stop=long?price<=t.stopLoss:price>=t.stopLoss,hit=long?price>=t.target:price<=t.target;t.lastPrice=price;t.lastQuoteAt=at;if(!stop&&!hit)return false;const result=netAt(t,price),label=stop?"STOP":"TP1";t.exitFills=[{label,quantity:t.quantity,price:result.exit,fee:result.exitFee,at,source}];t.remainingQuantity=0;t.realizedGross=result.gross;t.realizedExitFees=result.exitFee;t.exitLegs[0].status=stop?"CANCELLED":"FILLED";if(!stop)t.exitLegs[0].at=at;Object.assign(t,{status:stop?"STOP_LOSS":"TAKE_PROFIT",closedAt:at,exit:result.exit,observedExit:price,grossPnl:result.gross,exitFee:result.exitFee,netPnl:result.net,exitReason:label,exitSource:source,reason:stop?"觸及OB停損，全部出場":"觸及2R目標，全部出場"});return true;}
+    function executeSingle(t,price,at,source){
+      if(t.status!=="OPEN")return false;
+      const long=t.direction==="LONG",stop=long?price<=t.stopLoss:price>=t.stopLoss,hit=long?price>=t.target:price<=t.target;
+      const due=current(t)&&at>=strategy().deadline(t),timeLabel=due?(strategy().deadline(t)===t.openedAt+43200000?'TIME_12H':'DAY_FLAT'):null;
+      t.lastPrice=price;t.lastQuoteAt=at;if(!due&&!stop&&!hit)return false;
+      const observed=!due&&!stop&&hit?t.target:price,result=netAt(t,observed),label=due?timeLabel:stop?'STOP':'TP1';
+      t.exitFills=[{label,quantity:t.quantity,price:result.exit,fee:result.exitFee,at,source}];t.remainingQuantity=0;t.realizedGross=result.gross;t.realizedExitFees=result.exitFee;t.exitLegs[0].status=label==='TP1'?'FILLED':'CANCELLED';if(label==='TP1')t.exitLegs[0].at=at;
+      if(due)for(const target of t.targets||[])if(target.status==='PENDING')Object.assign(target,{status:'EXITED',at,reason:timeLabel});
+      Object.assign(t,{status:due?'TIME_EXIT':stop?'STOP_LOSS':'TAKE_PROFIT',closedAt:at,exit:result.exit,observedExit:price,grossPnl:result.gross,exitFee:result.exitFee,netPnl:result.net,exitReason:label,exitSource:source,reason:due?(timeLabel==='DAY_FLAT'?'台北午夜日內平倉':'最長持有12小時平倉'):stop?'觸及停損，全部出場':current(t)?'觸及15M結構目標，全部出場':'觸及2R目標，全部出場'});return true;
+    }
     function executeSmc(trade,price,at,source="live"){return executeSingle(trade,price,at,source);}
     function tryLimitFill(trade, price, at, frozenState=null) {
       if(manualOnly()){if(trade.status==="WAITING_PRICE")skip(trade,"已改為主觀進場，不再自動成交",at);return false;}
@@ -210,6 +238,7 @@
       return changed;
     }
     function observe(trade, price, at, source) {
+      if(current(trade)&&trade.status==="OPEN"&&at>=strategy().deadline(trade)){executeSingle(trade,price,at,source);return;}
       if (Targets.pending(trade)) { const pending = trade.targets.filter(t => t.status === "PENDING"); Targets.quote(trade, price, at); for (const target of pending) if (target.status !== "PENDING") target.source = source; trade.targetsLastQuoteAt = at; }
       if (trade.status !== "OPEN") return;
       if (smc(trade)) { executeSmc(trade, price, at, source); return; }
@@ -322,7 +351,7 @@
       return changed;
     }
     function stats(profileId = "all") {
-      const cohort=trades.filter(t=>single(t));
+      const cohort=trades.filter(t=>single(t)&&(profileId!=="current"||current(t)));
       const closed = cohort.filter(trade => CLOSED.has(trade.status)).sort((a,b) => a.closedAt - b.closedAt || a.id.localeCompare(b.id));
       const wins = closed.filter(trade => trade.netPnl > 0).length;
       let pnl = 0, peak = 0, maxDrawdown = 0, streak = 0, maxLossStreak = 0;
@@ -339,7 +368,7 @@
         skipped: cohort.filter(t => t.status === "SKIPPED").length, review: cohort.filter(t => t.status === "REVIEW").length,
         long: byDirection("LONG"), short: byDirection("SHORT") };
     }
-    return { trades, settings: config, enableAccount, accountState, previewCandidates, enforceAccount, accountSnapshot: () => account ? JSON.parse(JSON.stringify(account)) : null, addCandidates, tick, interrupt, expire, stats, netAt, executeSmc, tryLimitFill, cancelOrder, reconcileCandidates, suspend, recoveryTasks, recoveryError, retryRecovery, applyRecovery,
+    return { trades, settings: config, enableAccount, startStrategySession, applyFunding, accountState, previewCandidates, enforceAccount, accountSnapshot: () => account ? JSON.parse(JSON.stringify(account)) : null, addCandidates, tick, interrupt, expire, stats, netAt, executeSmc, tryLimitFill, cancelOrder, reconcileCandidates, suspend, recoveryTasks, recoveryError, retryRecovery, applyRecovery,
       activeSymbols: () => [...new Set(trades.filter(t => ACTIVE.has(t.status) || Targets.pending(t)).map(t => t.symbol))],
       snapshot: () => ({ version: 1, settings: { ...config }, trades, ...(ignoreBefore > 0 ? { ignoreBefore } : {}), ...(account ? { account: JSON.parse(JSON.stringify(account)) } : {}) }) };
   }

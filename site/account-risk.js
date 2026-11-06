@@ -30,7 +30,7 @@
     const directions={LONG:{risk:0,notional:0},SHORT:{risk:0,notional:0}},uncertain=[];
     for(const t of trades){
       balance+=realized(t)-(account.baselines[t.id]??0);unrealizedPnl+=unrealized(t);
-      if(t.strategyVersion==='structure-pullback-4h15m-v1'&&t.closedAt&&(!t.fundingCheckedAt||t.fundingCheckedAt<t.closedAt))uncertain.push(t.symbol+' 資金費率待核對');
+      if(Single.isIntraday(t)&&t.closedAt&&(!t.fundingCheckedAt||t.fundingCheckedAt<t.closedAt))uncertain.push(t.symbol+' 資金費率待核對');
       if(t.id===excludeId)continue;
       let risk=0,nom=0;
       if(t.status==="WAITING_PRICE"&&t.reservedPlan){const p=t.reservedPlan;risk=p.risk;nom=p.notional;orderMargin+=p.initialMargin;feeReserve+=p.feeReserve;pendingCount++;}

@@ -1,52 +1,13 @@
 (function(root){
-  "use strict";
-  const E=root.StrategyEngine||(typeof require==="function"?require("./strategy-engine.js"):null);
-  const Single=root.SmcEntry||(typeof require==='function'?require('./smc-entry.js'):null);
-  function createSingle(t){const entry=t.entry??t.referenceEntry,p=Single.planAt(t,entry).target;return[{label:'TP1',rr:Math.abs(p-entry)/Math.abs(entry-t.stopLoss),price:p,mode:'SINGLE',status:'PENDING'}];}
-  const STATES=new Set(["PENDING","HIT","STOPPED","REVIEW","UNAVAILABLE","EXITED"]);
-  const stopPrice=trade=>trade.stopLoss;
-  function hitStop(trade,price){
-    const long=trade.direction==="LONG";
-    return long?price<=trade.stopLoss:price>=trade.stopLoss;
-  }
-  const pending=trade=>Array.isArray(trade.targets)&&trade.targets.some(t=>t.status==="PENDING");
-  function valid(trade){
-    if(trade.targets===undefined)return !trade.entry;
-    if(!Array.isArray(trade.targets)||!Single.isSingle(trade)||trade.targets.length!==1||!(trade.entry>0)||!Number.isFinite(trade.targetsLastQuoteAt))return false;
-    let expected;try{expected=createSingle(trade);}catch{return false;}
-    return trade.targets.every((t,i)=>t&&t.label===expected[i].label&&t.rr===expected[i].rr&&t.price===expected[i].price&&t.mode==="SINGLE"&&
-      STATES.has(t.status)&&(t.price===null?t.status==="UNAVAILABLE":t.status!=="UNAVAILABLE")&&
-      (!["HIT","STOPPED","REVIEW","EXITED"].includes(t.status)||Number.isFinite(t.at)));
-  }
-  function interrupt(trade,reason,at){
-    if(!pending(trade))return false;
-    for(const target of trade.targets)if(target.status==="PENDING")Object.assign(target,{status:"REVIEW",reason,at});return true;
-  }
-  function quote(trade,price,at){
-    const long=trade.direction==="LONG",stopped=hitStop(trade,price);
-    for(const target of trade.targets||[])if(target.status==="PENDING"&&(stopped||(long?price>=target.price:price<=target.price)))
-      Object.assign(target,{status:stopped?"STOPPED":"HIT",at,observedPrice:price});
-  }
-  function bar(trade,candle,policy){
-    const long=trade.direction==="LONG",gapStop=long?candle.open<=stopPrice(trade):candle.open>=stopPrice(trade);
-    const stop=long?candle.low<=stopPrice(trade):candle.high>=stopPrice(trade);
-    for(const target of trade.targets||[])if(target.status==="PENDING"){
-      const gapHit=long?candle.open>=target.price:candle.open<=target.price,hit=long?candle.high>=target.price:candle.low<=target.price;
-      if(!hit&&!stop)continue;
-      const ambiguous=!gapStop&&!gapHit&&hit&&stop;
-      Object.assign(target,{status:gapStop?"STOPPED":gapHit?"HIT":ambiguous&&policy==="review"?"REVIEW":stop?"STOPPED":"HIT",
-        at:gapStop||gapHit?candle.openTime:candle.closeTime+1,barTime:candle.openTime,ambiguous});
-    }
-  }
-  function stats(trades,options={}){
-    const entered=trades.filter(t=>t.entry>0&&t.quantity>0),eligible=entered.filter(t=>Array.isArray(t.targets));
-    return {eligible:eligible.length,legacy:entered.length-eligible.length,levels:[2].map((rr,i)=>{
-      const rows=eligible.filter(t=>t.targets[i]).map(t=>({...t.targets[i],recovering:!!t.recovery?.pending})),hits=rows.filter(t=>t.status==="HIT").length,stopped=rows.filter(t=>t.status==="STOPPED").length,exited=rows.filter(t=>t.status==="EXITED").length;
-      return {label:"TP"+(i+1),rr:null,mode:"SINGLE",eligible:rows.length,untracked:entered.length-rows.length,hits,stopped,exited,resolved:hits+stopped+exited,rate:hits+stopped+exited?100*hits/(hits+stopped+exited):null,
-        recovering:rows.filter(t=>t.status==="PENDING"&&t.recovering).length,pending:rows.filter(t=>t.status==="PENDING"&&!t.recovering).length,review:rows.filter(t=>t.status==="REVIEW").length,
-        unavailable:rows.filter(t=>t.status==="UNAVAILABLE").length};
-    })};
-  }
-  const api={createSingle,stopPrice,hitStop,pending,valid,interrupt,quote,bar,stats};
-  if(typeof module!=="undefined"&&module.exports)module.exports=api;root.TargetEngine=api;
-})(typeof self!=="undefined"?self:globalThis);
+ 'use strict';
+ const Single=root.SmcEntry||(typeof require==='function'?require('./smc-entry.js'):null);
+ const STATES=new Set(['PENDING','HIT','STOPPED','REVIEW','UNAVAILABLE','EXITED']);
+ function createSingle(t){const entry=t.entry??t.referenceEntry,prices=Single.planAt(t,entry).targets;return prices.map((price,i)=>({label:'TP'+(i+1),rr:Math.abs(price-entry)/Math.abs(entry-t.stopLoss),price,mode:Single.isFib(t)?'FIB':'SINGLE',status:'PENDING'}));}
+ const stopPrice=t=>t.stopLoss,hitStop=(t,price)=>t.direction==='LONG'?price<=t.stopLoss:price>=t.stopLoss,pending=t=>Array.isArray(t.targets)&&t.targets.some(p=>p.status==='PENDING');
+ function valid(t){if(t.targets===undefined)return !t.entry;if(!Array.isArray(t.targets)||!Single.isSingle(t)||!(t.entry>0)||!Number.isFinite(t.targetsLastQuoteAt))return false;let expected;try{expected=createSingle(t);}catch{return false;}return t.targets.length===expected.length&&t.targets.every((p,i)=>p&&p.label===expected[i].label&&p.rr===expected[i].rr&&p.price===expected[i].price&&p.mode===expected[i].mode&&STATES.has(p.status)&&(!['HIT','STOPPED','REVIEW','EXITED'].includes(p.status)||Number.isFinite(p.at)));}
+ function interrupt(t,reason,at){if(!pending(t))return false;for(const p of t.targets)if(p.status==='PENDING')Object.assign(p,{status:'REVIEW',reason,at});return true;}
+ function quote(t,price,at){const stopped=hitStop(t,price),long=t.direction==='LONG';for(const p of t.targets||[])if(p.status==='PENDING'&&(stopped||(long?price>=p.price:price<=p.price)))Object.assign(p,{status:stopped?'STOPPED':'HIT',at,observedPrice:price});}
+ function bar(t,b,policy){const long=t.direction==='LONG',gapStop=long?b.open<=t.stopLoss:b.open>=t.stopLoss,stop=long?b.low<=t.stopLoss:b.high>=t.stopLoss;for(const p of t.targets||[])if(p.status==='PENDING'){const gapHit=long?b.open>=p.price:b.open<=p.price,hit=long?b.high>=p.price:b.low<=p.price;if(!hit&&!stop)continue;const ambiguous=!gapStop&&!gapHit&&hit&&stop;Object.assign(p,{status:gapStop?'STOPPED':gapHit?'HIT':ambiguous&&policy==='review'?'REVIEW':stop?'STOPPED':'HIT',at:gapStop||gapHit?b.openTime:b.closeTime+1,barTime:b.openTime,ambiguous});}}
+ function stats(trades){const entered=trades.filter(t=>t.entry>0&&t.quantity>0),eligible=entered.filter(t=>Array.isArray(t.targets)),count=eligible.length?Math.max(...eligible.map(t=>t.targets.length)):(root.MacdStrategy?.MODE==='LIMIT_ENTRY'?4:1);return{eligible:eligible.length,legacy:entered.length-eligible.length,levels:Array.from({length:count},(_,i)=>{const rows=eligible.filter(t=>t.targets[i]).map(t=>({...t.targets[i],recovering:!!t.recovery?.pending})),hits=rows.filter(t=>t.status==='HIT').length,stopped=rows.filter(t=>t.status==='STOPPED').length,exited=rows.filter(t=>t.status==='EXITED').length,resolved=hits+stopped+exited;return{label:'TP'+(i+1),rr:null,mode:count===4?'FIB':'SINGLE',eligible:rows.length,untracked:entered.length-rows.length,hits,stopped,exited,resolved,rate:resolved?100*hits/resolved:null,recovering:rows.filter(t=>t.status==='PENDING'&&t.recovering).length,pending:rows.filter(t=>t.status==='PENDING'&&!t.recovering).length,review:rows.filter(t=>t.status==='REVIEW').length,unavailable:0};})};}
+ const api={createSingle,stopPrice,hitStop,pending,valid,interrupt,quote,bar,stats};if(typeof module!=='undefined'&&module.exports)module.exports=api;root.TargetEngine=api;
+})(typeof self!=='undefined'?self:globalThis);

@@ -28,7 +28,7 @@
   let fundingBusy=false,lastFundingAt=0;
   async function syncFunding(){
     if(!isLeader||storageBlocked||fundingBusy||document.visibilityState==='hidden'||navigator.onLine===false||Date.now()-lastFundingAt<60000)return;
-    const cohort=model.trades.filter(t=>window.MacdStrategy.isVersion(t.strategyVersion)&&t.openedAt&&(!t.closedAt||!t.fundingCheckedAt||t.fundingCheckedAt<t.closedAt));
+    const cohort=model.trades.filter(t=>window.SmcEntry.isIntraday(t)&&t.openedAt&&(!t.closedAt||!t.fundingCheckedAt||t.fundingCheckedAt<t.closedAt));
     if(!cohort.length)return;fundingBusy=true;lastFundingAt=Date.now();
     try{for(const symbol of [...new Set(cohort.map(t=>t.symbol))]){
       let from=Math.min(...cohort.filter(t=>t.symbol===symbol).map(t=>t.openedAt)),checkedAt=now(),rows=[];
@@ -67,6 +67,7 @@
     if (model.addCandidates(latest.candidates, latest.capital, now())) { changed = dirty = true; syncSymbols(); save(true); }
   }
   window.PaperTrading = {
+    updateMarketContext(observations){let updated=false;for(const t of model.trades){const o=observations.find(o=>o.symbol===t.symbol&&o.status!=='ERROR');if(o){t.macdDivergence=o.divergence?JSON.parse(JSON.stringify(o.divergence)):null;t.latestMacd=o.emaTrend;updated=true;}}if(updated){dirty=changed=true;save(true);render();}},
     marketSymbols(){return model.activeSymbols();},
     cardSnapshot(candidate){const t=model.trades.find(t=>t.id===Engine.key(candidate));if(!t)return null;return {...JSON.parse(JSON.stringify(t)),cardPnl:Engine.CLOSED.has(t.status)?t.netPnl:t.status==="OPEN"&&!t.recovery?.pending&&Number.isFinite(t.lastPrice)?model.netAt(t,t.lastPrice).net:null};},
     recordStatus(candidate) { const t=model.trades.find(t=>t.id===Engine.key(candidate)); return t?{status:t.status,entered:!!t.entry,recovering:!!t.recovery?.pending,reason:t.reason,quantity:t.quantity,estimatedStopRisk:t.estimatedStopRisk,remainingQuantity:t.remainingQuantity,exitGuard:t.exitGuard?{...t.exitGuard}:null,netPnl:t.netPnl}:null; },

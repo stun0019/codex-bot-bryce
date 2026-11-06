@@ -94,7 +94,7 @@
       if (!Number.isFinite(asOf) || asOf <= 0) throw new Error("幣安時間無效");
       const localAt = clock(), universe = await topMarkets(signal), candidates = [], profiles = Object.values(Signal.PROFILES);
       const tasks = universe.flatMap(market => profiles.map(profile => ({ market, profile })));
-      const state = { strategyVersion: Signal.VERSION, filters: {higherDirection:"EMA50_PRICE_AND_SLOPE",entryPolicy:"RSI2_RECOVERY_PRICE_CONFIRM",profiles:profiles.map(p=>p.id)}, total: tasks.length, completed: 0, trending: 0, errors: 0, candidates, asOf,
+      const state = { strategyVersion: Signal.VERSION, filters: {higherDirection:"MACD12_26_9_ZERO_SIDE",entryPolicy:"BOS_OB_FIB_LIMIT",profiles:profiles.map(p=>p.id)}, total: tasks.length, completed: 0, trending: 0, errors: 0, candidates, asOf,
         serverOffset: asOf - localAt, symbols: universe.map(m => m.symbol), rankedMarkets: universe.map(m => ({ ...m })), observations: [], failures: [] };
       onProgress({ ...state }); let cursor = 0, fatal = null;
       await Promise.all(Array.from({ length: Math.min(concurrency, tasks.length) }, async () => {
@@ -106,7 +106,7 @@
             const higher = await candles(market.symbol, profile.high, asOf, signal);
             const lower = await candles(market.symbol, profile.low, asOf, signal);
             const result = Signal.analyze(market, higher, lower, asOf, capital, profile.id, {rsiFilter});
-            Object.assign(observation, { emaTrend: result.trend, entryFilter: result.entryFilter, status: result.status, reason: result.reason, direction: result.direction || null, recentHigh:result.recentHigh, recentLow:result.recentLow, structure:result.structure, lastClose:result.lastClose, confirmedAt:result.confirmedAt });
+            Object.assign(observation, { emaTrend: result.trend, divergence:result.divergence,setup:result.setup,entryFilter: result.entryFilter, status: result.status, reason: result.reason, direction: result.direction || null, recentHigh:result.recentHigh, recentLow:result.recentLow, structure:result.structure, lastClose:result.lastClose, confirmedAt:result.confirmedAt });
             if (result.direction) state.trending++;
             if (result.pending) { candidates.push(result.pending); observation.status = "CANDIDATE"; }
           } catch (error) {

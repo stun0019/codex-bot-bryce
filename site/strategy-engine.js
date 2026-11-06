@@ -71,13 +71,13 @@
     const target = Number(candidate.target), distance = Math.abs(entry - stop);
     if (!Number.isFinite(target) || (candidate.direction && !["LONG","SHORT"].includes(candidate.direction)) || !(distance > 0) || (long ? stop >= entry || target <= entry : stop <= entry || target >= entry)) return blocked("進場報價已越過停損或目標");
     const rewardRisk = Math.abs(target - entry) / distance;
-    if (rewardRisk <= 0 || (candidate.strategyVersion !== 'structure-pullback-4h15m-v1' && rewardRisk < 2)) return blocked("實際模擬進場的價差盈虧比不足 1:2");
+    if (rewardRisk <= 0 || (!['structure-pullback-4h15m-v1','macd-ob-fib-0715-v1'].includes(candidate.strategyVersion) && rewardRisk < 2)) return blocked("實際模擬進場的價差盈虧比不足 1:2");
     const stopFill = quantize(stop * (long ? 1 - slippage : 1 + slippage), tick, long ? "floor" : "ceil");
     if (!(stopFill > 0)) return blocked("估算停損成交價無效");
     const riskPerUnit = Math.abs(entry - stopFill) + (entry + stopFill) * feeRate;
     if(candidate.targetMode==="FIB"){
       const targetFill=quantize(target*(long?1-slippage:1+slippage),tick,long?"floor":"ceil"),netReward=(targetFill-entry)*(long?1:-1)-(entry+targetFill)*feeRate;
-      if(netReward/riskPerUnit<2)return blocked("TP1含估算費用與滑價的盈虧比不足1:2");
+      if(candidate.strategyVersion==='macd-ob-fib-0715-v1'?netReward<=0:netReward/riskPerUnit<2)return blocked("TP1含估算費用與滑價的盈虧比不足1:2");
     }
     const cap = Math.min(maxQty, options.maxQuantity ?? Infinity);
     let quantity = options.quantity ?? quantize(Math.min(budget / riskPerUnit, cap), step, "floor");

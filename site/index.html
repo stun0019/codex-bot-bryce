@@ -63,7 +63,7 @@
           <p id="scanProgress" class="strategy-progress" role="status">等待幣安資料</p>
           <p id="candidateRecordStatus" class="lab-help" role="status"></p>
           <div id="strategyList" class="strategy-list" aria-live="off"></div>
-          <details class="strategy-rules"><summary>策略與手機追蹤方式</summary><p>4H MACD(12,26,9) DIF＞0只找多，DIF＜0只找空，等於0觀望。不使用15M MACD、SMA83、EMA200或RSI過濾。4H背離僅提示。</p><p>15M陽K收盤突破已確認前高才做多，陰K跌破前低才做空。OB為BOS前最後一根反向K，區域含影線。突破後新波段端點等左右各2根收盤確認；若確認前已回抽到掛單價，略過不補單。</p><p>直接掛 Fib 0.715，按最接近的價格 tick 取整。停損為 Fib 波段起點外 1 tick。止盈Fib 0、−0.27、−0.618、−1，出場30%／20%／20%／30%，不額外移動停損。</p><p>掛單依結構有效性保留，方向改變或結構失效取消。模擬持倉最長12小時、台北午夜平倉。帳戶初始設定100 USDT、50x槓桿設定、單筆與帳戶總預估風險最多5%，同時一單。手機鎖屏或背景可能暫停；返回補查既有持倉，不補開漏掉的訊號。</p></details>
+          <details class="strategy-rules"><summary>策略與手機追蹤方式</summary><p>4H MACD(12,26,9) DIF＞0只找多，DIF＜0只找空，等於0觀望。不使用15M MACD、SMA83、EMA200或RSI過濾。4H背離僅提示。</p><p>15M陽K收盤突破已確認前高才做多，陰K跌破前低才做空。OB為BOS前最後一根反向K，區域含影線。突破後新波段端點等左右各2根收盤確認；若確認前已回抽到掛單價，略過不補單。</p><p>掛 OB 近端限價，做多用 OB 上緣，做空用 OB 下緣。停損為 Fib 波段起點外 1 tick。止盈Fib 0、−0.27、−0.618、−1，出場30%／20%／20%／30%，不額外移動停損。</p><p>掛單依結構有效性保留，方向改變或結構失效取消。模擬持倉最長12小時、台北午夜平倉。帳戶初始設定100 USDT、50x槓桿設定、單筆與帳戶總預估風險最多5%，同時一單。手機鎖屏或背景可能暫停；返回補查既有持倉，不補開漏掉的訊號。</p></details>
         </div>
       </section>
       <section id="paper" data-desk-panel="paper" class="paper-panel signals-dashboard" aria-labelledby="paperTitle">
@@ -121,11 +121,11 @@
   <script src="market-groups.js?v=tradfi-1"></script>
   <script src="strategy-engine.js?v=macd-fib-1"></script>
   <script src="structure-entry.js?v=macd-fib-1"></script>
-  <script src="fib-entry.js?v=wave-stop-1"></script>
+  <script src="fib-entry.js?v=ob-near-1"></script>
   <script src="smc-entry.js?v=macd-fib-1"></script>
   <script src="account-risk.js?v=macd-fib-1"></script>
-  <script src="macd-engine.js?v=wave-stop-1"></script>
-  <script src="strategy-data.js?v=dif-1"></script>
+  <script src="macd-engine.js?v=ob-near-1"></script>
+  <script src="strategy-data.js?v=ob-near-1"></script>
   <script src="price-feed.js?v=tradfi-1"></script>
   <script src="target-engine.js?v=macd-fib-1"></script>
   <script src="target-view.js?v=macd-fib-1"></script>

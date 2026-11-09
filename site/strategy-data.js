@@ -94,7 +94,7 @@
       if (!Number.isFinite(asOf) || asOf <= 0) throw new Error("幣安時間無效");
       const localAt = clock(), universe = await topMarkets(signal), candidates = [], profiles = Object.values(Signal.PROFILES);
       const tasks = universe.flatMap(market => profiles.map(profile => ({ market, profile })));
-      const state = { strategyVersion: Signal.VERSION, filters: {higherDirection:"MACD_DIF_ZERO_SIDE",entryPolicy:"BOS_OB_FIB_LIMIT",profiles:profiles.map(p=>p.id)}, total: tasks.length, completed: 0, trending: 0, errors: 0, candidates, asOf,
+      const state = { strategyVersion: Signal.VERSION, filters: {higherDirection:"MACD_DIF_ZERO_SIDE",entryPolicy:"BOS_OB_NEAR_LIMIT",profiles:profiles.map(p=>p.id)}, total: tasks.length, completed: 0, trending: 0, errors: 0, candidates, asOf,
         serverOffset: asOf - localAt, symbols: universe.map(m => m.symbol), rankedMarkets: universe.map(m => ({ ...m })), observations: [], failures: [] };
       onProgress({ ...state }); let cursor = 0, fatal = null;
       await Promise.all(Array.from({ length: Math.min(concurrency, tasks.length) }, async () => {

@@ -91,6 +91,20 @@
     const element = node("td", className, value); element.dataset.label = label; return element;
   }
   function summaryAccount(account,cohort){if(!account)return null;const pnl=cohort.reduce((s,t)=>s+(Engine.CLOSED.has(t.status)?t.netPnl:t.status==='OPEN'&&!t.recovery?.pending&&Number.isFinite(t.lastPrice)?model.netAt(t,t.lastPrice).net:0),0),unknown=cohort.some(t=>t.recovery?.pending||t.status==='REVIEW'||t.status==='OPEN'&&!Number.isFinite(t.lastPrice));return {...account,periodPnl:pnl,returnPct:unknown?null:100*pnl/account.initialCapital};}
+  function findZecOrder() {
+    return model.trades.find(t => t.symbol === "ZECUSDT" && t.direction === "SHORT" &&
+      t.referenceEntry === 1243.12 && t.status === "WAITING_PRICE");
+  }
+  $("paperRecordZec").addEventListener("click", () => {
+    if (!isLeader || storageBlocked) return;
+    const trade = findZecOrder();
+    if (!trade) return;
+    model.tryLimitFill(trade, trade.referenceEntry, now());
+    $("paperRecordMessage").textContent = trade.status === "OPEN"
+      ? "ZECUSDT 已記為模擬成交 1,243.12。"
+      : "未能記入成交：" + trade.reason;
+    changed = dirty = true; syncSymbols(); save(true); render();
+  });
   function render() {
     if (!dirty) return; dirty = false;
     const account = model.accountState(now());
@@ -103,30 +117,27 @@
     $("accountMarginDetail").textContent = account ? "持倉保證金 " + money(account.positionMargin) + " · 待成交保證金 " + money(account.orderMargin) + " · 預估費用預留 " + money(account.feeReserve) + " USDT；名目部位上限 " + account.limits.leverage + "x。" : "";
     $("accountStarted").textContent = account ? "起算 " + time(account.startedAt) + " · 初始餘額 " + money(account.initialCapital) + " · 起算淨值 " + money(account.startingEquity) + " USDT；既有持倉已納入風控。" : "";
     window.dispatchEvent(new Event("paper-account-update"));
-    const profileId="macd";
-    const match=t=>window.SmcEntry.isSingle(t);
-    const records=window.CandidateRecords.create({getItem:key=>localStorage.getItem(key),setItem:(key,value)=>localStorage.setItem(key,value)}).list();
-    const currentKeys=new Set(latest.committed?latest.candidates.map(Engine.key):[]),plans=model.previewCandidates(latest.committed?latest.candidates:[],latest.capital,now());
-    const display=window.CandidateRecords.paperRows(records,model.trades,{now:now(),currentKeys,plans});
-    const cohort=model.trades.filter(t=>window.MacdStrategy.isVersion(t.strategyVersion)),displayCohort=display.filter(match);
+    const display = model.trades.filter(t => window.SmcEntry.isSingle(t) && Number.isFinite(t.entry) && t.entry > 0);
+    const cohort = display.filter(t => window.MacdStrategy.isVersion(t.strategyVersion));
+    $("paperRecordZec").disabled = !isLeader || storageBlocked || !findZecOrder();
     const stats = model.stats("current");
     window.DashboardUI?.updateSummary(model.stats("current"));
     window.TargetView.stats($("paperTargets"), cohort, {targetMode:"SINGLE"});
     window.TargetView.paperSummary($("paperSummary"), {account: summaryAccount(account,cohort),stats,trades:cohort});
     $("paperClosed").textContent = String(stats.closed);
-    $("paperOpen").textContent = stats.open + " 持倉 · " + stats.waiting + " 待報價 · " + stats.recovering + " 核對中 · " + model.trades.filter(t => window.TargetEngine.pending(t)).length + " 筆目標追蹤";
+    $("paperOpen").textContent = stats.open + " 持倉 · " + stats.recovering + " 核對中 · " + model.trades.filter(t => window.TargetEngine.pending(t)).length + " 筆目標追蹤";
     $("paperWinRate").textContent = stats.winRate == null ? "—" : stats.winRate.toFixed(1) + "%";
     $("paperNet").textContent = signed(stats.netPnl); $("paperNet").dataset.tone = stats.netPnl >= 0 ? "positive" : "negative";
     $("paperAverage").textContent = signed(stats.averagePnl);
     $("paperDrawdown").textContent = money(stats.maxDrawdown);
     $("paperStreak").textContent = String(stats.maxLossStreak);
     $("paperBreakdown").textContent = "樣本 " + stats.closed + " 筆 · 獲利 " + stats.wins + " · 虧損 " + stats.losses +
-      " · 略過 " + stats.skipped + " · 待核對 " + stats.review + "｜做多 " + stats.long.count + " 筆／" +
+       " · 待核對 " + stats.review + "｜做多 " + stats.long.count + " 筆／" +
       (stats.long.winRate == null ? "—" : stats.long.winRate.toFixed(1) + "%") + " · 做空 " + stats.short.count + " 筆／" +
       (stats.short.winRate == null ? "—" : stats.short.winRate.toFixed(1) + "%");
     $("paperRecoverySummary").textContent = "連續追蹤平倉 " + stats.continuousClosed + " · 補查確認平倉 " + stats.reconciledClosed + " · 核對中 " + stats.recovering + (stats.legacyReview ? " · 舊版缺少成交編號 " + stats.legacyReview + " 筆保留待核對" : "");
     $("paperRecover").disabled = !isLeader || storageBlocked || coordinator?.running || !model.trades.some(t => t.recovery?.pending || (t.recovery?.state === "REVIEW" && t.checkpoint));
-    $("paperClear").disabled = !isLeader || storageBlocked || !display.length;
+    $("paperClear").disabled = !isLeader || storageBlocked || (!model.trades.length && !window.CandidateRecords.create(localStorage).list().length);
     pause.disabled = window.MacdStrategy.MODE==='CANDIDATES_ONLY' || !isLeader || storageBlocked; feeInput.disabled = slipInput.disabled = !isLeader || storageBlocked;
     pause.textContent = window.MacdStrategy.MODE==='CANDIDATES_ONLY'?'已停用自動新增':model.settings.enabled ? "暫停新增" : "恢復新增";
     const connection = feed.status().connections.some(c => c.route === "market" && c.state === WebSocket.OPEN);
@@ -136,14 +147,14 @@
     status.dataset.state = storageMessage ? "error" : isLeader ? "live" : "pending";
     const expanded = new Set([...table.querySelectorAll("tr[data-key]")].filter(row => row.querySelector("details")?.open).map(row => row.dataset.key));
     table.replaceChildren();
-    const visible = [...displayCohort].reverse().filter(trade => filter.value === "all" || (filter.value === "RECOVERING" && trade.recovery?.pending) || (filter.value === "REVIEW" && trade.targets?.some(t => t.status === "REVIEW")) ||
+    const visible = [...display].reverse().filter(trade => filter.value === "all" || (filter.value === "RECOVERING" && trade.recovery?.pending) || (filter.value === "REVIEW" && trade.targets?.some(t => t.status === "REVIEW")) ||
       (filter.value === "closed" ? Engine.CLOSED.has(trade.status) : filter.value === "active" ?
-        trade.status === "OPEN" || trade.status === "WAITING_PRICE" || window.TargetEngine.pending(trade) : trade.status === filter.value));
+        trade.status === "OPEN" || window.TargetEngine.pending(trade) : trade.status === filter.value));
     $("paperCount").textContent = "(" + visible.length + " / " + display.length + ")";
     window.TradeCards.paper($("paperCards"),visible,model,now());
     if (!visible.length) {
       const row = node("tr", "paper-empty"), td = node("td", "", display.length ? "此篩選下沒有紀錄。" :
-        "尚無模擬交易。新候選出現後會自動記錄；累積平倉樣本後才計算勝率。");
+        "尚無模擬交易。成交後會自動顯示；累積平倉樣本後才計算勝率。");
       td.colSpan = 10; row.append(td); table.append(row); return;
     }
     for (const trade of visible) {

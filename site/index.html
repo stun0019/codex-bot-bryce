@@ -75,7 +75,7 @@
           <details class="paper-summary-fold"><summary>帳戶與風控說明</summary><div class="paper-fold-content"><div id="paperAccountSlot"></div>        <p class="paper-intro">使用Binance即時行情自動模擬限價掛單。帳戶初始設定100 USDT；策略更換不重設餘額，不改寫既有持倉。舊待成交計畫取消，舊持倉沿用原計畫直到平倉，新版績效只統計新版訂單。</p>
 <p class="lab-help">累積盈虧以本期起算帳戶淨值計算，包含已實現與未實現損益，並非獨立訊號損益相加後除以本金；持倉核對中使用最後可確認估值。</p></div></details>
           <details class="paper-summary-fold"><summary>詳細績效與計算方式</summary><div class="paper-fold-content">        <div class="paper-stats" aria-label="模擬交易績效">
-          <div><span>已平倉</span><strong id="paperClosed">0</strong><small id="paperOpen">0 持倉 · 0 待報價</small></div>
+          <div><span>已平倉</span><strong id="paperClosed">0</strong><small id="paperOpen">0 持倉</small></div>
           <div><span>平倉淨獲利勝率</span><strong id="paperWinRate">—</strong><small>僅計連續追蹤的已平倉樣本</small></div>
           <div><span>累計淨損益 USDT</span><strong id="paperNet">0.00</strong><small>已扣模擬手續費與滑價</small></div>
           <div><span>平均每筆淨損益</span><strong id="paperAverage">—</strong><small>USDT／已平倉</small></div>
@@ -92,7 +92,7 @@
 <p class="lab-help">策略勝率僅計新版策略，只計已平倉且費後淨獲利的樣本。TP觸及率分母為已觸及＋先出場，未進場、追蹤中、核對中與待核對不列入；本版追蹤四個Fib目標，勝率以整筆交易費後總損益判定。</p></div></details>
         </div>
         <div id="paperSummary" class="paper-summary-grid" aria-label="模擬交易績效摘要"></div>
-        <div class="paper-toolbar"><span id="paperStatus" role="status">準備本機紀錄</span><select id="paperFilter" aria-label="模擬交易篩選"><option value="all">全部紀錄</option><option value="active">持倉／待報價</option><option value="closed">已平倉</option><option value="NOT_ENTERED">未進場候選</option><option value="SKIPPED">已取消／略過</option><option value="RECOVERING">核對中</option><option value="REVIEW">待核對</option></select></div>
+        <div class="paper-toolbar"><span id="paperStatus" role="status">準備本機紀錄</span><button id="paperRecordZec" type="button" disabled>記入 ZEC 1,243.12</button><span id="paperRecordMessage" role="status"></span><select id="paperFilter" aria-label="模擬交易篩選"><option value="all">全部紀錄</option><option value="active">持倉中</option><option value="closed">已平倉</option><option value="RECOVERING">核對中</option><option value="REVIEW">待核對</option></select></div>
         <p id="paperFundingStatus" class="lab-help" role="status">資金費率隨持倉同步</p><p id="paperRecoverySummary" class="paper-breakdown" role="status"></p>
         <p id="paperBreakdown" class="paper-breakdown" role="status">尚無平倉樣本</p>
         <div id="paperCards" class="trade-card-grid" aria-live="off"></div><div class="paper-table-wrap" hidden style="display:none"><table class="paper-table"><thead><tr><th>幣種／訊號時間</th><th>方向</th><th>模擬進場</th><th>停損</th><th>結構目標</th><th>數量</th><th>出場價</th><th>狀態</th><th>淨損益 USDT</th><th>說明／成交時間</th></tr></thead><tbody id="paperRows"></tbody></table></div>

@@ -56,3 +56,7 @@
 .tg-divergence{font-size:12px;line-height:1.5;color:#aab3bf;margin:7px 0}.tg-divergence[data-state=BULLISH],.tg-divergence[data-state=BEARISH],.tg-divergence[data-state=BOTH]{color:#f0b90b}.target-stats,#paperSummary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.target-stats>.target-help{grid-column:1/-1}
 
 .strategy-rules,.strategy-note,.news-intro,.paper-intro,.target-help,.tg-details,.account-details{display:none!important}.paper-assumptions p:not([id]),.paper-summary-fold .lab-help:not([role=status]){display:none!important}
+
+.tg-compact-prices { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 5px 8px; margin: 10px 0 0; font-size: 13px; }
+.tg-compact-prices dt { color: #aab3bf; }
+.tg-compact-prices dd { margin: 0; text-align: right; font-weight: 650; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }

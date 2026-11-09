@@ -49,5 +49,21 @@
   function paper(container,trades,model,now){const open=new Set([...container.querySelectorAll('details[open]')].map(d=>d.closest('[data-key]')?.dataset.key));container.replaceChildren();if(!trades.length){container.append(el('p','tg-empty','此篩選下尚無交易紀錄。'));return;}for(const group of (window.MarketGroups?window.MarketGroups.split(trades):[{items:trades}])){if(window.MarketGroups)container.append(window.MarketGroups.heading(group));for(const t of group.items){const pnl=['TAKE_PROFIT','STOP_LOSS','TIME_EXIT'].includes(t.status)?t.netPnl:t.status==='OPEN'&&!t.recovery?.pending&&finite(t.lastPrice)?model.netAt(t,t.lastPrice).net:null;const card=render(t,{pnl,now});if(open.has(card.dataset.key))card.querySelector('details').open=true;container.append(card);}}}
   function divergenceNotice(card,d){const labels={BULLISH:'底背離',BEARISH:'頂背離',BOTH:'頂／底背離',NONE:'未見已確認背離',INSUFFICIENT:'資料不足'};const row=el('p','tg-divergence','4H MACD：'+(labels[d?.state]||labels.INSUFFICIENT));row.dataset.state=d?.state||'INSUFFICIENT';card.append(row);if(d){const detail=el('details','tg-details');detail.append(el('summary','','4H背離數值'));for(const[name,pair]of[['低點',d.bottom],['高點',d.top]])if(Array.isArray(pair?.points)&&pair.points.length===2)detail.append(el('p','',name+' '+pair.points.map(p=>price(p.price)+'／DIF '+price(p.dif)+' · '+date(p.openTime)).join(' → ')));detail.append(el('p','','價格與同一根4H轉折K的DIF比較；左右各2根收盤確認。只作提醒，不參與進場篩選。'));card.append(detail);}}
   function watch(o){const long=o.direction==='LONG',card=el('article','trade-glass strategy-card'),head=el('header','tg-head'),identity=el('div','tg-identity'),name=el('h3','tg-symbol',o.symbol.replace(/USDT$/,''));name.append(el('small','','/USDT'));identity.append(el('span','tg-direction '+(long?'is-long':'is-short'),long?'做多候選':'做空候選'),name);head.append(identity,el('span','tg-state',o.status==='WAIT_PIVOT'?'等波段確認':'等15M結構'));card.dataset.key='watch:'+o.symbol;card.dataset.direction=o.direction;card.append(head,el('p','tg-meta','4H MACD定方向 · 15M順勢執行'));const q=window.CatPriceFeed?.get?.(o.symbol);card.append(el('p','watch-quote',(q?.fresh?'現價 ':'15M收盤 ')+price(q?.fresh?q.price:o.lastClose)));divergenceNotice(card,o.divergence);card.append(el('p','tg-wait',o.reason||'等待順勢BOS、OB與Fib波段'));const m=o.emaTrend;if(m)card.append(el('p','tg-meta','4H DIF '+price(m.dif)+' · Signal '+price(m.signal)));return card;}
-  window.TradeCards={render,paper,watch};
+  function compact(t) {
+    const card = el('article', 'trade-glass strategy-card');
+    card.append(el('h3', 'tg-symbol', t.symbol));
+    const targets = t.plannedTargets ?? t.targets ?? [];
+    const values = [['Entry', t.entry ?? t.referenceEntry], ['SL', t.stopLoss]];
+    for (let i = 0; i < 4; i++) {
+      values.push(['TP' + (i + 1), targets[i]?.price ?? targets[i]]);
+    }
+    const levels = el('dl', 'tg-compact-prices');
+    for (const [label, value] of values) {
+      const display = price(value);
+      levels.append(el('dt', '', label), el('dd', '', display));
+    }
+    card.append(levels);
+    return card;
+  }
+  window.TradeCards={render,paper,watch,compact};
 })();

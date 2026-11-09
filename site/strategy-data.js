@@ -106,7 +106,7 @@
             const higher = await candles(market.symbol, profile.high, asOf, signal);
             const lower = await candles(market.symbol, profile.low, asOf, signal);
             const result = Signal.analyze(market, higher, lower, asOf, capital, profile.id, {rsiFilter});
-            Object.assign(observation, { emaTrend: result.trend, divergence:result.divergence,setup:result.setup,entryFilter: result.entryFilter, status: result.status, reason: result.reason, direction: result.direction || null, recentHigh:result.recentHigh, recentLow:result.recentLow, structure:result.structure, lastClose:result.lastClose, confirmedAt:result.confirmedAt });
+            Object.assign(observation, { emaTrend: result.trend, divergence:result.divergence,setup:result.setup,previousCandidate:result.previousCandidate,entryFilter: result.entryFilter, status: result.status, reason: result.reason, direction: result.direction || null, recentHigh:result.recentHigh, recentLow:result.recentLow, structure:result.structure, lastClose:result.lastClose, confirmedAt:result.confirmedAt });
             if (result.direction) state.trending++;
             if (result.pending) { candidates.push(result.pending); observation.status = "CANDIDATE"; }
           } catch (error) {

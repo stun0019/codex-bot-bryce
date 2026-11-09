@@ -69,8 +69,9 @@
     if (recorded || added) { changed = dirty = true; syncSymbols(); save(true); }
   }
   window.PaperTrading = {
-    updateMarketContext(observations){let updated=false;for(const t of model.trades){const o=observations.find(o=>o.symbol===t.symbol&&o.status!=='ERROR');if(o){t.macdDivergence=o.divergence?JSON.parse(JSON.stringify(o.divergence)):null;t.latestMacd=o.emaTrend;updated=true;}}if(updated){dirty=changed=true;save(true);render();}},
+    updateMarketContext(observations){zecPreviousCandidate = observations.find(o => o.symbol === "ZECUSDT")?.previousCandidate;let updated=false;for(const t of model.trades){const o=observations.find(o=>o.symbol===t.symbol&&o.status!=='ERROR');if(o){t.macdDivergence=o.divergence?JSON.parse(JSON.stringify(o.divergence)):null;t.latestMacd=o.emaTrend;updated=true;}}if(updated){dirty=changed=true;save(true);render();}},
     marketSymbols(){return model.activeSymbols();},
+    openScanTrades(){return model.trades.filter(t => t.status === "OPEN" && window.MacdStrategy.isVersion(t.strategyVersion)).map(t => ({...t}));},
     cardSnapshot(candidate){const t=model.trades.find(t=>t.id===Engine.key(candidate));if(!t)return null;return {...JSON.parse(JSON.stringify(t)),cardPnl:Engine.CLOSED.has(t.status)?t.netPnl:t.status==="OPEN"&&!t.recovery?.pending&&Number.isFinite(t.lastPrice)?model.netAt(t,t.lastPrice).net:null};},
     recordStatus(candidate) { const t=model.trades.find(t=>t.id===Engine.key(candidate)); return t?{status:t.status,entered:!!t.entry,recovering:!!t.recovery?.pending,reason:t.reason,quantity:t.quantity,estimatedStopRisk:t.estimatedStopRisk,remainingQuantity:t.remainingQuantity,exitGuard:t.exitGuard?{...t.exitGuard}:null,netPnl:t.netPnl}:null; },
     invalidatePending(reason) { latest.committed=false; if (!isLeader || storageBlocked) return; let count=0; for (const trade of model.trades) if (trade.status==="WAITING_PRICE") { model.cancelOrder(trade,reason,now()); count++; } if(count) {changed=dirty=true;syncSymbols();save(true);render();} },
@@ -93,7 +94,7 @@
     const element = node("td", className, value); element.dataset.label = label; return element;
   }
   function summaryAccount(account,cohort){if(!account)return null;const pnl=cohort.reduce((s,t)=>s+(Engine.CLOSED.has(t.status)?t.netPnl:t.status==='OPEN'&&!t.recovery?.pending&&Number.isFinite(t.lastPrice)?model.netAt(t,t.lastPrice).net:0),0),unknown=cohort.some(t=>t.recovery?.pending||t.status==='REVIEW'||t.status==='OPEN'&&!Number.isFinite(t.lastPrice));return {...account,periodPnl:pnl,returnPct:unknown?null:100*pnl/account.initialCapital};}
-  let zecRecorded = false;
+  let zecRecorded = false, zecPreviousCandidate;
   function recordZecFill() {
     if (zecRecorded || !model.accountSnapshot()) return false;
     const matches = c => c.symbol === "ZECUSDT" && c.direction === "SHORT" &&
@@ -103,6 +104,7 @@
       return false;
     }
     const candidate = latest.candidates.find(matches) ??
+      (zecPreviousCandidate && matches(zecPreviousCandidate) ? zecPreviousCandidate : null) ??
       window.CandidateRecords.create(localStorage).list().find(r => matches(r.candidate))?.candidate;
     if (!candidate || !model.recordLimitFill(candidate, 100, now())) return false;
     zecRecorded = true;

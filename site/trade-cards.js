@@ -52,9 +52,13 @@
   function compact(t) {
     const card = el('article', 'trade-glass strategy-card');
     const long = t.direction === 'LONG';
-    const heading = el('header', 'tg-head');
+    const heading = el('header', 'tg-head tg-compact-head');
+    const state = ['WATCH', 'WAIT_PIVOT', 'WAIT_PLAN', 'CANDIDATE'].includes(t.status)
+      ? '待結構'
+      : t.status === 'OPEN' ? '已進場' : t.status === 'NOT_ENTERED' ? '待進場' : labels[t.status];
     heading.append(
       el('h3', 'tg-symbol', t.symbol),
+      el('span', 'tg-compact-state', state),
       el('span', 'tg-direction ' + (long ? 'is-long' : 'is-short'), long ? '做多' : '做空')
     );
     card.append(heading);

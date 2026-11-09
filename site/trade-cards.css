@@ -60,3 +60,6 @@
 .tg-compact-prices { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 5px 8px; margin: 10px 0 0; font-size: 13px; }
 .tg-compact-prices dt { color: #aab3bf; }
 .tg-compact-prices dd { margin: 0; text-align: right; font-weight: 650; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+
+#strategyList .tg-compact-head { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 4px; }
+.tg-compact-state { color: #aab3bf; font-size: 10px; white-space: nowrap; }

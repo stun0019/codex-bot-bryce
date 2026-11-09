@@ -51,7 +51,13 @@
   function watch(o){const long=o.direction==='LONG',card=el('article','trade-glass strategy-card'),head=el('header','tg-head'),identity=el('div','tg-identity'),name=el('h3','tg-symbol',o.symbol.replace(/USDT$/,''));name.append(el('small','','/USDT'));identity.append(el('span','tg-direction '+(long?'is-long':'is-short'),long?'做多候選':'做空候選'),name);head.append(identity,el('span','tg-state',o.status==='WAIT_PIVOT'?'等波段確認':'等15M結構'));card.dataset.key='watch:'+o.symbol;card.dataset.direction=o.direction;card.append(head,el('p','tg-meta','4H MACD定方向 · 15M順勢執行'));const q=window.CatPriceFeed?.get?.(o.symbol);card.append(el('p','watch-quote',(q?.fresh?'現價 ':'15M收盤 ')+price(q?.fresh?q.price:o.lastClose)));divergenceNotice(card,o.divergence);card.append(el('p','tg-wait',o.reason||'等待順勢BOS、OB與Fib波段'));const m=o.emaTrend;if(m)card.append(el('p','tg-meta','4H DIF '+price(m.dif)+' · Signal '+price(m.signal)));return card;}
   function compact(t) {
     const card = el('article', 'trade-glass strategy-card');
-    card.append(el('h3', 'tg-symbol', t.symbol));
+    const long = t.direction === 'LONG';
+    const heading = el('header', 'tg-identity');
+    heading.append(
+      el('span', 'tg-direction ' + (long ? 'is-long' : 'is-short'), long ? '做多' : '做空'),
+      el('h3', 'tg-symbol', t.symbol)
+    );
+    card.append(heading);
     const targets = t.plannedTargets ?? t.targets ?? [];
     const values = [['Entry', t.entry ?? t.referenceEntry], ['SL', t.stopLoss]];
     for (let i = 0; i < 4; i++) {

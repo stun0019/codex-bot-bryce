@@ -70,13 +70,7 @@
   }
   function analyze(market,higher,lower,asOf,capital=100,id='4h15m'){
     if(!PROFILES[id]||!Number.isFinite(asOf))throw Error('週期或掃描時間無效');for(const[bars,d]of[[higher,14400000],[lower,900000]])if(!Array.isArray(bars)||!bars.length||bars.at(-1).closeTime!==Math.floor(asOf/d)*d-1)throw Error('需要最新已收盤K線');
-    const a=createAnalyzer(id), lastPlans={};let h=0,result={pending:null,direction:null};
-    for(const b of lower){
-      while(h<higher.length&&higher[h].closeTime<=b.closeTime)a.pushHigh(higher[h++]);
-      result=a.pushLow(b,market);
-      if(result.pending)lastPlans[result.direction]=result.pending;
-    }
-    return {...result,previousCandidate:result.pending?null:lastPlans[result.direction]??null};
+    const a=createAnalyzer(id);let h=0,result={pending:null,direction:null};for(const b of lower){while(h<higher.length&&higher[h].closeTime<=b.closeTime)a.pushHigh(higher[h++]);result=a.pushLow(b,market);}return result;
   }
   const api={MODE:'LIMIT_ENTRY',VERSION,PROFILES,SETTINGS,macd,trend,divergence,createAnalyzer,analyze,valid:F.valid,validTrade:F.validTrade,planAt:F.planAt,deadline:F.deadline,isVersion:v=>v===VERSION};if(typeof module!=='undefined'&&module.exports)module.exports=api;root.MacdStrategy=api;
 })(typeof window!=='undefined'?window:globalThis);

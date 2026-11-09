@@ -6,26 +6,7 @@
  $('timeframeFilter').hidden=true;$('rsiEntryFilter').closest('label').hidden=true;
  function render(){const filter=$('directionFilter').value,rows=records.list().filter(r=>M.isVersion(r.candidate.strategyVersion)),plans=window.PaperTrading?.previewCandidates(latest,100)||new Map(),seen=new Set(),items=[];
   const addCandidate=(c,retained=false)=>{const key=window.PaperEngine.key(c);if(seen.has(key))return;seen.add(key);const snapshot=window.PaperTrading?.cardSnapshot(c),plan=plans.get(key),o=watches.find(o=>o.symbol===c.symbol),data=snapshot||{...c,id:key,entry:undefined,referenceEntry:c.entry,targets:undefined,plannedTargets:c.targets,status:'NOT_ENTERED',reason:plan?.reason||(c.expiresAt<=Date.now()+offset?'掛單已到期，未補成交':'等待帳戶預留')};if(o)data.macdDivergence=o.divergence;items.push({type:'plan',data,c,plan,pnl:snapshot?.cardPnl,retained,direction:c.direction,contractType:c.market.contractType});};
-  const openTrades = window.PaperTrading?.openScanTrades() ?? [];
-  for (const trade of openTrades) addCandidate(trade);
-  for (const o of watches) {
-    if (openTrades.some(t => t.symbol === o.symbol)) continue;
-    const saved = rows.map(r => r.candidate).filter(c => c.symbol === o.symbol);
-    const current = latest.find(c => c.symbol === o.symbol) ||
-      saved.find(c => ['OPEN', 'WAITING_PRICE', 'REVIEW'].includes(window.PaperTrading?.recordStatus(c)?.status));
-    if (current) {
-      addCandidate(current);
-      continue;
-    }
-    const previous = [saved.find(c => c.direction === o.direction), o.previousCandidate]
-      .filter(c => c?.symbol === o.symbol && c.direction === o.direction && M.valid(c))
-      .sort((a, b) => b.confirmedAt - a.confirmedAt)[0];
-    const data = previous ? {
-      ...o, referenceEntry: previous.entry, stopLoss: previous.stopLoss,
-      plannedTargets: previous.targets
-    } : o;
-    items.push({type:'watch',data,direction:o.direction,contractType:o.contractType});
-  }
+  for(const o of watches){const current=latest.find(c=>c.symbol===o.symbol)||rows.map(r=>r.candidate).find(c=>c.symbol===o.symbol&&['OPEN','WAITING_PRICE'].includes(window.PaperTrading?.recordStatus(c)?.status));if(current)addCandidate(current);else items.push({type:'watch',data:o,direction:o.direction,contractType:o.contractType});}
   for(const r of rows)addCandidate(r.candidate,true);
   const statusFilter = $('scannerStatusFilter').value;
   const visible = items.filter(item => {

@@ -63,8 +63,10 @@
     finally { recoveryProgress = ""; dirty = true; }
   }
   function ingest() {
-    if (!isLeader || storageBlocked || !latest.committed || document.visibilityState==='hidden') return;
-    if (model.addCandidates(latest.candidates, latest.capital, now())) { changed = dirty = true; syncSymbols(); save(true); }
+    if (!isLeader || storageBlocked || document.visibilityState==='hidden') return;
+    const recorded = recordZecFill();
+    const added = latest.committed && model.addCandidates(latest.candidates, latest.capital, now());
+    if (recorded || added) { changed = dirty = true; syncSymbols(); save(true); }
   }
   window.PaperTrading = {
     updateMarketContext(observations){let updated=false;for(const t of model.trades){const o=observations.find(o=>o.symbol===t.symbol&&o.status!=='ERROR');if(o){t.macdDivergence=o.divergence?JSON.parse(JSON.stringify(o.divergence)):null;t.latestMacd=o.emaTrend;updated=true;}}if(updated){dirty=changed=true;save(true);render();}},
@@ -91,20 +93,21 @@
     const element = node("td", className, value); element.dataset.label = label; return element;
   }
   function summaryAccount(account,cohort){if(!account)return null;const pnl=cohort.reduce((s,t)=>s+(Engine.CLOSED.has(t.status)?t.netPnl:t.status==='OPEN'&&!t.recovery?.pending&&Number.isFinite(t.lastPrice)?model.netAt(t,t.lastPrice).net:0),0),unknown=cohort.some(t=>t.recovery?.pending||t.status==='REVIEW'||t.status==='OPEN'&&!Number.isFinite(t.lastPrice));return {...account,periodPnl:pnl,returnPct:unknown?null:100*pnl/account.initialCapital};}
-  function findZecOrder() {
-    return model.trades.find(t => t.symbol === "ZECUSDT" && t.direction === "SHORT" &&
-      t.referenceEntry === 1243.12 && t.status === "WAITING_PRICE");
+  let zecRecorded = false;
+  function recordZecFill() {
+    if (zecRecorded || !model.accountSnapshot()) return false;
+    const matches = c => c.symbol === "ZECUSDT" && c.direction === "SHORT" &&
+      (c.referenceEntry ?? c.entry) === 1243.12 && c.fibSetup?.endpoint.price === 1176.98;
+    if (model.trades.some(t => matches(t) && t.openedAt)) {
+      zecRecorded = true;
+      return false;
+    }
+    const candidate = latest.candidates.find(matches) ??
+      window.CandidateRecords.create(localStorage).list().find(r => matches(r.candidate))?.candidate;
+    if (!candidate || !model.recordLimitFill(candidate, 100, now())) return false;
+    zecRecorded = true;
+    return true;
   }
-  $("paperRecordZec").addEventListener("click", () => {
-    if (!isLeader || storageBlocked) return;
-    const trade = findZecOrder();
-    if (!trade) return;
-    model.tryLimitFill(trade, trade.referenceEntry, now());
-    $("paperRecordMessage").textContent = trade.status === "OPEN"
-      ? "ZECUSDT 已記為模擬成交 1,243.12。"
-      : "未能記入成交：" + trade.reason;
-    changed = dirty = true; syncSymbols(); save(true); render();
-  });
   function render() {
     if (!dirty) return; dirty = false;
     const account = model.accountState(now());
@@ -119,7 +122,6 @@
     window.dispatchEvent(new Event("paper-account-update"));
     const display = model.trades.filter(t => window.SmcEntry.isSingle(t) && Number.isFinite(t.entry) && t.entry > 0);
     const cohort = display.filter(t => window.MacdStrategy.isVersion(t.strategyVersion));
-    $("paperRecordZec").disabled = !isLeader || storageBlocked || !findZecOrder();
     const stats = model.stats("current");
     window.DashboardUI?.updateSummary(model.stats("current"));
     window.TargetView.stats($("paperTargets"), cohort, {targetMode:"SINGLE"});

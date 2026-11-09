@@ -208,6 +208,27 @@
       else if (trade.entryType==="MARKET_NEXT" || (long ? price <= trade.referenceEntry : price >= trade.referenceEntry)) open(trade, price, at, frozenState);
       return trade.status !== "WAITING_PRICE";
     }
+    function recordLimitFill(candidate, capital, at) {
+      if (!Single.valid(candidate) || candidate.entryType !== "LIMIT" || candidate.confirmedAt <= ignoreBefore) return false;
+      const id = key(candidate);
+      let trade = trades.find(t => t.id === id);
+      if (!trade) {
+        addCandidates([candidate], capital, at);
+        trade = trades.find(t => t.id === id);
+      }
+      if (!trade || trade.entry || !["WAITING_PRICE", "SKIPPED"].includes(trade.status)) return false;
+      const next = { ...trade, status: "WAITING_PRICE" };
+      if (trade.status === "SKIPPED" && account) {
+        const plan = Account.plan(candidate, config, accountState(at, id));
+        if (!plan.ok) return false;
+        Object.assign(next, { reservedPlan: plan, capital: plan.capital, budget: plan.budget, feeRate: plan.feeRate, slippage: plan.slippage });
+      }
+      if (!tryLimitFill(next, candidate.entry, at) || next.status !== "OPEN") return false;
+      delete next.resolvedAt;
+      delete trade.resolvedAt;
+      Object.assign(trade, next);
+      return true;
+    }
     function cancelOrder(trade, reason, at) { if (trade.status === "WAITING_PRICE") { skip(trade, reason, at); return true; } return false; }
     function reconcileCandidates(candidates, observations, at) {
       const ids = new Set(candidates.map(key)), checked = new Set(observations.filter(o => o.status !== "ERROR").map(o => o.symbol + ":" + o.profileId)); let changed = false;
@@ -383,7 +404,7 @@
         skipped: cohort.filter(t => t.status === "SKIPPED").length, review: cohort.filter(t => t.status === "REVIEW").length,
         long: byDirection("LONG"), short: byDirection("SHORT") };
     }
-    return { trades, settings: config, enableAccount, startStrategySession, applyFunding, accountState, previewCandidates, enforceAccount, accountSnapshot: () => account ? JSON.parse(JSON.stringify(account)) : null, addCandidates, tick, interrupt, expire, stats, netAt, executeSmc, tryLimitFill, cancelOrder, reconcileCandidates, suspend, recoveryTasks, recoveryError, retryRecovery, applyRecovery,
+    return { trades, settings: config, enableAccount, startStrategySession, applyFunding, accountState, previewCandidates, enforceAccount, accountSnapshot: () => account ? JSON.parse(JSON.stringify(account)) : null, addCandidates, tick, interrupt, expire, stats, netAt, executeSmc, tryLimitFill, recordLimitFill, cancelOrder, reconcileCandidates, suspend, recoveryTasks, recoveryError, retryRecovery, applyRecovery,
       activeSymbols: () => [...new Set(trades.filter(t => ACTIVE.has(t.status) || Targets.pending(t)).map(t => t.symbol))],
       snapshot: () => ({ version: 1, settings: { ...config }, trades, ...(ignoreBefore > 0 ? { ignoreBefore } : {}), ...(account ? { account: JSON.parse(JSON.stringify(account)) } : {}) }) };
   }

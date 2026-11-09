@@ -63,7 +63,7 @@
     );
     card.append(heading);
     const targets = t.plannedTargets ?? t.targets ?? [];
-    const values = [['Entry', t.entry ?? t.referenceEntry], ['SL', t.stopLoss]];
+    const values = [[t.previousLevels ? '上次 Entry' : 'Entry', t.entry ?? t.referenceEntry], ['SL', t.stopLoss]];
     for (let i = 0; i < 4; i++) {
       values.push(['TP' + (i + 1), targets[i]?.price ?? targets[i]]);
     }

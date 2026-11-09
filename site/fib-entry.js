@@ -23,7 +23,7 @@
     let previous=f.bos;for(const b of f.afterBos){if(!check(b,previous)||(long?b.low<=f.ob.low:b.high>=f.ob.high))return false;previous=b;}
     const endpointExtreme=long?Math.max(f.bos.high,...f.afterBos.filter(b=>b.openTime<=f.endpoint.openTime).map(b=>b.high)):Math.min(f.bos.low,...f.afterBos.filter(b=>b.openTime<=f.endpoint.openTime).map(b=>b.low));
     if(endpointExtreme!==f.endpoint.price||f.afterBos.filter(b=>b.openTime>f.endpoint.openTime).some(b=>long?b.low<=p.entry:b.high>=p.entry))return false;
-    for(const m of [f.bosTrend,source])if(!m||![m.dif,m.signal,m.at].every(finite)||m.direction!==c.direction||!(long?m.dif>0&&m.signal>0:m.dif<0&&m.signal<0))return false;
+    for(const m of [f.bosTrend,source])if(!m||![m.dif,m.signal,m.at].every(finite)||m.direction!==c.direction||!(long?m.dif>0:m.dif<0))return false;
     if(f.bosTrend.at>f.bos.closeTime+1||source.at>c.confirmedAt||f.bosTrend.at!==Math.floor((f.bos.closeTime+1)/14400000)*14400000||source.at!==Math.floor(c.confirmedAt/14400000)*14400000)return false;
     const entry=c.referenceEntry??c.entry,targets=c.plannedTargets||c.targets;
     if(!(p.range>0)||p.entry<f.ob.low||p.entry>f.ob.high||entry!==p.entry||c.stopLoss!==p.stopLoss||c.target!==p.target||!Array.isArray(targets)||targets.length!==4||targets.some((x,i)=>x!==p.targets[i])||targets.some(x=>!finite(x)||x<=0)||!(long?p.stopLoss<p.entry&&p.target>p.entry:p.stopLoss>p.entry&&p.target<p.entry))return false;

@@ -47,6 +47,7 @@
             <div><p class="strategy-kicker">加密＋TradFi 合併成交額 TOP20 · 4H MACD方向 · 15M BOS／OB／Fib</p><h1 id="scannerTitle">策略掃描 <span id="candidateCount">(0 / 0)</span></h1></div>
             <div class="list-actions">
               <select id="timeframeFilter" aria-label="策略週期"><option value="all">全部週期</option><option value="4h15m">4H＋15M</option></select><select id="directionFilter" aria-label="策略方向"><option value="all">全部方向</option><option value="LONG">做多候選</option><option value="SHORT">做空候選</option></select>
+              <select id="scannerStatusFilter" aria-label="掃描卡片狀態"><option value="active">候選與進行中</option><option value="all">全部紀錄</option><option value="WAITING_PRICE">待成交</option><option value="OPEN">持倉中</option><option value="closed">已平倉</option><option value="SKIPPED">已取消</option><option value="NOT_ENTERED">未進場</option><option value="REVIEW">待核對</option></select>
               <button class="refresh-button" id="refreshBtn" type="button">更新</button>
               <label class="entry-filter-toggle" hidden style="display:none"><input id="rsiEntryFilter" type="checkbox"><span>RSI＋放量過濾</span></label>
             </div>
@@ -136,7 +137,7 @@
   <script src="trade-cards.js?v=macd-fib-1"></script>
   <script src="paper-panel.js?v=macd-fib-1"></script>
   <script src="news-radar-data.js?v=structure-paper-1"></script><script src="news-radar.js?v=structure-paper-1"></script>
-  <script src="strategy-scanner.js?v=macd-fib-1"></script>
+  <script src="strategy-scanner.js?v=macd-fib-2"></script>
   <script src="macd-history.js?v=macd-fib-1"></script>
 </body>
 </html>

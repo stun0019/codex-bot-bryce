@@ -22,7 +22,7 @@
       .sort((a, b) => b.confirmedAt - a.confirmedAt)[0];
     const data = previous ? {
       ...o, referenceEntry: previous.entry, stopLoss: previous.stopLoss,
-      plannedTargets: previous.targets, previousLevels: true
+      plannedTargets: previous.targets
     } : o;
     items.push({type:'watch',data,direction:o.direction,contractType:o.contractType});
   }

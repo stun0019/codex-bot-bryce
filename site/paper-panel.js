@@ -99,9 +99,10 @@
     if (zecRecorded || !model.accountSnapshot()) return false;
     const matches = c => c.symbol === "ZECUSDT" && c.direction === "SHORT" &&
       (c.referenceEntry ?? c.entry) === 1243.12 && c.fibSetup?.endpoint.price === 1176.98;
-    if (model.trades.some(t => matches(t) && t.openedAt)) {
+    const recorded = model.trades.find(t => matches(t) && t.openedAt);
+    if (recorded) {
       zecRecorded = true;
-      return false;
+      return model.resumeRecordedFill(recorded, now());
     }
     const candidate = latest.candidates.find(matches) ??
       (zecPreviousCandidate && matches(zecPreviousCandidate) ? zecPreviousCandidate : null) ??
@@ -200,6 +201,7 @@
         acquiring = false; if (!lock) return;
         load(true); if (storageBlocked) return;
         isLeader = true; currentGeneration = null;
+        recordZecFill();
         model.suspend("重新開啟頁面，離線期間觸價順序需核對", now()); changed = dirty = true; save(true);
         recoveryController = new AbortController();
         ingest(); syncSymbols(); render(); void pumpRecovery();

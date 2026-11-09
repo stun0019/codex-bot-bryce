@@ -69,6 +69,11 @@
   window.PaperTrading = {
     updateMarketContext(observations){let updated=false;for(const t of model.trades){const o=observations.find(o=>o.symbol===t.symbol&&o.status!=='ERROR');if(o){t.macdDivergence=o.divergence?JSON.parse(JSON.stringify(o.divergence)):null;t.latestMacd=o.emaTrend;updated=true;}}if(updated){dirty=changed=true;save(true);render();}},
     marketSymbols(){return model.activeSymbols();},
+    recordedZecPosition(){
+      const candidate = window.ZecRecordedFill;
+      if (!candidate) return null;
+      return model.trades.find(trade => trade.id === Engine.key(candidate) && trade.status === "OPEN") ?? null;
+    },
     cardSnapshot(candidate){const t=model.trades.find(t=>t.id===Engine.key(candidate));if(!t)return null;return {...JSON.parse(JSON.stringify(t)),cardPnl:Engine.CLOSED.has(t.status)?t.netPnl:t.status==="OPEN"&&!t.recovery?.pending&&Number.isFinite(t.lastPrice)?model.netAt(t,t.lastPrice).net:null};},
     recordStatus(candidate) { const t=model.trades.find(t=>t.id===Engine.key(candidate)); return t?{status:t.status,entered:!!t.entry,recovering:!!t.recovery?.pending,reason:t.reason,quantity:t.quantity,estimatedStopRisk:t.estimatedStopRisk,remainingQuantity:t.remainingQuantity,exitGuard:t.exitGuard?{...t.exitGuard}:null,netPnl:t.netPnl}:null; },
     invalidatePending(reason) { latest.committed=false; if (!isLeader || storageBlocked) return; let count=0; for (const trade of model.trades) if (trade.status==="WAITING_PRICE") { model.cancelOrder(trade,reason,now()); count++; } if(count) {changed=dirty=true;syncSymbols();save(true);render();} },
@@ -103,30 +108,27 @@
     $("accountMarginDetail").textContent = account ? "持倉保證金 " + money(account.positionMargin) + " · 待成交保證金 " + money(account.orderMargin) + " · 預估費用預留 " + money(account.feeReserve) + " USDT；名目部位上限 " + account.limits.leverage + "x。" : "";
     $("accountStarted").textContent = account ? "起算 " + time(account.startedAt) + " · 初始餘額 " + money(account.initialCapital) + " · 起算淨值 " + money(account.startingEquity) + " USDT；既有持倉已納入風控。" : "";
     window.dispatchEvent(new Event("paper-account-update"));
-    const profileId="macd";
-    const match=t=>window.SmcEntry.isSingle(t);
     const records=window.CandidateRecords.create({getItem:key=>localStorage.getItem(key),setItem:(key,value)=>localStorage.setItem(key,value)}).list();
-    const currentKeys=new Set(latest.committed?latest.candidates.map(Engine.key):[]),plans=model.previewCandidates(latest.committed?latest.candidates:[],latest.capital,now());
-    const display=window.CandidateRecords.paperRows(records,model.trades,{now:now(),currentKeys,plans});
-    const cohort=model.trades.filter(t=>window.MacdStrategy.isVersion(t.strategyVersion)),displayCohort=display.filter(match);
+    const display = model.trades.filter(trade => window.SmcEntry.isSingle(trade) && Number.isFinite(trade.entry) && trade.entry > 0);
+    const cohort = display.filter(trade => window.MacdStrategy.isVersion(trade.strategyVersion));
     const stats = model.stats("current");
     window.DashboardUI?.updateSummary(model.stats("current"));
     window.TargetView.stats($("paperTargets"), cohort, {targetMode:"SINGLE"});
     window.TargetView.paperSummary($("paperSummary"), {account: summaryAccount(account,cohort),stats,trades:cohort});
     $("paperClosed").textContent = String(stats.closed);
-    $("paperOpen").textContent = stats.open + " 持倉 · " + stats.waiting + " 待報價 · " + stats.recovering + " 核對中 · " + model.trades.filter(t => window.TargetEngine.pending(t)).length + " 筆目標追蹤";
+    $("paperOpen").textContent = stats.open + " 持倉 · " + stats.recovering + " 核對中 · " + model.trades.filter(t => window.TargetEngine.pending(t)).length + " 筆目標追蹤";
     $("paperWinRate").textContent = stats.winRate == null ? "—" : stats.winRate.toFixed(1) + "%";
     $("paperNet").textContent = signed(stats.netPnl); $("paperNet").dataset.tone = stats.netPnl >= 0 ? "positive" : "negative";
     $("paperAverage").textContent = signed(stats.averagePnl);
     $("paperDrawdown").textContent = money(stats.maxDrawdown);
     $("paperStreak").textContent = String(stats.maxLossStreak);
     $("paperBreakdown").textContent = "樣本 " + stats.closed + " 筆 · 獲利 " + stats.wins + " · 虧損 " + stats.losses +
-      " · 略過 " + stats.skipped + " · 待核對 " + stats.review + "｜做多 " + stats.long.count + " 筆／" +
+      " · 待核對 " + stats.review + "｜做多 " + stats.long.count + " 筆／" +
       (stats.long.winRate == null ? "—" : stats.long.winRate.toFixed(1) + "%") + " · 做空 " + stats.short.count + " 筆／" +
       (stats.short.winRate == null ? "—" : stats.short.winRate.toFixed(1) + "%");
     $("paperRecoverySummary").textContent = "連續追蹤平倉 " + stats.continuousClosed + " · 補查確認平倉 " + stats.reconciledClosed + " · 核對中 " + stats.recovering + (stats.legacyReview ? " · 舊版缺少成交編號 " + stats.legacyReview + " 筆保留待核對" : "");
     $("paperRecover").disabled = !isLeader || storageBlocked || coordinator?.running || !model.trades.some(t => t.recovery?.pending || (t.recovery?.state === "REVIEW" && t.checkpoint));
-    $("paperClear").disabled = !isLeader || storageBlocked || !display.length;
+    $("paperClear").disabled = !isLeader || storageBlocked || (!model.trades.length && !records.length);
     pause.disabled = window.MacdStrategy.MODE==='CANDIDATES_ONLY' || !isLeader || storageBlocked; feeInput.disabled = slipInput.disabled = !isLeader || storageBlocked;
     pause.textContent = window.MacdStrategy.MODE==='CANDIDATES_ONLY'?'已停用自動新增':model.settings.enabled ? "暫停新增" : "恢復新增";
     const connection = feed.status().connections.some(c => c.route === "market" && c.state === WebSocket.OPEN);
@@ -136,14 +138,14 @@
     status.dataset.state = storageMessage ? "error" : isLeader ? "live" : "pending";
     const expanded = new Set([...table.querySelectorAll("tr[data-key]")].filter(row => row.querySelector("details")?.open).map(row => row.dataset.key));
     table.replaceChildren();
-    const visible = [...displayCohort].reverse().filter(trade => filter.value === "all" || (filter.value === "RECOVERING" && trade.recovery?.pending) || (filter.value === "REVIEW" && trade.targets?.some(t => t.status === "REVIEW")) ||
+    const visible = [...display].reverse().filter(trade => filter.value === "all" || (filter.value === "RECOVERING" && trade.recovery?.pending) || (filter.value === "REVIEW" && trade.targets?.some(t => t.status === "REVIEW")) ||
       (filter.value === "closed" ? Engine.CLOSED.has(trade.status) : filter.value === "active" ?
-        trade.status === "OPEN" || trade.status === "WAITING_PRICE" || window.TargetEngine.pending(trade) : trade.status === filter.value));
+        trade.status === "OPEN" : trade.status === filter.value));
     $("paperCount").textContent = "(" + visible.length + " / " + display.length + ")";
     window.TradeCards.paper($("paperCards"),visible,model,now());
     if (!visible.length) {
       const row = node("tr", "paper-empty"), td = node("td", "", display.length ? "此篩選下沒有紀錄。" :
-        "尚無模擬交易。新候選出現後會自動記錄；累積平倉樣本後才計算勝率。");
+        "尚無模擬交易。成交後會自動顯示；累積平倉樣本後才計算勝率。");
       td.colSpan = 10; row.append(td); table.append(row); return;
     }
     for (const trade of visible) {
@@ -185,6 +187,12 @@
         acquiring = false; if (!lock) return;
         load(true); if (storageBlocked) return;
         isLeader = true; currentGeneration = null;
+        const candidate = window.ZecRecordedFill;
+        if (candidate) {
+          const trade = model.trades.find(t => t.id === Engine.key(candidate));
+          if (trade?.openedAt) model.resumeRecordedFill(trade, now());
+          else model.recordLimitFill(candidate, 100, now());
+        }
         model.suspend("重新開啟頁面，離線期間觸價順序需核對", now()); changed = dirty = true; save(true);
         recoveryController = new AbortController();
         ingest(); syncSymbols(); render(); void pumpRecovery();

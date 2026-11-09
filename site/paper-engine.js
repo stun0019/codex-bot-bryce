@@ -208,6 +208,40 @@
       else if (trade.entryType==="MARKET_NEXT" || (long ? price <= trade.referenceEntry : price >= trade.referenceEntry)) open(trade, price, at, frozenState);
       return trade.status !== "WAITING_PRICE";
     }
+    function recordLimitFill(candidate, capital, at) {
+      if (!Single.valid(candidate) || candidate.entryType !== "LIMIT" || candidate.confirmedAt <= ignoreBefore) return false;
+      const id = key(candidate);
+      let trade = trades.find(t => t.id === id);
+      if (!trade) {
+        addCandidates([candidate], capital, at);
+        trade = trades.find(t => t.id === id);
+      }
+      if (!trade || trade.entry || !["WAITING_PRICE", "SKIPPED"].includes(trade.status)) return false;
+      const next = { ...trade, status: "WAITING_PRICE" };
+      if (trade.status === "SKIPPED" && account) {
+        const plan = Account.plan(candidate, config, accountState(at, id));
+        if (!plan.ok) return false;
+        Object.assign(next, { reservedPlan: plan, capital: plan.capital, budget: plan.budget, feeRate: plan.feeRate, slippage: plan.slippage });
+      }
+      if (!tryLimitFill(next, candidate.entry, at) || next.status !== "OPEN") return false;
+      if (!next.checkpoint) next.awaitingInitialQuote = true;
+      delete next.resolvedAt;
+      delete trade.resolvedAt;
+      Object.assign(trade, next);
+      return true;
+    }
+    function resumeRecordedFill(trade, at) {
+      if (trade.status === "OPEN" && !trade.checkpoint && !trade.awaitingInitialQuote) {
+        trade.awaitingInitialQuote = true;
+        return true;
+      }
+      if (trade.status !== "REVIEW" || trade.checkpoint || !trade.openedAt ||
+          trade.exitFills?.length || !trade.reason?.startsWith("缺少成交編號")) return false;
+      Object.assign(trade, { status: "OPEN", awaitingInitialQuote: true, targets: Targets.createSingle(trade),
+        targetsLastQuoteAt: at, reason: "已記錄成交，等待首筆行情" });
+      delete trade.reviewAt;
+      return true;
+    }
     function cancelOrder(trade, reason, at) { if (trade.status === "WAITING_PRICE") { skip(trade, reason, at); return true; } return false; }
     function reconcileCandidates(candidates, observations, at) {
       const ids = new Set(candidates.map(key)), checked = new Set(observations.filter(o => o.status !== "ERROR").map(o => o.symbol + ":" + o.profileId)); let changed = false;
@@ -218,7 +252,7 @@
     function validCursor(cursor) { return cursor && Number.isSafeInteger(cursor.id) && cursor.id >= 0 && finite(cursor.at) && cursor.at > 0 && finite(cursor.price) && cursor.price > 0; }
     function queueRecovery(trade, reason, at) {
       if (trade.status === "WAITING_PRICE") { skip(trade, "追蹤已中斷，不回填過期進場", at); return true; }
-      if (!hasWork(trade) || trade.recovery?.pending) return false;
+      if (!hasWork(trade) || trade.recovery?.pending || (trade.awaitingInitialQuote && !trade.checkpoint)) return false;
       if (!validCursor(trade.checkpoint)) { review(trade, "缺少成交編號，無法自動核對：" + reason, at); return true; }
       trade.recovery = { ...trade.recovery, pending: true, state: "PENDING", reason, requestedAt: at, nextRetryAt: 0, attempts: 0, lastError: "" }; return true;
     }
@@ -301,6 +335,14 @@
         if (trade.symbol !== symbol || (!ACTIVE.has(trade.status) && !Targets.pending(trade)) || at < trade.detectedAt || at < (trade.lastQuoteAt || 0)) continue;
         if (trade.recovery?.pending) continue;
         const hasId = Number.isSafeInteger(metadata.aggregateId) && metadata.aggregateId >= 0;
+        if (trade.status === "OPEN" && trade.awaitingInitialQuote && !trade.checkpoint) {
+          if (!hasId) continue;
+          delete trade.awaitingInitialQuote;
+          observe(trade, price, at, "live");
+          trade.checkpoint = { id: metadata.aggregateId, at, price };
+          changed = true;
+          continue;
+        }
         if (trade.checkpoint) {
           if (!hasId || metadata.aggregateId <= trade.checkpoint.id) continue;
           if (metadata.aggregateId !== trade.checkpoint.id + 1 || at - Math.max(trade.checkpoint.at, trade.recovery?.lastCheckedAt || 0) > MAX_GAP_MS) { queueRecovery(trade, "成交序列中斷，等待自動核對", at); changed = true; continue; }
@@ -351,7 +393,7 @@
     function expire(now) {
       let changed = account ? enforceAccount(now) : false;
       for (const trade of trades) {
-        if (trade.recovery?.pending) continue;
+        if (trade.recovery?.pending || (trade.awaitingInitialQuote && !trade.checkpoint)) continue;
         if (trade.status === "WAITING_PRICE" && smc(trade)) {
           if (hasExpired(trade,now) || now - (trade.lastQuoteAt || trade.detectedAt) > MAX_GAP_MS) { skip(trade, "進場候選到期或行情中斷；不回填進場", now); changed = true; }
           continue;
@@ -383,7 +425,7 @@
         skipped: cohort.filter(t => t.status === "SKIPPED").length, review: cohort.filter(t => t.status === "REVIEW").length,
         long: byDirection("LONG"), short: byDirection("SHORT") };
     }
-    return { trades, settings: config, enableAccount, startStrategySession, applyFunding, accountState, previewCandidates, enforceAccount, accountSnapshot: () => account ? JSON.parse(JSON.stringify(account)) : null, addCandidates, tick, interrupt, expire, stats, netAt, executeSmc, tryLimitFill, cancelOrder, reconcileCandidates, suspend, recoveryTasks, recoveryError, retryRecovery, applyRecovery,
+    return { trades, settings: config, enableAccount, startStrategySession, applyFunding, accountState, previewCandidates, enforceAccount, accountSnapshot: () => account ? JSON.parse(JSON.stringify(account)) : null, addCandidates, tick, interrupt, expire, stats, netAt, executeSmc, tryLimitFill, recordLimitFill, resumeRecordedFill, cancelOrder, reconcileCandidates, suspend, recoveryTasks, recoveryError, retryRecovery, applyRecovery,
       activeSymbols: () => [...new Set(trades.filter(t => ACTIVE.has(t.status) || Targets.pending(t)).map(t => t.symbol))],
       snapshot: () => ({ version: 1, settings: { ...config }, trades, ...(ignoreBefore > 0 ? { ignoreBefore } : {}), ...(account ? { account: JSON.parse(JSON.stringify(account)) } : {}) }) };
   }

@@ -21,7 +21,7 @@
       <div class="desk-header-right"><span class="strategy-exchange"><i class="desk-exchange-dot"></i>BINANCE · USDT 永續</span></div>
     </header>
     <main id="overview" class="terminal-shell">
-      <div class="desk-intro"><div><p class="desk-eyebrow">BINANCE FUTURES · STRATEGY DESK</p><h2>交易策略工作台<span class="desk-version">4H MACD＋15M OB／Fib</span></h2><p>順勢掃描，讓每一筆決策都有依據。</p></div><span class="desk-local"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="3"/><path d="M10 17h4"/></svg>瀏覽器本機紀錄</span></div>
+      <div class="desk-intro"><div><p class="desk-eyebrow">BINANCE FUTURES · STRATEGY DESK</p><h2>交易策略工作台<span class="desk-version">4H MACD＋15M OB／Fib</span></h2></div><span class="desk-local"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="3"/><path d="M10 17h4"/></svg>瀏覽器本機紀錄</span></div>
       <div id="accountHomeSlot"></div>
       <details id="sharedAccount" class="shared-account" aria-labelledby="accountTitle">
         <summary class="account-heading"><h3 id="accountTitle">資金帳戶</h3></summary><p id="accountStatus" role="status" hidden></p>
@@ -44,7 +44,7 @@
       <section id="signals" data-desk-panel="signals" class="signals-dashboard" aria-labelledby="scannerTitle">
         <div id="signalsView" class="view-panel">
           <div class="list-head">
-            <div><p class="strategy-kicker">加密＋TradFi 合併成交額 TOP20 · 4H MACD方向 · 15M BOS／OB／Fib</p><h1 id="scannerTitle">策略掃描 <span id="candidateCount">(0 / 0)</span></h1></div>
+            <div><h1 id="scannerTitle">策略掃描 <span id="candidateCount">(0 / 0)</span></h1></div>
             <div class="list-actions">
               <select id="timeframeFilter" aria-label="策略週期"><option value="all">全部週期</option><option value="4h15m">4H＋15M</option></select><select id="directionFilter" aria-label="策略方向"><option value="all">全部方向</option><option value="LONG">做多候選</option><option value="SHORT">做空候選</option></select>
               <select id="scannerStatusFilter" aria-label="掃描卡片狀態"><option value="active">候選與進行中</option><option value="all">全部紀錄</option><option value="WAITING_PRICE">待成交</option><option value="OPEN">持倉中</option><option value="closed">已平倉</option><option value="SKIPPED">已取消</option><option value="NOT_ENTERED">未進場</option><option value="REVIEW">待核對</option></select>
@@ -116,7 +116,6 @@
         <div class="quarter-panel"><h3>策略績效</h3><div class="paper-table-wrap"><table class="quarter-profile-table"><thead><tr><th>週期</th><th>已平倉</th><th>費後勝率</th><th>已實現淨損益</th></tr></thead><tbody id="quarterProfiles"></tbody></table></div><p class="lab-help">新版回測與即時模擬績效分開，不使用舊策略資料。</p></div>
         <details class="paper-assumptions"><summary>交易紀錄與目標觸及統計</summary><div id="quarterTargets" class="target-stats"></div><div class="paper-table-wrap"><table class="quarter-trade-table"><thead><tr><th>幣種／週期</th><th>進場時間</th><th>方向</th><th>進場</th><th>原停損</th><th>狀態</th><th>淨損益 USDT</th></tr></thead><tbody id="quarterTrades"></tbody></table></div></details>
       </section>
-      <footer class="desk-footer"><span>CODEX BOT / STRATEGY DESK</span><span>BINANCE USDT 永續 · 4H MACD＋15M OB／Fib · 瀏覽器本機保存</span></footer>
     </main>
   </div>
   <script src="market-groups.js?v=tradfi-1"></script>

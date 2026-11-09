@@ -36,9 +36,11 @@
           if(setup&&!setup.endpoint){setup.afterBos.push(clone(b));const endpoint=long?hp:lp;
             if(endpoint&&endpoint.openTime>=setup.bos.openTime){const peak=long?Math.max(setup.bos.high,...setup.afterBos.filter(x=>x.openTime<=endpoint.openTime).map(x=>x.high)):Math.min(setup.bos.low,...setup.afterBos.filter(x=>x.openTime<=endpoint.openTime).map(x=>x.low));
               if(endpoint.price===peak){setup.endpoint=clone(endpoint);setup.stopStructure=clone((long?lowPoints:highPoints).filter(p=>p.openTime<setup.bos.openTime&&p.confirmedAt<=at).at(-1)||null);
-                const priorTurn=(long?highPoints:lowPoints).findLast(p=>
-                  p.openTime<setup.bos.openTime&&p.confirmedAt<=setup.bos.openTime);
-                const waveStart=Math.max(setup.broken.openTime,priorTurn?.openTime??0);
+                // Internal pullbacks do not reset the origin unless they extend the prior swing.
+                const turns=(long?highPoints:lowPoints).filter(p=>
+                  p.openTime>=setup.broken.openTime&&p.confirmedAt<=setup.bos.openTime);
+                const lastExtension=turns.findLast((p,i)=>i>0&&(long?p.price>turns[i-1].price:p.price<turns[i-1].price));
+                const waveStart=lastExtension?.openTime??setup.broken.openTime;
                 const originPoints=(long?lowPoints:highPoints).filter(p=>
                   p.openTime>waveStart&&p.openTime<setup.bos.openTime&&p.confirmedAt<=at);
                 setup.fibOrigin=clone(originPoints.reduce((best,p)=>

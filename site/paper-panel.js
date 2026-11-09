@@ -191,7 +191,7 @@
         if (candidate) {
           const trade = model.trades.find(t => t.id === Engine.key(candidate));
           if (trade?.openedAt) model.resumeRecordedFill(trade, now());
-          else model.recordLimitFill(candidate, 100, now());
+          else model.recordLimitFill(candidate, 100, now(), 1794209940120);
         }
         model.suspend("重新開啟頁面，離線期間觸價順序需核對", now()); changed = dirty = true; save(true);
         recoveryController = new AbortController();

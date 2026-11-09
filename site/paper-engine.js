@@ -114,13 +114,13 @@
       const buying = (trade.direction === "LONG") === entering;
       return Engine.quantize(price * (buying ? 1 + trade.slippage : 1 - trade.slippage), trade.tickSize, buying ? "ceil" : "floor");
     }
-    function addCandidates(candidates, capital, now) {
-      if (manualOnly() || !config.enabled || !(capital > 0) || !finite(capital)) return 0;
+    function addCandidates(candidates, capital, now, recordedFill = false) {
+      if (manualOnly() || (!recordedFill && !config.enabled) || !(capital > 0) || !finite(capital)) return 0;
       let added = 0;
       if (account) enforceAccount(now);
       for (const candidate of (account ? [...candidates].sort(priority) : candidates)) {
         if (!candidate || !Single.valid(candidate) || (['STRUCTURE_ENTRY','LIMIT_ENTRY'].includes(strategy().MODE)&&!current(candidate)) || !/^[A-Z0-9]+USDT$/.test(candidate.symbol) || !["LONG", "SHORT"].includes(candidate.direction) ||
-            !finite(candidate.confirmedAt) || candidate.confirmedAt <= ignoreBefore || !finite(candidate.expiresAt) || candidate.confirmedAt > now || hasExpired(candidate,now) ||
+            !finite(candidate.confirmedAt) || (!recordedFill && candidate.confirmedAt <= ignoreBefore) || !finite(candidate.expiresAt) || candidate.confirmedAt > now || hasExpired(candidate,now) ||
             !(candidate.stopLoss > 0) || !(candidate.target > 0) || !(candidate.tickSize > 0) ||
             !(candidate.market?.stepSize > 0) || seen.has(key(candidate))) continue;
         const reservedPlan = account ? Account.plan(candidate, config, accountState(now)) : null;
@@ -208,12 +208,12 @@
       else if (trade.entryType==="MARKET_NEXT" || (long ? price <= trade.referenceEntry : price >= trade.referenceEntry)) open(trade, price, at, frozenState);
       return trade.status !== "WAITING_PRICE";
     }
-    function recordLimitFill(candidate, capital, at) {
-      if (!Single.valid(candidate) || candidate.entryType !== "LIMIT" || candidate.confirmedAt <= ignoreBefore) return false;
+    function recordLimitFill(candidate, capital, at, approvedAt = candidate.confirmedAt) {
+      if (!Single.valid(candidate) || candidate.entryType !== "LIMIT" || approvedAt <= ignoreBefore) return false;
       const id = key(candidate);
       let trade = trades.find(t => t.id === id);
       if (!trade) {
-        addCandidates([candidate], capital, at);
+        addCandidates([candidate], capital, at, true);
         trade = trades.find(t => t.id === id);
       }
       if (!trade || trade.entry || !["WAITING_PRICE", "SKIPPED"].includes(trade.status)) return false;

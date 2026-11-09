@@ -18,7 +18,7 @@
     const high=[],low=[],highPoints=[],lowPoints=[];let bias=null,highDivergence=null;
     const setups={LONG:null,SHORT:null};
     const reasons={LONG:'等待15M結構',SHORT:'等待15M結構'};
-    function buildPlan(setup,market){if(!setup?.endpoint||!setup.stopStructure||!setup.readyTrend)return null;const readyAt=Math.max(setup.endpoint.confirmedAt,setup.readyTrend.at),c={symbol:market.symbol,strategyVersion:VERSION,strategyName:'4H MACD＋15M BOS／OB／Fib',profileId:'4h15m',timeframeLabel:'4H＋15M',direction:setup.direction,setupId:'bos-'+setup.bos.openTime+'-'+setup.endpoint.openTime+'-fib-limit',confirmedAt:readyAt,expiresAt:F.NO_EXPIRY,entryType:'LIMIT',targetMode:'FIB',partialExit:true,targetCount:4,exitFractions:[...F.FRACTIONS],riskFraction:.05,capital:100,tickSize:market.tickSize,market:{...market},macdDivergence:clone(highDivergence),fibSetup:clone(setup)};const p=F.prices(c.fibSetup,c.direction,c.tickSize);Object.assign(c,{entry:p.entry,stopLoss:p.stopLoss,target:p.target,targets:p.targets,entryLocation:p.entryLocation,fibEntry:p.fibEntry});return F.valid(c)?c:null;}
+    function buildPlan(setup,market){if(!setup?.endpoint||!setup.stopStructure||!setup.readyTrend)return null;const readyAt=Math.max(setup.endpoint.confirmedAt,setup.readyTrend.at),c={symbol:market.symbol,strategyVersion:VERSION,strategyName:'4H MACD＋15M BOS／OB／Fib',profileId:'4h15m',timeframeLabel:'4H＋15M',direction:setup.direction,setupId:'bos-'+setup.bos.openTime+'-'+setup.endpoint.openTime+'-fib-limit-wave-stop',confirmedAt:readyAt,expiresAt:F.NO_EXPIRY,entryType:'LIMIT',targetMode:'FIB',partialExit:true,targetCount:4,exitFractions:[...F.FRACTIONS],riskFraction:.05,capital:100,tickSize:market.tickSize,market:{...market},macdDivergence:clone(highDivergence),fibSetup:clone(setup)};const p=F.prices(c.fibSetup,c.direction,c.tickSize);Object.assign(c,{entry:p.entry,stopLoss:p.stopLoss,target:p.target,targets:p.targets,entryLocation:p.entryLocation,fibEntry:p.fibEntry});return F.valid(c)?c:null;}
     function pushHigh(b){check(b,high.at(-1),14400000);high.push(clone(b));if(high.length>499)high.shift();bias=trend(high);highDivergence=divergence(high);}
     function pushLow(b,market=null){
       check(b,low.at(-1),900000);if(bias?.at>b.closeTime+1)throw Error('大框架資料晚於小框架');
@@ -51,7 +51,7 @@
         }
         // Only a newly crossed, previously confirmed structure can create a new wave.
         if(bias&&broken&&previous){const long=direction==='LONG',ob=low.slice(0,-1).findLast(x=>long?x.close<x.open:x.close>x.open);
-          if(ob&&(long?b.low>ob.low:b.high<ob.high)){setup={direction,anchorMode:'WAVE_FIB_LIMIT',ob:clone(ob),bos:clone(b),previous:clone(previous),broken:clone(broken),bosTrend:clone(bias),readyTrend:null,endpoint:null,stopStructure:null,leg:clone(low.filter(x=>x.openTime>=ob.openTime)),afterBos:[],tickSize:market?.tickSize||.00000001};lastReason='BOS成立，等待新波段高／低點右側2根確認';}
+          if(ob&&(long?b.low>ob.low:b.high<ob.high)){setup={direction,anchorMode:'WAVE_FIB_LIMIT',stopMode:'WAVE_ORIGIN',ob:clone(ob),bos:clone(b),previous:clone(previous),broken:clone(broken),bosTrend:clone(bias),readyTrend:null,endpoint:null,stopStructure:null,leg:clone(low.filter(x=>x.openTime>=ob.openTime)),afterBos:[],tickSize:market?.tickSize||.00000001};lastReason='BOS成立，等待新波段高／低點右側2根確認';}
         }
         if(setup?.endpoint&&!setup.readyTrend&&bias?.direction===direction)setup.readyTrend=clone(bias);
         setups[side]=setup;

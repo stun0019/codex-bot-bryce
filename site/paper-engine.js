@@ -7,6 +7,7 @@
   const single=trade=>Single.isSingle(trade);
   const manualOnly=()=> (root.MacdStrategy||(typeof require==='function'?require('./macd-engine.js'):null))?.MODE==='CANDIDATES_ONLY';
   const smc=single;
+  const hasExpired=(trade,at)=>!Single.isFib(trade)&&at>=trade.expiresAt;
   const partial=t=>Single.isFib(t)&&t.partialExit,timed=t=>Single.isIntraday(t);
   const strategy=()=>root.MacdStrategy||(typeof require==='function'?require('./macd-engine.js'):null),current=t=>strategy().isVersion(t?.strategyVersion);
   const DEFAULTS = Object.freeze({ enabled: true, feeRate: 0.0005, slippage: 0.0002 });
@@ -85,7 +86,7 @@
           plan = recorded.status === "WAITING_PRICE" && recorded.reservedPlan ? { ...recorded.reservedPlan, status: "RESERVED", reason: "已預留；成交前重新核驗" } :
             recorded.status === "OPEN" ? { ...(recorded.executionPlan || recorded.reservedPlan), ok: true, status: "OPEN", quantity: recorded.quantity, reason: "已進場，原始數量已固定" } : { ok: false, status: recorded.status, reason: recorded.reason || "此計畫已結束" };
           const state = accountState(at); if (recorded.status === "WAITING_PRICE" && state?.blockedReason) plan = { ...plan, ok: false, status: "BLOCKED", reason: state.blockedReason };
-        } else if (candidate.confirmedAt <= ignoreBefore || candidate.expiresAt <= at) plan = { ok: false, reason: "此訊號已清空或到期" };
+        } else if (candidate.confirmedAt <= ignoreBefore || hasExpired(candidate,at)) plan = { ok: false, reason: "此訊號已清空或到期" };
         else if (!config.enabled) plan = { ok: false, reason: "已暫停新增" };
         else if (account) {
           plan = Account.plan(candidate, config, Account.metrics([...trades, ...extra], account, at));
@@ -119,7 +120,7 @@
       if (account) enforceAccount(now);
       for (const candidate of (account ? [...candidates].sort(priority) : candidates)) {
         if (!candidate || !Single.valid(candidate) || (['STRUCTURE_ENTRY','LIMIT_ENTRY'].includes(strategy().MODE)&&!current(candidate)) || !/^[A-Z0-9]+USDT$/.test(candidate.symbol) || !["LONG", "SHORT"].includes(candidate.direction) ||
-            !finite(candidate.confirmedAt) || candidate.confirmedAt <= ignoreBefore || !finite(candidate.expiresAt) || candidate.confirmedAt > now || candidate.expiresAt <= now ||
+            !finite(candidate.confirmedAt) || candidate.confirmedAt <= ignoreBefore || !finite(candidate.expiresAt) || candidate.confirmedAt > now || hasExpired(candidate,now) ||
             !(candidate.stopLoss > 0) || !(candidate.target > 0) || !(candidate.tickSize > 0) ||
             !(candidate.market?.stepSize > 0) || seen.has(key(candidate))) continue;
         const reservedPlan = account ? Account.plan(candidate, config, accountState(now)) : null;
@@ -202,7 +203,7 @@
       if(manualOnly()){if(trade.status==="WAITING_PRICE")skip(trade,"已改為主觀進場，不再自動成交",at);return false;}
       if (!smc(trade) || trade.status !== "WAITING_PRICE" || !(price > 0) || !finite(price) || !finite(at) || at < trade.detectedAt) return false;
       const long = trade.direction === "LONG";
-      if (at >= trade.expiresAt) skip(trade, "進場候選到期", at);
+      if (hasExpired(trade,at)) skip(trade, "進場候選到期", at);
       else if (long ? price <= trade.stopLoss : price >= trade.stopLoss) skip(trade, "進場前已越過停損或 TP1", at);
       else if (trade.entryType==="MARKET_NEXT" || (long ? price <= trade.referenceEntry : price >= trade.referenceEntry)) open(trade, price, at, frozenState);
       return trade.status !== "WAITING_PRICE";
@@ -307,7 +308,7 @@
         if (trade.status === "WAITING_PRICE" && manualOnly()){skip(trade,"已改為主觀進場，不再自動成交",at);changed=true;continue;}
         if (trade.status === "WAITING_PRICE" && smc(trade)) {
           const long = trade.direction === "LONG";
-          if (at >= trade.expiresAt || at - (trade.lastQuoteAt || trade.detectedAt) > MAX_GAP_MS) skip(trade, "進場候選到期或行情中斷；不回填進場", at);
+          if (hasExpired(trade,at) || at - (trade.lastQuoteAt || trade.detectedAt) > MAX_GAP_MS) skip(trade, "進場候選到期或行情中斷；不回填進場", at);
           else if (long ? price <= trade.stopLoss || price >= trade.target : price >= trade.stopLoss || price <= trade.target) skip(trade, "進場前已越過停損或 TP1", at);
           else if(trade.entryType==="MARKET_NEXT"||(long?price<=trade.referenceEntry:price>=trade.referenceEntry))open(trade, price, at);
           trade.lastQuoteAt = at;
@@ -352,7 +353,7 @@
       for (const trade of trades) {
         if (trade.recovery?.pending) continue;
         if (trade.status === "WAITING_PRICE" && smc(trade)) {
-          if (now >= trade.expiresAt || now - (trade.lastQuoteAt || trade.detectedAt) > MAX_GAP_MS) { skip(trade, "進場候選到期或行情中斷；不回填進場", now); changed = true; }
+          if (hasExpired(trade,now) || now - (trade.lastQuoteAt || trade.detectedAt) > MAX_GAP_MS) { skip(trade, "進場候選到期或行情中斷；不回填進場", now); changed = true; }
           continue;
         }
         if (trade.status === "WAITING_PRICE" && now >= Math.min(trade.expiresAt, trade.detectedAt + MAX_GAP_MS)) { skip(trade, "未及時取得新成交報價", now); changed = true; }

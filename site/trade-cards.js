@@ -52,10 +52,10 @@
   function compact(t) {
     const card = el('article', 'trade-glass strategy-card');
     const long = t.direction === 'LONG';
-    const heading = el('header', 'tg-identity');
+    const heading = el('header', 'tg-head');
     heading.append(
-      el('span', 'tg-direction ' + (long ? 'is-long' : 'is-short'), long ? '做多' : '做空'),
-      el('h3', 'tg-symbol', t.symbol)
+      el('h3', 'tg-symbol', t.symbol),
+      el('span', 'tg-direction ' + (long ? 'is-long' : 'is-short'), long ? '做多' : '做空')
     );
     card.append(heading);
     const targets = t.plannedTargets ?? t.targets ?? [];

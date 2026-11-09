@@ -29,7 +29,6 @@
         else if(at-setup.bos.closeTime-1>=SETTINGS.setupLifeMs){setup=null;lastReason='BOS波段超過6小時，等待新結構';}
         else if(long?b.low<=setup.ob.low:b.high>=setup.ob.high){setup=null;lastReason='價格突破OB遠端，波段失效';}
         else if(setup.endpoint){const p=F.prices(setup,setup.direction,market?.tickSize||setup.tickSize);if(at>=Math.min(setup.bos.closeTime+1+21600000,F.midnight(setup.endpoint.confirmedAt))){setup=null;lastReason='掛單到期';}
-          else if(long?b.low<=p.entry:b.high>=p.entry){setup=null;lastReason='已收盤K曾觸及進場，不回填離線成交';}
           else if(long?b.high>=p.target:b.low<=p.target){setup=null;lastReason='進場前已觸及第一目標，等待新波段';}
         }
         if(setup&&!setup.endpoint){setup.afterBos.push(clone(b));const endpoint=long?hp:lp;

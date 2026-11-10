@@ -178,8 +178,7 @@
       status.classList.remove('error');
       status.textContent = '正在更新 BingX 行情…';
       try {
-        if (location.protocol === 'file:') throw new Error('請用 node serve.cjs 啟動，再開啟 http://127.0.0.1:8765/');
-        const response = await fetch('/api/markets');
+        const response = await fetch('https://bingx-markets.ootdacc519.workers.dev/api/markets');
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
         const groups = selectMarkets(data);
@@ -199,7 +198,7 @@
 
     refreshButton.addEventListener('click', refresh);
     refresh();
-    if (location.protocol !== 'file:') setInterval(refresh, 60000);
+    setInterval(refresh, 60000);
   </script>
 </body>
 </html>

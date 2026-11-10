@@ -1,8 +1,0 @@
-(function(){
- 'use strict';
- const price=v=>Number.isFinite(v)?v.toLocaleString('en-US',{maximumSignificantDigits:10}):'—',el=(tag,text,cls)=>{const n=document.createElement(tag);if(text!=null)n.textContent=text;if(cls)n.className=cls;return n;};
- function detail(t){const box=el('div',null,'target-detail');for(const p of t.targets||[])box.append(el('strong',p.label+' '+price(p.price)),el('small',t.recovery?.pending?'核對中':({PENDING:'追蹤中',HIT:'已觸及',STOPPED:'先停損',REVIEW:'待核對',EXITED:'時間平倉'}[p.status]||p.status)));return box;}
- function stats(container,trades){container.replaceChildren();for(const p of window.TargetEngine.stats(trades).levels){const box=el('div',null,'target-stat');box.append(el('span',p.label+' 觸及率'),el('strong',p.rate==null?'—':p.rate.toFixed(1)+'%'),el('small','已觸及 '+p.hits+' / 已判定 '+p.resolved),el('small','追蹤中 '+p.pending+' · 核對中 '+p.recovering+' · 待核對 '+p.review));container.append(box);}container.append(el('p','觸及率與費後勝率分開計算，追蹤中及待核對不列分母。','target-help'));}
- function paperSummary(container,{account,stats:s,trades}){const money=n=>Number.isFinite(n)?n.toFixed(2):'—',pct=n=>Number.isFinite(n)?money(n)+'%':'—';container.replaceChildren();const rows=[['累積盈虧',pct(account?.returnPct),'費後損益 '+money(account?.periodPnl)+' USDT'],['策略勝率',pct(s.winRate),s.wins+' 勝 / '+s.losses+' 敗 · '+s.closed+' 筆']];for(const t of window.TargetEngine.stats(trades).levels)rows.push([t.label+'觸及率',pct(t.rate),t.hits+' / '+t.resolved+' 筆已判定']);for(const[name,value,caption]of rows){const card=el('div',null,'paper-summary-card');card.append(el('span',name,'paper-summary-label'),el('strong',value,'paper-summary-value'),el('small',caption,'paper-summary-caption'));container.append(card);}}
- window.TargetView={detail,stats,paperSummary};
-})();

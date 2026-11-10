@@ -3,54 +3,203 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Codex Bot｜模擬交易帳本</title>
+  <title>BingX｜合約成交額排行</title>
   <style>
     :root {
       color-scheme: dark;
-      font-family: system-ui, sans-serif;
-      background: #0b0e11;
-      color: #f5f5f5;
+      font-family: system-ui, "Microsoft JhengHei", sans-serif;
+      background: #0b1220;
+      color: #f0f5ff;
+      --panel: #121d30;
+      --line: #2a3952;
+      --muted: #a3b4ce;
+      --accent: #85b7ff;
+      --up: #67e2ad;
+      --down: #ff9ba7;
     }
-    body {
-      min-height: 100svh;
-      margin: 0;
-      padding: 1.25rem;
-      box-sizing: border-box;
-      display: grid;
-      place-items: center;
-    }
-    main {
-      box-sizing: border-box;
-      width: min(100%, 28rem);
-      padding: 2rem;
-      border: 1px solid #38331d;
-      border-radius: 1rem;
-      background: #15191d;
-    }
-    .brand { color: #fcd535; font-weight: 700; letter-spacing: .08em; }
-    h1 { margin: .5rem 0; }
-    p { margin: 0; color: #b8bdc5; }
-    a {
-      display: block;
-      margin-top: 1.5rem;
-      padding: .85rem 1rem;
-      border-radius: .5rem;
-      background: #fcd535;
-      color: #0b0e11;
-      font-weight: 700;
-      text-align: center;
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    main { width: min(100% - 32px, 1120px); margin: 0 auto; padding: 32px 0 48px; }
+    header, .section-head, nav { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    header, .section-head { justify-content: space-between; }
+    .brand { color: var(--accent); font-size: .78rem; font-weight: 800; letter-spacing: .14em; }
+    h1 { margin: 6px 0; font-size: clamp(1.65rem, 5vw, 2.45rem); }
+    h2 { margin: 0; font-size: 1.12rem; }
+    p { margin: 0; }
+    .muted, th { color: var(--muted); }
+    button, nav a {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      color: inherit;
+      padding: 8px 13px;
       text-decoration: none;
+      font: inherit;
+      font-size: .88rem;
     }
-    a:hover { background: #ffe066; }
-    a:focus-visible { outline: 2px solid white; outline-offset: 4px; }
+    button { cursor: pointer; background: #244576; border-color: #4266a0; }
+    button:hover, nav a:hover { border-color: var(--accent); }
+    button:disabled { opacity: .65; cursor: wait; }
+    nav { margin: 22px 0 12px; }
+    #status { min-height: 1.5em; font-size: .85rem; }
+    #status.error { color: var(--down); }
+    .boards { display: grid; gap: 16px; margin-top: 14px; }
+    section { min-width: 0; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; }
+    .section-head { padding: 15px 16px; border-bottom: 1px solid var(--line); }
+    .badge { font-size: .72rem; font-weight: 700; color: var(--accent); letter-spacing: .05em; }
+    #gold .badge { color: #ffd588; }
+    .scroll { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    th, td { padding: 10px clamp(7px, 2vw, 16px); text-align: right; }
+    th { font-size: .75rem; font-weight: 600; }
+    td { font-size: .86rem; border-top: 1px solid var(--line); }
+    tbody tr:hover { background: #1b2a42; }
+    th:first-child, td:first-child, th:nth-child(2), td:nth-child(2) { text-align: left; }
+    td:first-child { color: var(--muted); width: 1%; }
+    td:nth-child(2), td:last-child { font-weight: 700; }
+    td small { display: block; margin-top: 2px; font-size: .7rem; font-weight: 400; color: var(--muted); }
+    td.empty { padding: 20px 16px; font-weight: 400; }
+    .up { color: var(--up); }
+    .down { color: var(--down); }
+    footer { margin-top: 18px; font-size: .78rem; color: var(--muted); }
+    @media (min-width: 1050px) {
+      .boards { grid-template-columns: 1fr 1fr; align-items: start; }
+      #gold { grid-column: 1 / -1; }
+    }
   </style>
 </head>
 <body>
   <main>
-    <p class="brand">CODEX BOT</p>
-    <h1>模擬交易帳本</h1>
-    <p>請使用有試算表權限的 Google 帳號開啟。</p>
-    <a href="https://docs.google.com/spreadsheets/d/1IQA62q7jnxAuP8TYZj9KGnevfkuIpkaqLxsRMj3zBZE/edit?gid=64100#gid=64100">開啟雲端帳本</a>
+    <header>
+      <div>
+        <div class="brand">BINGX MARKET WATCH</div>
+        <h1>合約成交額排行</h1>
+        <p class="muted">USDT 永續合約 · 滾動 24 小時</p>
+      </div>
+      <button id="refresh" type="button">重新整理</button>
+    </header>
+    <nav aria-label="榜單導覽">
+      <a href="#gold">黃金</a>
+      <a href="#crypto">加密貨幣</a>
+      <a href="#stocks">股票</a>
+    </nav>
+    <p id="status" class="muted" role="status">正在連線 BingX…</p>
+    <div id="boards" class="boards"></div>
+    <footer>資料來源 BingX 公開行情 API · 每 60 秒自動更新</footer>
   </main>
+
+  <script>
+    const markets = [
+      { id: 'gold', label: '黃金', badge: 'XAU/USD', limit: 1 },
+      { id: 'crypto', label: '加密貨幣', badge: 'TOP 30', limit: 30 },
+      { id: 'stocks', label: '股票', badge: 'TOP 10', limit: 10 },
+    ];
+    const goldSymbol = 'NCCOGOLD2USD-USDT';
+    const status = document.querySelector('#status');
+    const refreshButton = document.querySelector('#refresh');
+    const amountFormat = new Intl.NumberFormat('zh-TW', { maximumFractionDigits: 2 });
+    const priceFormat = new Intl.NumberFormat('zh-TW', { maximumSignificantDigits: 10 });
+    const changeFormat = new Intl.NumberFormat('zh-TW', {
+      style: 'percent', signDisplay: 'exceptZero', minimumFractionDigits: 2, maximumFractionDigits: 2,
+    });
+    const timeFormat = new Intl.DateTimeFormat('zh-TW', { timeStyle: 'medium' });
+    let lastUpdate;
+
+    for (const { id, label, badge } of markets) {
+      document.querySelector('#boards').insertAdjacentHTML('beforeend', `
+        <section id="${id}" aria-labelledby="${id}-title">
+          <div class="section-head"><h2 id="${id}-title">${label}</h2><span class="badge">${badge}</span></div>
+          <div class="scroll" tabindex="0" role="region" aria-labelledby="${id}-title">
+            <table aria-labelledby="${id}-title">
+              <thead><tr><th scope="col">排名</th><th scope="col">合約</th><th scope="col">最新價</th><th scope="col">24h 漲跌</th><th scope="col" aria-sort="descending">24h 成交額 (USDT)</th></tr></thead>
+              <tbody><tr><td class="empty" colspan="5">等待行情…</td></tr></tbody>
+            </table>
+          </div>
+        </section>`);
+    }
+
+    function number(value) {
+      return value == null || String(value).trim() === '' ? NaN : Number(value);
+    }
+
+    function selectMarkets({ quotes, classifications }) {
+      const types = new Map(classifications.map(({ symbol, contractType }) => [symbol, contractType]));
+      const groups = { gold: [], crypto: [], stocks: [] };
+      for (const quote of quotes) {
+        const { symbol } = quote;
+        const turnover = number(quote.quoteVolume);
+        if (typeof symbol !== 'string' || !symbol.endsWith('-USDT') || !Number.isFinite(turnover) || turnover < 0) continue;
+
+        const type = types.get(symbol);
+        const row = { ...quote, turnover };
+        if (symbol === goldSymbol) groups.gold.push(row);
+        else if (type === 'nonCryptoStock') groups.stocks.push(row);
+        else if (!type && !/^(?:NCCO|NCFX|NCSK|NCSI)/.test(symbol)) groups.crypto.push(row);
+      }
+      return groups;
+    }
+
+    function renderMarket({ id, limit }, quotes) {
+      const body = document.querySelector(`#${id} tbody`);
+      body.replaceChildren();
+      const ranked = quotes.sort((a, b) => b.turnover - a.turnover || a.symbol.localeCompare(b.symbol)).slice(0, limit);
+      if (!ranked.length) {
+        const cell = body.insertRow().insertCell();
+        cell.colSpan = 5;
+        cell.className = 'empty';
+        cell.textContent = '目前沒有行情';
+      }
+
+      ranked.forEach((quote, index) => {
+        const row = body.insertRow();
+        const price = number(quote.lastPrice);
+        const change = number(quote.priceChangePercent);
+        const name = id === 'gold' ? 'XAU/USD' : quote.symbol.replace(/^NCSK(.+)2USD-USDT$/, '$1');
+        row.insertCell().textContent = index + 1;
+        const contract = row.insertCell();
+        contract.textContent = name;
+        if (name !== quote.symbol) {
+          const code = document.createElement('small');
+          code.textContent = quote.symbol;
+          contract.append(code);
+        }
+        row.insertCell().textContent = Number.isFinite(price) ? priceFormat.format(price) : '—';
+        const changeCell = row.insertCell();
+        changeCell.textContent = Number.isFinite(change) ? changeFormat.format(change / 100) : '—';
+        if (change > 0) changeCell.classList.add('up');
+        if (change < 0) changeCell.classList.add('down');
+        row.insertCell().textContent = amountFormat.format(quote.turnover);
+      });
+    }
+
+    async function refresh() {
+      if (refreshButton.disabled) return;
+      refreshButton.disabled = true;
+      status.classList.remove('error');
+      status.textContent = '正在更新 BingX 行情…';
+      try {
+        if (location.protocol === 'file:') throw new Error('請用 node serve.cjs 啟動，再開啟 http://127.0.0.1:8765/');
+        const response = await fetch('/api/markets');
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+        const groups = selectMarkets(data);
+        for (const market of markets) renderMarket(market, groups[market.id]);
+        lastUpdate = timeFormat.format(data.fetchedAt);
+        status.textContent = `最後更新 ${lastUpdate}`;
+      } catch (error) {
+        status.classList.add('error');
+        status.textContent = `讀取失敗 · ${error.message}${lastUpdate ? ` · 上次更新 ${lastUpdate}` : ''}`;
+        if (!lastUpdate) {
+          for (const cell of document.querySelectorAll('td.empty')) cell.textContent = '暫無行情';
+        }
+      } finally {
+        refreshButton.disabled = false;
+      }
+    }
+
+    refreshButton.addEventListener('click', refresh);
+    refresh();
+    if (location.protocol !== 'file:') setInterval(refresh, 60000);
+  </script>
 </body>
 </html>

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>BingX｜合約成交額排行</title>
+  <title>BingX｜全部訊號</title>
   <style>
     :root {
       color-scheme: dark;
@@ -47,7 +47,7 @@
     section { min-width: 0; }
     .section-head { margin-bottom: 8px; }
     .badge { font-size: .72rem; font-weight: 700; color: var(--accent); letter-spacing: .05em; }
-    #gold .badge { color: #ffd588; }
+    #forex .badge { color: #ffd588; }
     .cards {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -66,24 +66,9 @@
       line-height: 1.3;
       overflow-wrap: anywhere;
     }
-    .card-title {
-      display: flex;
-      align-items: baseline;
-      gap: 5px;
-      margin: 0;
-      font-size: .86rem;
-    }
-    .rank { flex: none; color: var(--accent); font-size: .71rem; }
-    .metrics { display: grid; gap: 2px; margin: 5px 0 0; }
-    .metrics > div {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: space-between;
-      align-items: baseline;
-      gap: 0 5px;
-    }
-    .metrics dt { color: var(--muted); font-size: .68rem; }
-    .metrics dd { min-width: 0; margin: 0 0 0 auto; text-align: right; font-size: .78rem; font-weight: 650; }
+    .card-title { margin: 0; font-size: .86rem; }
+    .trend { margin-top: 4px; font-size: .95rem; font-weight: 750; }
+    .candle-time { margin-top: 3px; color: var(--muted); font-size: .68rem; }
     .empty { color: var(--muted); font-size: .85rem; }
     .up { color: var(--up); }
     .down { color: var(--down); }
@@ -95,99 +80,69 @@
     <header>
       <div>
         <div class="brand">BINGX MARKET WATCH</div>
-        <h1>合約成交額排行</h1>
+        <h1>全部訊號</h1>
       </div>
       <button id="refresh" type="button">重新整理</button>
     </header>
-    <nav aria-label="榜單導覽">
-      <a href="#gold">黃金</a>
-      <a href="#crypto">加密貨幣</a>
+    <nav aria-label="訊號分類">
+      <a href="#forex">外匯</a>
+      <a href="#crypto">加密合約</a>
       <a href="#stocks">股票</a>
     </nav>
-    <p id="status" class="muted" role="status">正在連線 BingX…</p>
+    <p id="status" class="muted" role="status">正在掃描 1 小時趨勢…</p>
     <div id="boards" class="boards"></div>
     <footer>資料來源 BingX 公開行情 API · 每 60 秒自動更新</footer>
   </main>
 
-  <template id="quote-card">
+  <template id="signal-card">
     <li class="card">
-      <h3 class="card-title"><span class="rank" aria-hidden="true"></span><span class="contract-name"></span></h3>
-      <dl class="metrics">
-        <div><dt>最新價</dt><dd class="price"></dd></div>
-        <div><dt>24h 漲跌</dt><dd class="change"></dd></div>
-      </dl>
+      <h3 class="card-title"></h3>
+      <p class="trend"></p>
+      <p class="candle-time"></p>
     </li>
   </template>
 
   <script>
     const markets = [
-      { id: 'gold', label: '黃金', badge: 'XAU/USD', limit: 1 },
-      { id: 'crypto', label: '加密貨幣', badge: 'TOP 30', limit: 30 },
-      { id: 'stocks', label: '股票', badge: 'TOP 10', limit: 10 },
+      { id: 'forex', label: '外匯', badge: 'XAU/USD' },
+      { id: 'crypto', label: '加密合約' },
+      { id: 'stocks', label: '股票' },
     ];
-    const goldSymbol = 'NCCOGOLD2USD-USDT';
     const status = document.querySelector('#status');
     const refreshButton = document.querySelector('#refresh');
-    const cardTemplate = document.querySelector('#quote-card');
-    const priceFormat = new Intl.NumberFormat('zh-TW', { maximumSignificantDigits: 10 });
-    const changeFormat = new Intl.NumberFormat('zh-TW', {
-      style: 'percent', signDisplay: 'exceptZero', minimumFractionDigits: 2, maximumFractionDigits: 2,
-    });
-    const timeFormat = new Intl.DateTimeFormat('zh-TW', { timeStyle: 'medium' });
+    const cardTemplate = document.querySelector('#signal-card');
+    const updateTime = new Intl.DateTimeFormat('zh-TW', { timeStyle: 'medium', timeZone: 'Asia/Taipei' });
+    const candleTime = new Intl.DateTimeFormat('zh-TW', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Asia/Taipei' });
     let lastUpdate;
 
     for (const { id, label, badge } of markets) {
       document.querySelector('#boards').insertAdjacentHTML('beforeend', `
         <section id="${id}" aria-labelledby="${id}-title">
-          <div class="section-head"><h2 id="${id}-title">${label}</h2><span class="badge">${badge}</span></div>
-          <p class="empty">等待行情…</p>
-          <ol class="cards" role="list" aria-labelledby="${id}-title"></ol>
+          <div class="section-head"><h2 id="${id}-title">${label}</h2><span class="badge">${badge ?? ''}</span></div>
+          <p class="empty">等待掃描…</p>
+          <ul class="cards" role="list" aria-labelledby="${id}-title"></ul>
         </section>`);
     }
 
-    function number(value) {
-      return value == null || String(value).trim() === '' ? NaN : Number(value);
-    }
-
-    function selectMarkets({ quotes, classifications }) {
-      const types = new Map(classifications.map(({ symbol, contractType }) => [symbol, contractType]));
-      const groups = { gold: [], crypto: [], stocks: [] };
-      for (const quote of quotes) {
-        const { symbol } = quote;
-        const turnover = number(quote.quoteVolume);
-        if (typeof symbol !== 'string' || !symbol.endsWith('-USDT') || !Number.isFinite(turnover) || turnover < 0) continue;
-
-        const type = types.get(symbol);
-        const row = { ...quote, turnover };
-        if (symbol === goldSymbol) groups.gold.push(row);
-        else if (type === 'nonCryptoStock') groups.stocks.push(row);
-        else if (!type && !/^(?:NCCO|NCFX|NCSK|NCSI)/.test(symbol)) groups.crypto.push(row);
-      }
-      return groups;
-    }
-
-    function renderMarket({ id, limit }, quotes) {
+    function renderMarket({ id }, { signals, total, scanned }) {
       const board = document.getElementById(id);
-      const ranked = quotes.sort((a, b) => b.turnover - a.turnover || a.symbol.localeCompare(b.symbol)).slice(0, limit);
       const empty = board.querySelector('.empty');
-      empty.hidden = ranked.length > 0;
-      empty.textContent = '目前沒有行情';
+      empty.hidden = signals.length > 0;
+      empty.textContent = total === 0 ? '目前沒有可掃描的標的'
+        : scanned === 0 ? '暫無可判斷的 K 線'
+          : '目前沒有符合條件的訊號';
 
       const cards = document.createDocumentFragment();
-      ranked.forEach((quote, index) => {
+      for (const { symbol, trend, closedAt } of signals) {
         const card = cardTemplate.content.cloneNode(true);
-        const price = number(quote.lastPrice);
-        const change = number(quote.priceChangePercent);
-        const name = id === 'gold' ? 'XAU/USD' : quote.symbol.replace(/^NCSK(.+)2USD-USDT$/, '$1');
-        card.querySelector('.rank').textContent = `#${index + 1}`;
-        card.querySelector('.contract-name').textContent = name;
-        card.querySelector('.price').textContent = Number.isFinite(price) ? priceFormat.format(price) : '—';
-        const changeValue = card.querySelector('.change');
-        changeValue.textContent = Number.isFinite(change) ? changeFormat.format(change / 100) : '—';
-        if (change > 0) changeValue.classList.add('up');
-        if (change < 0) changeValue.classList.add('down');
+        const bullish = trend === 'bullish';
+        card.querySelector('.card-title').textContent = id === 'forex' ? 'XAU/USD' : symbol.replace(/^NCSK(.+)2USD-USDT$/, '$1');
+        const label = card.querySelector('.trend');
+        label.textContent = bullish ? '多頭' : '空頭';
+        label.classList.add(bullish ? 'up' : 'down');
+        card.querySelector('.candle-time').textContent = `K 線收盤 ${candleTime.format(closedAt)}`;
         cards.append(card);
-      });
+      }
       board.querySelector('.cards').replaceChildren(cards);
     }
 
@@ -195,20 +150,26 @@
       if (refreshButton.disabled) return;
       refreshButton.disabled = true;
       status.classList.remove('error');
-      status.textContent = '正在更新 BingX 行情…';
+      status.textContent = '正在掃描 1 小時趨勢…';
       try {
-        const response = await fetch('https://bingx-markets.ootdacc519.workers.dev/api/markets');
+        const response = await fetch('https://bingx-markets.ootdacc519.workers.dev/api/signals');
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const data = await response.json();
-        if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
-        const groups = selectMarkets(data);
-        for (const market of markets) renderMarket(market, groups[market.id]);
-        lastUpdate = timeFormat.format(data.fetchedAt);
-        status.textContent = `最後更新 ${lastUpdate}`;
+        const counts = { total: 0, scanned: 0 };
+        for (const market of markets) {
+          const board = data.markets[market.id];
+          renderMarket(market, board);
+          counts.total += board.total;
+          counts.scanned += board.scanned;
+        }
+        lastUpdate = updateTime.format(data.fetchedAt);
+        const pending = counts.total - counts.scanned;
+        status.textContent = `掃描更新 ${lastUpdate}${pending ? ` · ${pending} 個標的暫無法判斷` : ''}`;
       } catch (error) {
         status.classList.add('error');
-        status.textContent = `讀取失敗 · ${error.message}${lastUpdate ? ` · 上次更新 ${lastUpdate}` : ''}`;
+        status.textContent = `讀取訊號失敗 · ${error.message}${lastUpdate ? ` · 上次更新 ${lastUpdate}` : ''}`;
         if (!lastUpdate) {
-          for (const message of document.querySelectorAll('.empty')) message.textContent = '暫無行情';
+          for (const message of document.querySelectorAll('.empty')) message.textContent = '暫無訊號';
         }
       } finally {
         refreshButton.disabled = false;
